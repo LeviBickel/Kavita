@@ -54,7 +54,16 @@ docker run -d \
   -v /your/data:/kavita/config \
   ghcr.io/levibickel/kavita:nightly
 ```
+-or-
 
+```bash
+docker pull levibickel/kavita:nightly
+
+docker run -d \
+  -p 5000:5000 \
+  -v /your/data:/kavita/config \
+  levibickel/kavita:nightly
+```
 For full setup options, refer to the [upstream wiki](https://wiki.kavitareader.com/getting-started).
 
 

@@ -51,6 +51,11 @@ export const mangaFormatFilters = [
       title: 'archive',
       value: MangaFormat.ARCHIVE,
       selected: false
+    },
+    {
+      title: 'audio',
+      value: MangaFormat.AUDIO,
+      selected: false
     }
 ];
 

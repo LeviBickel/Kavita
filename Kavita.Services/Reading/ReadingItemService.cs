@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using Kavita.API.Services;
 using Kavita.Models.Entities.Enums;
 using Kavita.Models.Metadata;
@@ -22,9 +23,11 @@ public class ReadingItemService : IReadingItemService
     private readonly BookParser _bookParser;
     private readonly PdfParser _pdfParser;
     private readonly AudioParser _audioParser;
+    private readonly IMediaErrorService _mediaErrorService;
 
     public ReadingItemService(IArchiveService archiveService, IBookService bookService, IImageService imageService,
-        IDirectoryService directoryService, ILogger<ReadingItemService> logger, IAudiobookService audiobookService)
+        IDirectoryService directoryService, ILogger<ReadingItemService> logger, IAudiobookService audiobookService,
+        IMediaErrorService mediaErrorService)
     {
         _archiveService = archiveService;
         _bookService = bookService;
@@ -32,6 +35,7 @@ public class ReadingItemService : IReadingItemService
         _directoryService = directoryService;
         _audiobookService = audiobookService;
         _logger = logger;
+        _mediaErrorService = mediaErrorService;
 
         _imageParser = new ImageParser(directoryService);
         _basicParser = new BasicParser(directoryService, _imageParser);
@@ -70,6 +74,7 @@ public class ReadingItemService : IReadingItemService
     /// </summary>
     /// <param name="path">Path of a file</param>
     /// <param name="rootPath"></param>
+    /// <param name="libraryRoot"></param>
     /// <param name="type">Library type to determine parsing to perform</param>
     /// <param name="enableMetadata">Enable Metadata parsing overriding filename parsing</param>
     public ParserInfo? ParseFile(string path, string rootPath, string libraryRoot, LibraryType type, bool enableMetadata)
@@ -80,6 +85,9 @@ public class ReadingItemService : IReadingItemService
             if (info == null)
             {
                 _logger.LogError("Unable to parse any meaningful information out of file {FilePath}", path);
+                _mediaErrorService.ReportMediaIssue(Path.GetFileName(path), MediaErrorProducer.Scanner,
+                    "Unable to parse any meaningful information out of file", string.Empty);
+
                 return null;
             }
 
@@ -88,6 +96,9 @@ public class ReadingItemService : IReadingItemService
         catch (Exception ex)
         {
             _logger.LogError(ex, "There was an exception when parsing file {FilePath}", path);
+            _mediaErrorService.ReportMediaIssue(Path.GetFileName(path), MediaErrorProducer.Scanner,
+                "There was an exception when parsing file", ex.Message);
+
             return null;
         }
     }

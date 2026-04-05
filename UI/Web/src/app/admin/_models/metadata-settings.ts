@@ -43,4 +43,10 @@ export interface MetadataSettings {
   whitelist: Array<string>;
   personRoles: Array<PersonRole>;
   overrides: Array<MetadataSettingField>;
+
+  enableOpenLibrary: boolean;
+  enableGoogleBooks: boolean;
+  googleBooksApiKey: string;
+  enableHardcover: boolean;
+  hardcoverApiKey: string;
 }

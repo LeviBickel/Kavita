@@ -56,15 +56,20 @@ export class ManagePublicMetadataSettingsComponent implements OnInit {
       this.settings = settings;
 
       this.settingsForm.addControl('enableExtendedMetadataProcessing', new FormControl(this.settings.enableExtendedMetadataProcessing, []));
+      this.settingsForm.addControl('enableOpenLibrary', new FormControl(this.settings.enableOpenLibrary, []));
+      this.settingsForm.addControl('enableGoogleBooks', new FormControl(this.settings.enableGoogleBooks, []));
+      this.settingsForm.addControl('googleBooksApiKey', new FormControl(this.settings.googleBooksApiKey, []));
+      this.settingsForm.addControl('enableHardcover', new FormControl(this.settings.enableHardcover, []));
+      this.settingsForm.addControl('hardcoverApiKey', new FormControl(this.settings.hardcoverApiKey, []));
       this.cdRef.markForCheck();
-    });
 
-    this.settingsForm.valueChanges.pipe(
-      debounceTime(300),
-      takeUntilDestroyed(this.destroyRef),
-      map(_ => this.packData()),
-      switchMap((data) => this.settingService.updateMetadataSettings(data)),
-    ).subscribe();
+      this.settingsForm.valueChanges.pipe(
+        debounceTime(300),
+        takeUntilDestroyed(this.destroyRef),
+        map(_ => this.packData()),
+        switchMap((data) => this.settingService.updateMetadataSettings(data)),
+      ).subscribe();
+    });
   }
 
   packData() {
@@ -78,6 +83,11 @@ export class ManagePublicMetadataSettingsComponent implements OnInit {
     model.fieldMappings = exp.fieldMappings;
     model.whitelist = exp.whitelist;
     model.blacklist = exp.blacklist;
+    model.enableOpenLibrary = formValue.enableOpenLibrary;
+    model.enableGoogleBooks = formValue.enableGoogleBooks;
+    model.googleBooksApiKey = formValue.googleBooksApiKey;
+    model.enableHardcover = formValue.enableHardcover;
+    model.hardcoverApiKey = formValue.hardcoverApiKey;
 
     return model;
   }

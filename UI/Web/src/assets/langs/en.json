@@ -1051,7 +1051,20 @@
         "people-header": "People",
         "tags-header": "Tags",
         "source-genre-tags-placeholder": "Source genre/tag",
-        "dest-genre-tags-placeholder": "Destination genre/tag"
+        "dest-genre-tags-placeholder": "Destination genre/tag",
+        "external-cover-providers-header": "External Cover Providers",
+        "external-cover-providers-description": "For Book and Audiobook libraries, fetch cover art from external sources when no local cover is found. Providers are tried in order: Open Library, Google Books, Hardcover.",
+        "enable-open-library-label": "Open Library",
+        "enable-open-library-tooltip": "Fetch cover art from Open Library (free, no API key required).",
+        "enable-google-books-label": "Google Books",
+        "enable-google-books-tooltip": "Fetch cover art from Google Books. An API key is optional but recommended to avoid rate limits.",
+        "google-books-api-key-label": "Google Books API Key",
+        "google-books-api-key-tooltip": "Optional. Obtain a free API key from Google Cloud Console to increase rate limits.",
+        "enable-hardcover-label": "Hardcover",
+        "enable-hardcover-tooltip": "Fetch cover art from Hardcover. Requires a free API key from hardcover.app.",
+        "hardcover-api-key-label": "Hardcover API Key",
+        "hardcover-api-key-tooltip": "Required. Obtain your API key from your Hardcover account settings.",
+        "api-key-placeholder": "Enter API key"
     },
 
     "book-line-overlay": {

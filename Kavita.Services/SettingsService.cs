@@ -69,6 +69,15 @@ public class SettingsService(
 
         existingMetadataSetting.AgeRatingMappings = dto.AgeRatingMappings ?? [];
 
+        existingMetadataSetting.EnableOpenLibrary = dto.EnableOpenLibrary;
+        existingMetadataSetting.EnableGoogleBooks = dto.EnableGoogleBooks;
+        existingMetadataSetting.EnableHardcover = dto.EnableHardcover;
+
+        if (!string.IsNullOrWhiteSpace(dto.GoogleBooksApiKey) && dto.GoogleBooksApiKey != "***")
+            existingMetadataSetting.GoogleBooksApiKey = dto.GoogleBooksApiKey;
+        if (!string.IsNullOrWhiteSpace(dto.HardcoverApiKey) && dto.HardcoverApiKey != "***")
+            existingMetadataSetting.HardcoverApiKey = dto.HardcoverApiKey;
+
         existingMetadataSetting.Blacklist = (dto.Blacklist ?? []).Where(s => !string.IsNullOrWhiteSpace(s)).DistinctBy(d => d.ToNormalized()).ToList() ?? [];
         existingMetadataSetting.Whitelist = (dto.Whitelist ?? []).Where(s => !string.IsNullOrWhiteSpace(s)).DistinctBy(d => d.ToNormalized()).ToList() ?? [];
         existingMetadataSetting.Overrides = [.. dto.Overrides ?? []];

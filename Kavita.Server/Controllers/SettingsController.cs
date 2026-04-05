@@ -217,8 +217,11 @@ public class SettingsController(
     [Authorize(Policy = PolicyGroups.AdminPolicy)]
     public async Task<ActionResult<MetadataSettingsDto>> GetMetadataSettings()
     {
-        return Ok(await unitOfWork.SettingsRepository.GetMetadataSettingDto());
+        var dto = await unitOfWork.SettingsRepository.GetMetadataSettingDto();
+        if (!string.IsNullOrEmpty(dto.GoogleBooksApiKey)) dto.GoogleBooksApiKey = "***";
+        if (!string.IsNullOrEmpty(dto.HardcoverApiKey)) dto.HardcoverApiKey = "***";
 
+        return Ok(dto);
     }
 
     /// <summary>
@@ -232,7 +235,11 @@ public class SettingsController(
     {
         try
         {
-            return Ok(await settingsService.UpdateMetadataSettings(dto));
+            var updated = await settingsService.UpdateMetadataSettings(dto);
+            if (!string.IsNullOrEmpty(updated.GoogleBooksApiKey)) updated.GoogleBooksApiKey = "***";
+            if (!string.IsNullOrEmpty(updated.HardcoverApiKey)) updated.HardcoverApiKey = "***";
+
+            return Ok(updated);
         }
         catch (Exception ex)
         {

@@ -157,7 +157,7 @@ export class EventsWidgetComponent implements OnInit {
   }
 
   prettyPrintProgress(progress: number) {
-    return Math.trunc(progress * 100);
+    return Math.round(progress * 100);
   }
 
   protected readonly EVENTS = EVENTS;

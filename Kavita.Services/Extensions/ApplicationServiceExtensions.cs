@@ -10,6 +10,7 @@ using Kavita.API.Services.SignalR;
 using Kavita.Services.Helpers;
 using Kavita.Services.HostedServices;
 using Kavita.Services.Metadata;
+using Kavita.Services.Metadata.Providers;
 using Kavita.Services.Plus;
 using Kavita.Services.Reading;
 using Kavita.Services.ReadingLists;
@@ -36,6 +37,10 @@ public static class ApplicationServiceExtensions
         services.AddScoped<ICleanupService, CleanupService>();
         services.AddScoped<IBookService, BookService>();
         services.AddScoped<IAudiobookService, AudiobookService>();
+        services.AddScoped<OpenLibraryMetadataProvider>();
+        services.AddScoped<GoogleBooksMetadataProvider>();
+        services.AddScoped<HardcoverMetadataProvider>();
+        services.AddScoped<IExternalCoverProviderService, ExternalCoverProviderService>();
         services.AddScoped<IVersionUpdaterService, VersionUpdaterService>();
         services.AddScoped<IDownloadService, DownloadService>();
         services.AddScoped<IReaderService, ReaderService>();

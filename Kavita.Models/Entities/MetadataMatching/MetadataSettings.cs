@@ -112,4 +112,33 @@ public class MetadataSettings
     /// Which Roles to allow metadata downloading for
     /// </summary>
     public List<PersonRole> PersonRoles { get; set; }
+
+    #region External Cover Providers
+
+    /// <summary>
+    /// Fetch cover art from Open Library when no local cover is found
+    /// </summary>
+    public bool EnableOpenLibrary { get; set; }
+
+    /// <summary>
+    /// Fetch cover art from Google Books when no local cover is found
+    /// </summary>
+    public bool EnableGoogleBooks { get; set; }
+
+    /// <summary>
+    /// Optional Google Books API key for higher rate limits
+    /// </summary>
+    public string GoogleBooksApiKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Fetch cover art from Hardcover when no local cover is found
+    /// </summary>
+    public bool EnableHardcover { get; set; }
+
+    /// <summary>
+    /// Hardcover API key (required to use Hardcover)
+    /// </summary>
+    public string HardcoverApiKey { get; set; } = string.Empty;
+
+    #endregion
 }

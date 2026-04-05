@@ -5,9 +5,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Hangfire;
+using Flurl.Http;
 using Kavita.API.Database;
 using Kavita.API.Services;
 using Kavita.API.Services.Helpers;
+using Kavita.API.Services.Metadata;
 using Kavita.API.Services.SignalR;
 using Kavita.Common.Extensions;
 using Kavita.Common.Helpers;
@@ -32,7 +34,8 @@ public class MetadataService(
     ICacheHelper cacheHelper,
     IReadingItemService readingItemService,
     IDirectoryService directoryService,
-    IImageService imageService)
+    IImageService imageService,
+    IExternalCoverProviderService externalCoverProviderService)
     : IMetadataService
 {
     public const string Name = "MetadataService";
@@ -224,6 +227,8 @@ public class MetadataService(
             }
 
             UpdateSeriesCoverImage(series, firstVolumeUpdated || forceUpdate, forceColorScape);
+
+            await TryFetchExternalCoverAsync(series, encodeFormat, coverImageSize);
         }
         catch (Exception ex)
         {
@@ -231,6 +236,78 @@ public class MetadataService(
         }
     }
 
+
+    /// <summary>
+    /// Attempts to fetch a cover image from enabled external providers when local extraction produced nothing.
+    /// Only runs for Book and Audiobook libraries, and only when the series still has no cover.
+    /// </summary>
+    private async Task TryFetchExternalCoverAsync(Series series, EncodeFormat encodeFormat, CoverImageSize coverImageSize, CancellationToken ct = default)
+    {
+        if (!string.IsNullOrEmpty(series.CoverImage)) return;
+
+        var library = series.Library;
+        if (library is not { Type: LibraryType.Book or LibraryType.Audiobook }) return;
+
+        var metadataSettings = await unitOfWork.SettingsRepository.GetMetadataSettingDto(ct);
+        if (!metadataSettings.EnableOpenLibrary && !metadataSettings.EnableGoogleBooks && !metadataSettings.EnableHardcover) return;
+
+        var author = series.Metadata?.People
+            .FirstOrDefault(p => p.Role == PersonRole.Writer)?.Person.Name;
+
+        // Strip "Author - " prefix from series name if present (common audiobook naming pattern)
+        var title = series.Name;
+        if (!string.IsNullOrEmpty(author) && title.StartsWith(author + " - ", StringComparison.OrdinalIgnoreCase))
+            title = title[(author.Length + 3)..];
+        else if (title.Contains(" - "))
+            title = title[(title.IndexOf(" - ", StringComparison.Ordinal) + 3)..];
+
+        // Strip trailing volume/chapter number (e.g. "Snowbound Mystery 06" -> "Snowbound Mystery")
+        title = System.Text.RegularExpressions.Regex.Replace(title.TrimEnd(), @"\s+\d+$", string.Empty);
+
+        var result = await externalCoverProviderService.FetchMetadataAsync(title, author, metadataSettings, ct);
+        if (result?.CoverUrl == null) return;
+
+        try
+        {
+            var stream = await result.CoverUrl.WithTimeout(15).GetStreamAsync(cancellationToken: ct);
+
+            var firstChapter = series.Volumes
+                .OrderBy(v => v.MinNumber)
+                .SelectMany(v => v.Chapters)
+                .FirstOrDefault();
+
+            if (firstChapter == null) return;
+
+            var fileName = ImageService.GetChapterFormat(firstChapter.Id, firstChapter.VolumeId);
+            firstChapter.CoverImage = imageService.WriteCoverThumbnail(stream, fileName, directoryService.CoverImageDirectory, encodeFormat, coverImageSize);
+            imageService.UpdateColorScape(firstChapter);
+            unitOfWork.ChapterRepository.Update(firstChapter);
+
+            // Propagate up to volume and series
+            var firstVolume = series.Volumes.OrderBy(v => v.MinNumber).FirstOrDefault();
+            if (firstVolume != null)
+            {
+                firstVolume.CoverImage = firstChapter.CoverImage;
+                firstVolume.PrimaryColor = firstChapter.PrimaryColor;
+                firstVolume.SecondaryColor = firstChapter.SecondaryColor;
+                unitOfWork.VolumeRepository.Update(firstVolume);
+            }
+
+            series.CoverImage = firstChapter.CoverImage;
+            series.PrimaryColor = firstChapter.PrimaryColor;
+            series.SecondaryColor = firstChapter.SecondaryColor;
+            unitOfWork.SeriesRepository.Update(series);
+
+            _updateEvents.Add(MessageFactory.CoverUpdateEvent(firstChapter.Id, MessageFactoryEntityTypes.Chapter));
+            _updateEvents.Add(MessageFactory.CoverUpdateEvent(series.Id, MessageFactoryEntityTypes.Series));
+
+            logger.LogInformation("[MetadataService] Fetched external cover for '{SeriesName}' via {Provider}", series.Name, result.ProviderName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "[MetadataService] Failed to download external cover for '{SeriesName}' from {Url}", series.Name, result.CoverUrl);
+        }
+    }
 
     /// <summary>
     /// Refreshes Cover Images for a whole library
@@ -283,12 +360,6 @@ public class MetadataService(
             var seriesIndex = 0;
             foreach (var series in nonLibrarySeries)
             {
-                var index = chunk * seriesIndex;
-                var progress =  Math.Max(0F, Math.Min(1F, index * 1F / chunkInfo.TotalSize));
-
-                await eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
-                    MessageFactory.CoverUpdateProgressEvent(library.Id, progress, ProgressEventType.Updated, series.Name), ct: ct);
-
                 try
                 {
                     await ProcessSeriesCoverGen(series, forceUpdate, encodeFormat, coverImageSize, forceColorScape);
@@ -298,6 +369,11 @@ public class MetadataService(
                     logger.LogError(ex, "[MetadataService] There was an exception during cover generation refresh for {SeriesName}", series.Name);
                 }
                 seriesIndex++;
+
+                var index = (chunk - 1) * chunkInfo.ChunkSize + seriesIndex;
+                var progress = Math.Max(0F, Math.Min(1F, index * 1F / chunkInfo.TotalSize));
+                await eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
+                    MessageFactory.CoverUpdateProgressEvent(library.Id, progress, ProgressEventType.Updated, series.Name), ct: ct);
             }
 
             await unitOfWork.CommitAsync(ct);

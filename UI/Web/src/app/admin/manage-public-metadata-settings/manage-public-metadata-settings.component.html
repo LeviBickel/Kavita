@@ -4,41 +4,106 @@
     <p class="alert alert-warning" role="alert">{{t('k+-warning')}}</p>
   }
 
-  <form class="row g-0 mt-4 mb-4" [formGroup]="settingsForm">
-    <div class="col-md-6 col-sm-12">
-      @if (settingsForm.get('enableExtendedMetadataProcessing'); as control) {
-        <app-setting-switch [title]="t('enable-extended-metadata-processing-label')" [subtitle]="t('enable-extended-metadata-processing-tooltip')">
-          <ng-template #switch>
-            <div class="form-check form-switch float-end">
-              <input id="enable-extended-metadata-processing" type="checkbox" class="form-check-input" formControlName="enableExtendedMetadataProcessing">
-            </div>
-          </ng-template>
-        </app-setting-switch>
+  <form [formGroup]="settingsForm">
+    <div class="row g-0 mt-4 mb-4">
+      <div class="col-md-6 col-sm-12">
+        @if (settingsForm.get('enableExtendedMetadataProcessing'); as control) {
+          <app-setting-switch [title]="t('enable-extended-metadata-processing-label')" [subtitle]="t('enable-extended-metadata-processing-tooltip')">
+            <ng-template #switch>
+              <div class="form-check form-switch float-end">
+                <input id="enable-extended-metadata-processing" type="checkbox" class="form-check-input" formControlName="enableExtendedMetadataProcessing">
+              </div>
+            </ng-template>
+          </app-setting-switch>
+        }
+      </div>
+    </div>
+
+    <div class="row g-0 mt-4 mb-4">
+      <div class="col-md-6 col-sm-12">
+        <button class="btn btn-secondary" (click)="manageMetadataMappingsComponent().export()">
+          {{ t('export-settings') }}
+        </button>
+        <div class="text-muted mt-2">{{t('export-tooltip')}}</div>
+      </div>
+
+      <div class="col-md-6 col-sm-12">
+        <button class="btn btn-secondary" routerLink="/settings" [fragment]="SettingsTabId.MappingsImport">
+          {{ t('import-settings') }}
+        </button>
+        <div class="text-muted mt-2">{{t('import-tooltip')}}</div>
+      </div>
+    </div>
+
+    <div class="setting-section-break"></div>
+
+    <h4 class="mb-4">{{t('external-cover-providers-header')}}</h4>
+    <p class="text-muted">{{t('external-cover-providers-description')}}</p>
+
+    <div class="row g-0 mt-4 mb-4">
+      <div class="col-md-6 col-sm-12">
+        @if (settingsForm.get('enableOpenLibrary'); as control) {
+          <app-setting-switch [title]="t('enable-open-library-label')" [subtitle]="t('enable-open-library-tooltip')">
+            <ng-template #switch>
+              <div class="form-check form-switch float-end">
+                <input id="enable-open-library" type="checkbox" class="form-check-input" formControlName="enableOpenLibrary">
+              </div>
+            </ng-template>
+          </app-setting-switch>
+        }
+      </div>
+    </div>
+
+    <div class="row g-0 mt-4 mb-4">
+      <div class="col-md-6 col-sm-12">
+        @if (settingsForm.get('enableGoogleBooks'); as control) {
+          <app-setting-switch [title]="t('enable-google-books-label')" [subtitle]="t('enable-google-books-tooltip')">
+            <ng-template #switch>
+              <div class="form-check form-switch float-end">
+                <input id="enable-google-books" type="checkbox" class="form-check-input" formControlName="enableGoogleBooks">
+              </div>
+            </ng-template>
+          </app-setting-switch>
+        }
+      </div>
+      @if (settingsForm.get('enableGoogleBooks')?.value) {
+        <div class="col-md-6 col-sm-12 mt-2">
+          <label for="google-books-api-key" class="form-label">{{t('google-books-api-key-label')}}</label>
+          <input id="google-books-api-key" type="password" class="form-control" formControlName="googleBooksApiKey"
+                 [placeholder]="t('api-key-placeholder')">
+          <div class="form-text text-muted">{{t('google-books-api-key-tooltip')}}</div>
+        </div>
       }
     </div>
+
+    <div class="row g-0 mt-4 mb-4">
+      <div class="col-md-6 col-sm-12">
+        @if (settingsForm.get('enableHardcover'); as control) {
+          <app-setting-switch [title]="t('enable-hardcover-label')" [subtitle]="t('enable-hardcover-tooltip')">
+            <ng-template #switch>
+              <div class="form-check form-switch float-end">
+                <input id="enable-hardcover" type="checkbox" class="form-check-input" formControlName="enableHardcover">
+              </div>
+            </ng-template>
+          </app-setting-switch>
+        }
+      </div>
+      @if (settingsForm.get('enableHardcover')?.value) {
+        <div class="col-md-6 col-sm-12 mt-2">
+          <label for="hardcover-api-key" class="form-label">{{t('hardcover-api-key-label')}}</label>
+          <input id="hardcover-api-key" type="password" class="form-control" formControlName="hardcoverApiKey"
+                 [placeholder]="t('api-key-placeholder')">
+          <div class="form-text text-muted">{{t('hardcover-api-key-tooltip')}}</div>
+        </div>
+      }
+    </div>
+
+    <div class="setting-section-break"></div>
+
+    <h4 class="mb-4">{{t('tags-header')}}</h4>
+
+    @if (settings) {
+      <app-manage-metadata-mappings [settingsForm]="settingsForm" [settings]="settings" />
+    }
   </form>
-
-  <div class="row g-0 mt-4 mb-4">
-    <div class="col-md-6 col-sm-12">
-      <button class="btn btn-secondary" (click)="manageMetadataMappingsComponent().export()">
-        {{ t('export-settings') }}
-      </button>
-      <div class="text-muted mt-2">{{t('export-tooltip')}}</div>
-    </div>
-
-    <div class="col-md-6 col-sm-12">
-      <button class="btn btn-secondary" routerLink="/settings" [fragment]="SettingsTabId.MappingsImport">
-        {{ t('import-settings') }}
-      </button>
-      <div class="text-muted mt-2">{{t('import-tooltip')}}</div>
-    </div>
-  </div>
-
-  <div class="setting-section-break"></div>
-
-  <h4 class="mb-4">{{t('tags-header')}}</h4>
-
-  @if (settings) {
-    <app-manage-metadata-mappings [settingsForm]="settingsForm" [settings]="settings" />
-  }
 </ng-container>

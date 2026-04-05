@@ -270,7 +270,12 @@ public static class Seed
                 EnableChapterPublisher = true,
                 EnableChapterCoverImage = false,
                 EnableChapterReleaseDate = true,
-                PersonRoles = [PersonRole.Writer, PersonRole.CoverArtist, PersonRole.Character]
+                PersonRoles = [PersonRole.Writer, PersonRole.CoverArtist, PersonRole.Character],
+                EnableOpenLibrary = false,
+                EnableGoogleBooks = false,
+                GoogleBooksApiKey = string.Empty,
+                EnableHardcover = false,
+                HardcoverApiKey = string.Empty
             };
             await context.MetadataSettings.AddAsync(existing);
         }

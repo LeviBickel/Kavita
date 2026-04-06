@@ -6,6 +6,8 @@ using Kavita.Models.DTOs.Reader;
 using Kavita.Models.Entities.Enums;
 using Kavita.Models.Metadata;
 using Kavita.Models.Parser;
+using Kavita.Common.Extensions;
+using Kavita.Services.Metadata.Providers;
 using Kavita.Services.Scanner;
 using Microsoft.Extensions.Logging;
 using TagLib;
@@ -93,6 +95,17 @@ public class AudiobookService(
             if (!string.IsNullOrEmpty(tag.Comment))
             {
                 comicInfo.Summary = tag.Comment.Trim();
+            }
+            if (tag.Genres?.Length > 0)
+            {
+                comicInfo.Genre = string.Join(", ", tag.Genres);
+
+                // Map genres to AgeRating using built-in mappings (no user configuration required)
+                var derivedRating = AgeRatingHelper.MapGenresToAgeRating(tag.Genres);
+                if (derivedRating.HasValue)
+                {
+                    comicInfo.AgeRating = derivedRating.Value.ToDescription();
+                }
             }
             info.ComicInfo = comicInfo;
 

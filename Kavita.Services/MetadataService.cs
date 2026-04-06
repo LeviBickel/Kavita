@@ -214,6 +214,28 @@ public class MetadataService(
                     index++;
                 }
 
+                // Propagate within this volume: if any chapter has a cover, share it with those missing one.
+                // This handles audiobooks where only some tracks have embedded art.
+                var volumeFirstCover = volume.Chapters
+                    .OrderBy(c => c.SortOrder)
+                    .FirstOrDefault(c => !string.IsNullOrEmpty(c.CoverImage));
+                if (volumeFirstCover != null)
+                {
+                    foreach (var chapter in volume.Chapters)
+                    {
+                        if (string.IsNullOrEmpty(chapter.CoverImage))
+                        {
+                            chapter.CoverImage = volumeFirstCover.CoverImage;
+                            chapter.PrimaryColor = volumeFirstCover.PrimaryColor;
+                            chapter.SecondaryColor = volumeFirstCover.SecondaryColor;
+                            unitOfWork.ChapterRepository.Update(chapter);
+                            _updateEvents.Add(MessageFactory.CoverUpdateEvent(chapter.Id, MessageFactoryEntityTypes.Chapter));
+                            logger.LogDebug("[MetadataService] Propagated cover from Ch {SourceId} to Ch {TargetId} in volume {VolumeId}",
+                                volumeFirstCover.Id, chapter.Id, volume.Id);
+                        }
+                    }
+                }
+
                 var volumeUpdated = UpdateVolumeCoverImage(volume, firstChapterUpdated || forceUpdate, forceColorScape);
                 if (volumeIndex == 0 && volumeUpdated)
                 {
@@ -243,16 +265,25 @@ public class MetadataService(
     /// </summary>
     private async Task TryFetchExternalCoverAsync(Series series, EncodeFormat encodeFormat, CoverImageSize coverImageSize, CancellationToken ct = default)
     {
-        if (!string.IsNullOrEmpty(series.CoverImage)) return;
-
         var library = series.Library;
         if (library is not { Type: LibraryType.Book or LibraryType.Audiobook }) return;
+
+        // If series already has a cover, propagate it to any volumes/chapters missing one
+        if (!string.IsNullOrEmpty(series.CoverImage))
+        {
+            logger.LogDebug("[MetadataService] Series '{SeriesName}' has cover '{Cover}', propagating to missing volumes/chapters",
+                series.Name, series.CoverImage);
+            await PropagateCoverToMissingVolumesAsync(series);
+            return;
+        }
+
+        logger.LogDebug("[MetadataService] Series '{SeriesName}' has no cover, attempting external fetch", series.Name);
 
         var metadataSettings = await unitOfWork.SettingsRepository.GetMetadataSettingDto(ct);
         if (!metadataSettings.EnableOpenLibrary && !metadataSettings.EnableGoogleBooks && !metadataSettings.EnableHardcover) return;
 
         var author = series.Metadata?.People
-            .FirstOrDefault(p => p.Role == PersonRole.Writer)?.Person.Name;
+            ?.FirstOrDefault(p => p.Role == PersonRole.Writer)?.Person.Name;
 
         // Strip "Author - " prefix from series name if present (common audiobook naming pattern)
         var title = series.Name;
@@ -260,6 +291,13 @@ public class MetadataService(
             title = title[(author.Length + 3)..];
         else if (title.Contains(" - "))
             title = title[(title.IndexOf(" - ", StringComparison.Ordinal) + 3)..];
+
+        // Strip leading track/chapter number left by " - " stripping (e.g. "03 The Cardinal..." -> "The Cardinal...")
+        title = System.Text.RegularExpressions.Regex.Replace(title.TrimStart(), @"^\d+\s+", string.Empty);
+
+        // Strip audiobook disc/part suffixes (e.g. "Joyland (Disc 04)" -> "Joyland", "Title (Part 2)" -> "Title")
+        title = System.Text.RegularExpressions.Regex.Replace(title, @"\s*\(Disc\s+\d+(?:\s+of\s+\d+)?\)\s*$", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+        title = System.Text.RegularExpressions.Regex.Replace(title, @"\s*\(Part\s+\d+\)\s*$", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
 
         // Strip trailing volume/chapter number (e.g. "Snowbound Mystery 06" -> "Snowbound Mystery")
         title = System.Text.RegularExpressions.Regex.Replace(title.TrimEnd(), @"\s+\d+$", string.Empty);
@@ -283,19 +321,45 @@ public class MetadataService(
             imageService.UpdateColorScape(firstChapter);
             unitOfWork.ChapterRepository.Update(firstChapter);
 
-            // Propagate up to volume and series
-            var firstVolume = series.Volumes.OrderBy(v => v.MinNumber).FirstOrDefault();
-            if (firstVolume != null)
+            // Propagate to all volumes and all their chapters that have no cover
+            foreach (var volume in series.Volumes)
             {
-                firstVolume.CoverImage = firstChapter.CoverImage;
-                firstVolume.PrimaryColor = firstChapter.PrimaryColor;
-                firstVolume.SecondaryColor = firstChapter.SecondaryColor;
-                unitOfWork.VolumeRepository.Update(firstVolume);
+                if (string.IsNullOrEmpty(volume.CoverImage))
+                {
+                    volume.CoverImage = firstChapter.CoverImage;
+                    volume.PrimaryColor = firstChapter.PrimaryColor;
+                    volume.SecondaryColor = firstChapter.SecondaryColor;
+                    unitOfWork.VolumeRepository.Update(volume);
+                    _updateEvents.Add(MessageFactory.CoverUpdateEvent(volume.Id, MessageFactoryEntityTypes.Volume));
+                }
+
+                // Set cover on all chapters in this volume that have no cover
+                foreach (var chap in volume.Chapters)
+                {
+                    if (string.IsNullOrEmpty(chap.CoverImage))
+                    {
+                        chap.CoverImage = firstChapter.CoverImage;
+                        chap.PrimaryColor = firstChapter.PrimaryColor;
+                        chap.SecondaryColor = firstChapter.SecondaryColor;
+                        unitOfWork.ChapterRepository.Update(chap);
+                        _updateEvents.Add(MessageFactory.CoverUpdateEvent(chap.Id, MessageFactoryEntityTypes.Chapter));
+                    }
+                }
             }
 
             series.CoverImage = firstChapter.CoverImage;
             series.PrimaryColor = firstChapter.PrimaryColor;
             series.SecondaryColor = firstChapter.SecondaryColor;
+
+            // Apply age rating from provider if series is still Unknown
+            if (result.AgeRating.HasValue && series.Metadata != null && !series.Metadata.AgeRatingLocked
+                && series.Metadata.AgeRating == AgeRating.Unknown)
+            {
+                series.Metadata.AgeRating = result.AgeRating.Value;
+                logger.LogDebug("[MetadataService] Applied age rating {Rating} from {Provider} for '{SeriesName}'",
+                    result.AgeRating.Value, result.ProviderName, series.Name);
+            }
+
             unitOfWork.SeriesRepository.Update(series);
 
             _updateEvents.Add(MessageFactory.CoverUpdateEvent(firstChapter.Id, MessageFactoryEntityTypes.Chapter));
@@ -306,6 +370,46 @@ public class MetadataService(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "[MetadataService] Failed to download external cover for '{SeriesName}' from {Url}", series.Name, result.CoverUrl);
+        }
+    }
+
+    private async Task PropagateCoverToMissingVolumesAsync(Series series)
+    {
+        var anyUpdated = false;
+        var chaptersUpdated = 0;
+        foreach (var volume in series.Volumes)
+        {
+            if (string.IsNullOrEmpty(volume.CoverImage))
+            {
+                volume.CoverImage = series.CoverImage;
+                volume.PrimaryColor = series.PrimaryColor;
+                volume.SecondaryColor = series.SecondaryColor;
+                unitOfWork.VolumeRepository.Update(volume);
+                _updateEvents.Add(MessageFactory.CoverUpdateEvent(volume.Id, MessageFactoryEntityTypes.Volume));
+                anyUpdated = true;
+            }
+
+            // Propagate to all chapters in this volume that have no cover
+            foreach (var chap in volume.Chapters)
+            {
+                if (string.IsNullOrEmpty(chap.CoverImage))
+                {
+                    chap.CoverImage = series.CoverImage;
+                    chap.PrimaryColor = series.PrimaryColor;
+                    chap.SecondaryColor = series.SecondaryColor;
+                    unitOfWork.ChapterRepository.Update(chap);
+                    _updateEvents.Add(MessageFactory.CoverUpdateEvent(chap.Id, MessageFactoryEntityTypes.Chapter));
+                    anyUpdated = true;
+                    chaptersUpdated++;
+                }
+            }
+        }
+
+        if (anyUpdated)
+        {
+            logger.LogDebug("[MetadataService] Propagating cover to {Count} chapters for '{SeriesName}', committing", chaptersUpdated, series.Name);
+            await unitOfWork.CommitAsync();
+            logger.LogDebug("[MetadataService] Propagated existing cover to missing volumes/chapters for '{SeriesName}'", series.Name);
         }
     }
 
@@ -362,6 +466,9 @@ public class MetadataService(
             {
                 try
                 {
+                    // Library is not included in GetFullSeriesForLibraryIdAsync, assign it so
+                    // TryFetchExternalCoverAsync can check the library type
+                    series.Library ??= library;
                     await ProcessSeriesCoverGen(series, forceUpdate, encodeFormat, coverImageSize, forceColorScape);
                 }
                 catch (Exception ex)

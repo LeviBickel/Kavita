@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -7,6 +8,7 @@ using Flurl;
 using Flurl.Http;
 using Kavita.API.Services.Metadata;
 using Kavita.Models.DTOs.Metadata;
+using Kavita.Models.Entities.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace Kavita.Services.Metadata.Providers;
@@ -30,7 +32,7 @@ public class OpenLibraryMetadataProvider : IBookMetadataProvider
         {
             var request = SearchUrl
                 .SetQueryParam("title", title)
-                .SetQueryParam("fields", "title,author_name,cover_i")
+                .SetQueryParam("fields", "title,author_name,cover_i,subject")
                 .SetQueryParam("limit", 1);
 
             if (!string.IsNullOrWhiteSpace(author))
@@ -48,10 +50,18 @@ public class OpenLibraryMetadataProvider : IBookMetadataProvider
             if (doc.CoverId.HasValue)
                 coverImageUrl = string.Format(CoverUrl, doc.CoverId.Value);
 
+            AgeRating? ageRating = null;
+            if (doc.Subjects?.Length > 0)
+            {
+                var combined = string.Join(" ", doc.Subjects).ToLowerInvariant();
+                ageRating = AgeRatingHelper.MapSubjectsToAgeRating(combined);
+            }
+
             return new ExternalBookMetadata
             {
                 CoverUrl = coverImageUrl,
                 Author = doc.AuthorNames?.Length > 0 ? doc.AuthorNames[0] : null,
+                AgeRating = ageRating,
                 ProviderName = ProviderName
             };
         }
@@ -84,5 +94,8 @@ public class OpenLibraryMetadataProvider : IBookMetadataProvider
 
         [JsonPropertyName("author_name")]
         public string[]? AuthorNames { get; set; }
+
+        [JsonPropertyName("subject")]
+        public string[]? Subjects { get; set; }
     }
 }

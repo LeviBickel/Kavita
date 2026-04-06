@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -7,6 +8,7 @@ using Flurl;
 using Flurl.Http;
 using Kavita.API.Services.Metadata;
 using Kavita.Models.DTOs.Metadata;
+using Kavita.Models.Entities.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace Kavita.Services.Metadata.Providers;
@@ -55,11 +57,14 @@ public class GoogleBooksMetadataProvider : IBookMetadataProvider
                 .Replace("&edge=curl", string.Empty)
                 .Replace("http://", "https://");
 
+            var ageRating = DeriveAgeRating(info.MaturityRating, info.Categories);
+
             return new ExternalBookMetadata
             {
                 CoverUrl = coverUrl,
                 Description = info.Description,
                 Author = info.Authors?.Length > 0 ? info.Authors[0] : null,
+                AgeRating = ageRating,
                 ProviderName = ProviderName
             };
         }
@@ -73,6 +78,25 @@ public class GoogleBooksMetadataProvider : IBookMetadataProvider
             _logger.LogWarning(ex, "[GoogleBooks] Failed to fetch metadata for '{Title}'", title);
             return null;
         }
+    }
+
+    private static AgeRating? DeriveAgeRating(string? maturityRating, string[]? categories)
+    {
+        // Check Google's own maturity flag first
+        if (!string.IsNullOrEmpty(maturityRating))
+        {
+            if (maturityRating.Equals("MATURE", StringComparison.OrdinalIgnoreCase))
+                return AgeRating.Mature17Plus;
+        }
+
+        // Derive from categories (e.g. "Juvenile Fiction / Mystery", "Young Adult Fiction / Horror")
+        if (categories?.Length > 0)
+        {
+            var combined = string.Join(" ", categories).ToLowerInvariant();
+            return AgeRatingHelper.MapSubjectsToAgeRating(combined);
+        }
+
+        return null;
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -102,6 +126,12 @@ public class GoogleBooksMetadataProvider : IBookMetadataProvider
 
         [JsonPropertyName("imageLinks")]
         public GoogleBooksImageLinks? ImageLinks { get; set; }
+
+        [JsonPropertyName("maturityRating")]
+        public string? MaturityRating { get; set; }
+
+        [JsonPropertyName("categories")]
+        public string[]? Categories { get; set; }
     }
 
     private sealed class GoogleBooksImageLinks

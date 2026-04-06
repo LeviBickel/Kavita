@@ -1,3 +1,5 @@
+using Kavita.Models.Entities.Enums;
+
 namespace Kavita.Models.DTOs.Metadata;
 
 /// <summary>
@@ -19,6 +21,11 @@ public record ExternalBookMetadata
     /// Primary author name
     /// </summary>
     public string? Author { get; init; }
+
+    /// <summary>
+    /// Age rating derived from provider maturity/subject data. Null means unknown.
+    /// </summary>
+    public AgeRating? AgeRating { get; init; }
 
     /// <summary>
     /// Name of the provider that returned this result

@@ -31,10 +31,10 @@ public class AudioController(
     public async Task<ActionResult<AudioInfoDto>> GetAudioInfo(int chapterId)
     {
         var dto = await unitOfWork.ChapterRepository.GetChapterInfoDtoAsync(chapterId);
-        if (dto == null) return BadRequest(await localizationService.Translate(UserId, "chapter-doesnt-exist"));
+        if (dto == null) return BadRequest(await localizationService.TranslateAsync(UserId, "chapter-doesnt-exist"));
 
         var chapter = await unitOfWork.ChapterRepository.GetChapterAsync(chapterId, ChapterIncludes.Files | ChapterIncludes.People);
-        if (chapter == null) return BadRequest(await localizationService.Translate(UserId, "chapter-doesnt-exist"));
+        if (chapter == null) return BadRequest(await localizationService.TranslateAsync(UserId, "chapter-doesnt-exist"));
 
         var author = string.Empty;
         var narrator = string.Empty;

@@ -498,6 +498,10 @@ Kavita.Server/stats/
 UI/Web/dist/
 /Kavita.Services.Tests/Extensions/Test Data/modified on run.txt
 
+# Root-level config and I18N directories (generated at runtime)
+/config/
+/I18N/
+
 # All config files/folders in config except appsettings.json
 /Kavita.Server/config-bak/
 /Kavita.Server/config-bak/*.*

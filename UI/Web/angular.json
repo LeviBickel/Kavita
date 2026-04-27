@@ -116,7 +116,8 @@
               "buildTarget": "kavita-webui:build:production"
             },
             "proxy": {
-              "buildTarget": "kavita-webui:build:proxy"
+              "buildTarget": "kavita-webui:build:proxy",
+              "proxyConfig": "proxy.conf.json"
             }
           }
         },

@@ -21,7 +21,7 @@ import {NavigationStart, Router} from '@angular/router';
 import {VirtualScrollerComponent, VirtualScrollerModule} from '@iharbeck/ngx-virtual-scroller';
 import {JumpKey} from 'src/app/_models/jumpbar/jump-key';
 import {Pagination} from 'src/app/_models/pagination';
-import {FilterEvent, SortField} from 'src/app/_models/metadata/series-filter';
+import {FilterEvent, SeriesSortField} from 'src/app/_models/metadata/series-filter';
 import {JumpbarService} from 'src/app/_services/jumpbar.service';
 import {LoadingComponent} from "../../shared/loading/loading.component";
 import {MetadataFilterComponent} from "../../metadata-filter/metadata-filter.component";
@@ -34,6 +34,7 @@ import {FilterV2} from "../../_models/metadata/v2/filter-v2";
 import {FilterSettingsBase, ValidFilterEntity} from "../../metadata-filter/filter-settings";
 import {ActionItem} from "../../_models/actionables/action-item";
 import {ActionResult} from "../../_models/actionables/action-result";
+import {MetadataService} from "../../_services/metadata.service";
 
 
 const ANIMATION_TIME_MS = 0;
@@ -63,6 +64,7 @@ export class CardDetailLayoutComponent<TFilter extends number, TSort extends num
   private readonly jumpbarService = inject(JumpbarService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly metadataService = inject(MetadataService);
 
 
   header = input('');
@@ -99,6 +101,7 @@ export class CardDetailLayoutComponent<TFilter extends number, TSort extends num
    */
   customSort = input(false);
   jumpBarKeys = input<Array<JumpKey>>([]); // This is approx 784 pixels tall, original keys
+  gridColumnsTemplate = input('repeat(auto-fill, 10rem)');
 
   itemClicked = output<any>();
   applyFilter = output<FilterEvent>();
@@ -139,11 +142,18 @@ export class CardDetailLayoutComponent<TFilter extends number, TSort extends num
   });
 
   hasCustomSort = computed(() => {
-    if (this.customSort()) return true;
-    if (this.filteringDisabled()) return false;
-
+    const customSort = this.customSort();
+    const filteringDisabled = this.filteringDisabled();
     const filter = this.filterSignal();
-    return filter?.sortOptions?.sortField != SortField.SortName || !filter?.sortOptions.isAscending;
+    const entityType = this.entityType();
+
+    if (customSort) return true;
+    if (filteringDisabled) return false;
+
+    const isNonStandardEntity = !entityType || entityType === 'other';
+
+    const defaultOptions = isNonStandardEntity ? SeriesSortField.SortName : this.metadataService.getDefaultSortField(entityType);
+    return (defaultOptions !== filter?.sortOptions?.sortField) || !filter?.sortOptions?.isAscending;
   });
 
   trackItem = (index: number, item: any) => this.trackByIdentity()(index, item);

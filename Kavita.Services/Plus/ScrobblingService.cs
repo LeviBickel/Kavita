@@ -1,9 +1,6 @@
-﻿
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -17,7 +14,8 @@ using Kavita.API.Services.Plus;
 using Kavita.API.Services.SignalR;
 using Kavita.Common;
 using Kavita.Common.Helpers;
-using Kavita.Models.DTOs.Filtering;
+using Kavita.Models.DTOs.Filtering.v2;
+using Kavita.Models.DTOs.Filtering.v2.Requests;
 using Kavita.Models.DTOs.Scrobbling;
 using Kavita.Models.DTOs.SignalR;
 using Kavita.Models.Entities;
@@ -92,6 +90,7 @@ public class ScrobblingService : IScrobblingService
     public const string HardcoverStaffWebsite = ScrobblingHelper.HardcoverStaffWebsite;
 
     private const int ScrobbleSleepTime = 1000; // We can likely tie this to AniList's 90 rate / min ((60 * 1000) / 90)
+    private const SeriesIncludes ScrobbleSeriesIncludes = SeriesIncludes.Library | SeriesIncludes.ExternalMetadata | SeriesIncludes.Metadata;
 
     private static readonly IList<ScrobbleProvider> BookProviders = [];
     private static readonly IList<ScrobbleProvider> LightNovelProviders =
@@ -268,8 +267,8 @@ public class ScrobblingService : IScrobblingService
     {
         if (!await _licenseService.HasActiveLicense(ct: ct)) return;
 
-        var series = await _unitOfWork.SeriesRepository.GetSeriesByIdAsync(seriesId, SeriesIncludes.Metadata | SeriesIncludes.Library | SeriesIncludes.ExternalMetadata, ct);
-        if (series == null) throw new KavitaException(await _localizationService.Translate(userId, "series-doesnt-exist"));
+        var series = await _unitOfWork.SeriesRepository.GetSeriesByIdAsync(seriesId, ScrobbleSeriesIncludes, ct);
+        if (series == null) throw new KavitaException(await _localizationService.TranslateAsync(userId, "series-doesnt-exist"));
 
         var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId, AppUserIncludes.UserPreferences, ct);
         if (user == null || !user.UserPreferences.AniListScrobblingEnabled) return;
@@ -310,8 +309,8 @@ public class ScrobblingService : IScrobblingService
     {
         if (!await _licenseService.HasActiveLicense(ct: ct)) return;
 
-        var series = await _unitOfWork.SeriesRepository.GetSeriesByIdAsync(seriesId, SeriesIncludes.Metadata | SeriesIncludes.Library | SeriesIncludes.ExternalMetadata, ct);
-        if (series == null) throw new KavitaException(await _localizationService.Translate(userId, "series-doesnt-exist"));
+        var series = await _unitOfWork.SeriesRepository.GetSeriesByIdAsync(seriesId, ScrobbleSeriesIncludes, ct);
+        if (series == null) throw new KavitaException(await _localizationService.TranslateAsync(userId, "series-doesnt-exist"));
 
         var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId, AppUserIncludes.UserPreferences, ct);
         if (user == null || !user.UserPreferences.AniListScrobblingEnabled) return;
@@ -394,8 +393,8 @@ public class ScrobblingService : IScrobblingService
     {
         if (!await _licenseService.HasActiveLicense(ct: ct)) return;
 
-        var series = await _unitOfWork.SeriesRepository.GetSeriesByIdAsync(seriesId, SeriesIncludes.Metadata | SeriesIncludes.Library | SeriesIncludes.ExternalMetadata, ct);
-        if (series == null) throw new KavitaException(await _localizationService.Translate(userId, "series-doesnt-exist"));
+        var series = await _unitOfWork.SeriesRepository.GetSeriesByIdAsync(seriesId, ScrobbleSeriesIncludes, ct);
+        if (series == null) throw new KavitaException(await _localizationService.TranslateAsync(userId, "series-doesnt-exist"));
 
         if (!series.Library.AllowScrobbling) return;
 
@@ -436,7 +435,7 @@ public class ScrobblingService : IScrobblingService
     /// </summary>
     /// <param name="userId"></param>
     /// <param name="seriesId"></param>
-    /// <param name="series"></param>
+    /// <param name="series">Should have Library resolved</param>
     /// <returns></returns>
     private async Task<bool> CheckIfCannotScrobble(int userId, int seriesId, Series series)
     {
@@ -448,7 +447,8 @@ public class ScrobblingService : IScrobblingService
             return true;
         }
 
-        var library = await _unitOfWork.LibraryRepository.GetLibraryForIdAsync(series.LibraryId);
+        // TODO: Double check if all callers pass with Library or not
+        var library = series.Library ?? await _unitOfWork.LibraryRepository.GetLibraryForIdAsync(series.LibraryId);
         if (library is not {AllowScrobbling: true} || !ExternalMetadataService.IsPlusEligible(library.Type)) return true;
 
         return false;
@@ -1084,23 +1084,49 @@ public class ScrobblingService : IScrobblingService
             await ScrobbleReviewUpdate(userId, review.SeriesId, string.Empty, review.Review!);
         }
 
-        var seriesWithProgress = await _unitOfWork.SeriesRepository.GetSeriesDtoForLibraryIdAsync(0, userId,
-            new UserParams(), new FilterDto
-            {
-                ReadStatus = new ReadStatus
-                {
-                    Read = true,
-                    InProgress = true,
-                    NotRead = false
-                },
-                Libraries = libAllowsScrobbling.Keys.Where(k => libAllowsScrobbling[k]).ToList()
-            });
 
-        foreach (var series in seriesWithProgress.Where(series => series.PagesRead > 0))
+
+        var scrobbleLibraries = libAllowsScrobbling.Keys.Where(k => libAllowsScrobbling[k]).ToList();
+        if (scrobbleLibraries.Count > 0)
         {
-            if (!libAllowsScrobbling[series.LibraryId]) continue;
-            await ScrobbleReadingUpdate(userId, series.Id);
+            var filter = new SeriesFilterV2Dto()
+            {
+                Combination = FilterCombination.And,
+                Statements =
+                [
+                    new SeriesFilterStatementDto()
+                    {
+                        Comparison = FilterComparison.Contains,
+                        Field = SeriesFilterField.Libraries,
+                        Value = string.Join(',', scrobbleLibraries)
+                    },
+                    new SeriesFilterStatementDto()
+                    {
+                        Comparison = FilterComparison.LessThan,
+                        Field = SeriesFilterField.ReadProgress,
+                        Value = "100"
+                    },
+                    new SeriesFilterStatementDto()
+                    {
+                        Comparison = FilterComparison.GreaterThan,
+                        Field = SeriesFilterField.ReadProgress,
+                        Value = "0"
+                    }
+                ]
+            };
+
+            var seriesWithProgress =
+                await _unitOfWork.SeriesRepository.GetSeriesDtoForLibraryIdAsync(userId, new UserParams(), filter);
+
+            foreach (var series in seriesWithProgress.Where(series => series.PagesRead > 0))
+            {
+                if (!libAllowsScrobbling[series.LibraryId]) continue;
+                await ScrobbleReadingUpdate(userId, series.Id);
+            }
         }
+
+
+
 
         var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
         if (user != null)

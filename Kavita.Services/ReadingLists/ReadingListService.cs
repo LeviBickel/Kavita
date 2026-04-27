@@ -14,6 +14,7 @@ using Kavita.Common.Extensions;
 using Kavita.Common.Helpers;
 using Kavita.Models.Builders;
 using Kavita.Models.DTOs.ReadingLists;
+using Kavita.Models.DTOs.ReadingLists.Request;
 using Kavita.Models.DTOs.SignalR;
 using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
@@ -21,6 +22,7 @@ using Kavita.Models.Entities.ReadingLists;
 using Kavita.Models.Entities.User;
 using Kavita.Models.Extensions;
 using Kavita.Models.Helpers;
+using Kavita.Services.Helpers;
 using Kavita.Services.Reading;
 using Kavita.Services.Scanner;
 using Microsoft.Extensions.Logging;
@@ -84,6 +86,13 @@ public class ReadingListService(
         readingList.NormalizedTitle = Parser.Normalize(readingList.Title);
         readingList.Promoted = dto.Promoted;
         readingList.CoverImageLocked = dto.CoverImageLocked;
+
+        if (readingList.Tags == null)
+        {
+            throw new ArgumentException("You must pass a Reading List with tags included");
+        }
+
+        await TagHelper.UpdateEntityTags(readingList.Tags, dto.Tags, unitOfWork.DataContext.ReadingListTag, unitOfWork, false);
 
 
         if (NumberHelper.IsValidMonth(dto.StartingMonth) || dto.StartingMonth == 0)
@@ -248,7 +257,7 @@ public class ReadingListService(
     /// <param name="seriesIds">The series ids of all the reading list items</param>
     private async Task CalculateReadingListAgeRating(ReadingList readingList, IEnumerable<int> seriesIds)
     {
-        var ageRating = await unitOfWork.SeriesRepository.GetMaxAgeRatingFromSeriesAsync(seriesIds);
+        var ageRating = await unitOfWork.SeriesRepository.GetMaxAgeRatingFromSeriesAsyncAsync(seriesIds);
         readingList.AgeRating = ageRating;
     }
 
@@ -496,7 +505,7 @@ public class ReadingListService(
             var seriesIds = readingList.Items.Select(item => item.SeriesId).ToList();
             seriesIds.Remove(seriesId); // Don't get AgeRating from database
 
-            var maxAgeRating = await unitOfWork.SeriesRepository.GetMaxAgeRatingFromSeriesAsync(seriesIds);
+            var maxAgeRating = await unitOfWork.SeriesRepository.GetMaxAgeRatingFromSeriesAsyncAsync(seriesIds);
             if (ageRating > maxAgeRating)
             {
                 maxAgeRating = ageRating;

@@ -1,14 +1,16 @@
 import {FilterV2} from "../_models/metadata/v2/filter-v2";
-import {SortField} from "../_models/metadata/series-filter";
+import {SeriesSortField} from "../_models/metadata/series-filter";
 import {PersonSortField} from "../_models/metadata/v2/person-sort-field";
 import {PersonFilterField} from "../_models/metadata/v2/person-filter-field";
-import {FilterField} from "../_models/metadata/v2/filter-field";
+import {SeriesFilterField} from "../_models/metadata/v2/series-filter-field";
 import {AnnotationsFilterField, AnnotationsSortField} from "../_models/metadata/v2/annotations-filter";
+import {ReadingListFilterField} from "../_models/metadata/v2/reading-list-filter-field";
+import {ReadingListSortField} from "../_models/metadata/v2/reading-list-sort-field";
 
 /**
  * The set of entities that are supported for rich filtering. Each entity must have its own distinct SortField and FilterField enums.
  */
-export type ValidFilterEntity = 'series' | 'person' | 'annotation';
+export type ValidFilterEntity = 'series' | 'person' | 'annotation' | 'readinglist';
 
 export class FilterSettingsBase<TFilter extends number = number, TSort extends number = number> {
     presetsV2: FilterV2<TFilter, TSort> | undefined;
@@ -25,7 +27,7 @@ export class FilterSettingsBase<TFilter extends number = number, TSort extends n
 /**
  * Filter Settings for Series entity
  */
-export class SeriesFilterSettings extends FilterSettingsBase<FilterField, SortField> {
+export class SeriesFilterSettings extends FilterSettingsBase<SeriesFilterField, SeriesSortField> {
   type: ValidFilterEntity = 'series';
   supportsSmartFilter = true;
 }
@@ -37,8 +39,13 @@ export class PersonFilterSettings extends FilterSettingsBase<PersonFilterField, 
   type: ValidFilterEntity = 'person';
 }
 
-export class AnnotationsFilterSettings extends FilterSettingsBase<AnnotationsFilterField, AnnotationsSortField> {
+export class AnnotationFilterSettings extends FilterSettingsBase<AnnotationsFilterField, AnnotationsSortField> {
   type : ValidFilterEntity = 'annotation';
+}
+
+export class ReadingListFilterSettings extends FilterSettingsBase<ReadingListFilterField, ReadingListSortField> {
+  type : ValidFilterEntity = 'readinglist';
+  supportsSmartFilter = true;
 }
 
 

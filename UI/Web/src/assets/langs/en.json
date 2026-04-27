@@ -476,6 +476,14 @@
         "permission-error": "You do not have permission to change your password. Reach out to the admin of the server."
     },
 
+    "change-username": {
+        "username-label": "{{common.username}}",
+        "new-username-label": "New Username",
+        "reset": "{{common.reset}}",
+        "save": "{{common.save}}",
+        "required-field": "{{validation.required-field}}"
+    },
+
     "change-email": {
         "email-title": "Email",
         "email-label": "New Email",
@@ -733,7 +741,6 @@
         "penciller": "Penciller",
         "publisher": "Publisher",
         "writer": "Writer",
-        "other": "Other",
         "imprint": "Imprint",
         "translator": "Translator",
         "team": "{{filter-field-pipe.team}}",
@@ -813,8 +820,8 @@
 
     "all-filters": {
         "title": "All Smart Filters",
-        "count": "{{count}} {{tabs.smart-filters-tab}}",
-        "create": "{{common.create}}"
+        "description": "Smart filters are saved filters that can be bound against the side nav and dashboard. You can create them for Series and Reading Lists by giving a name and using Save button.",
+        "count": "{{count}} Total Smart Filters"
     },
 
     "announcements": {
@@ -1159,7 +1166,8 @@
         "completion-label": "{{percent}} complete",
 
         "force-selected-one-column": "Layout mode switched to One Column due to insufficient space to render Two Columns",
-        "forced-vertical-switch": "Layout mode switched as Two Column layout doesn't work with Vertical Writing Style"
+        "forced-vertical-switch": "Layout mode switched as Two Column layout doesn't work with Vertical Writing Style",
+        "shortcuts-menu-alt": "{{manga-reader.shortcuts-menu-alt}}"
     },
 
     "personal-table-of-contents": {
@@ -1586,9 +1594,27 @@
         "format-title": "{{metadata-filter.format-label}}",
         "length-title": "{{edit-chapter-modal.words-label}}",
         "age-rating-title": "{{metadata-fields.age-rating-title}}",
-        "folder-path-title": "Folder path",
+        "folder-path-title": "{{edit-series-modal.folder-path-title}}",
         "file-path-title": "Files",
-        "external-metadata-title": "External Metadata"
+        "external-metadata-title": "External Metadata",
+        "basic-metadata-title": "Basic Metadata",
+        "read-time-label": "Read time",
+        "pages-label": "{{edit-chapter-modal.pages-label}}",
+        "words-label": "{{edit-chapter-modal.words-label}}",
+        "added-label": "Added",
+        "updated-label": "Updated",
+        "kavita-id-label": "Kavita ID",
+        "sort-order-label": "{{edit-chapter-modal.sort-order-label}}",
+        "language-label": "Language",
+        "is-special-label": "Special",
+        "pub-status-label": "{{metadata-filter.publication-status-label}}",
+        "yes-label": "Yes",
+        "no-label": "No",
+        "file-info-title": "File info",
+        "not-set-label": "Not set",
+        "pages-count": "{{series-detail.pages-count}}",
+        "words-count": "{{series-detail.words-count}}",
+        "bytes-count": "{{num}} bytes"
     },
 
     "related-tab": {
@@ -2116,7 +2142,15 @@
         "key-bind-title-page-down": "Page down",
         "key-bind-tooltip-page-down": "Move one page downwards",
         "key-bind-title-offset-double-page": "Offset double page",
-        "key-bind-tooltip-offset-double-page": "Offset pages for double page spread alignment"
+        "key-bind-tooltip-offset-double-page": "Offset pages for double page spread alignment",
+        "key-bind-title-next-chapter": "Next Chapter",
+        "key-bind-tooltip-next-chapter": "Load the next chapter",
+        "key-bind-title-previous-chapter": "Previous Chapter",
+        "key-bind-tooltip-previous-chapter": "Load the previous chapter",
+        "key-bind-title-first-page": "First Page",
+        "key-bind-tooltip-first-page": "Move to the first page",
+        "key-bind-title-last-page": "Last Page",
+        "key-bind-tooltip-last-page": "Move to the last page"
     },
 
     "cbl-manager": {
@@ -2132,7 +2166,8 @@
         "url-label": "Url",
         "load": "Load",
         "back": "Back",
-        "items-count": "items",
+        "item-count": "{{common.item-count}}",
+        "missing-count": "{{reading-list-detail.missing-count}}",
         "provider-url": "URL",
         "provider-file": "File",
         "update-available": "Update available",
@@ -2143,12 +2178,13 @@
         "no-results": "No matching reading lists",
         "add": "{{common.add}}",
         "sync": "Sync",
+        "sync-manual": "Sync (Manual)",
         "delete": "{{common.delete}}",
         "view-list": "View Reading List",
-        "last-synced": "Last synced {{date}}",
-        "source": "Source",
-        "can-sync": "Can Sync",
-        "not-authorized": "You lack the ability to interact with this content"
+        "last-synced": "Last Synced: {{date}}",
+        "last-checked": "Last Checked: {{date}}",
+        "not-authorized": "You lack the ability to interact with this content",
+        "source": "Source"
     },
 
     "import-cbl-modal": {
@@ -2174,7 +2210,7 @@
         "delete-rule": "{{common.delete}}",
         "manage-rules": "Manage Remap Rules",
         "col-series": "Requested Series",
-        "col-vol-issue": "Requested Vol / Issue",
+        "col-vol-issue": "Req Vol / Issue",
         "col-status": "Status",
         "col-matched-series": "Matched Series",
         "col-matched-issue": "Matched Issue",
@@ -2192,7 +2228,9 @@
         "volume-num": "{{common.volume-num-shorthand}}",
         "issue-num": "{{common.issue-num-shorthand}}",
         "refresh": "Refresh",
-        "wiki": "Wiki"
+        "wiki": "Wiki",
+        "promote": "{{actionable.promote}}",
+        "promote-tooltip": "{{actionable.promote-tooltip}}"
     },
 
     "manage-remap-rules-modal": {
@@ -2269,7 +2307,6 @@
     "collection-detail": {
         "no-data": "There are no items. Try adding a series.",
         "no-data-filtered": "No items match your current filter.",
-        "title-alt": "Kavita - {{collectionName}} Collection",
         "sync-progress": "Series Collected: {{title}}",
         "last-sync": "Last Sync: {{date}}",
         "item-count": "{{common.item-count}}"
@@ -2322,6 +2359,7 @@
 
     "reading-list-detail": {
         "item-count": "{{common.item-count}}",
+        "missing-count": "{{num}} missing",
         "page-settings-title": "Page Settings",
         "remove-read": "Remove Read",
         "order-numbers-label": "Order Numbers",
@@ -2340,7 +2378,9 @@
         "date-range-title": "Date Range",
         "more-alt": "{{series-detail.more-alt}}",
         "reorder-alt": "Reorder Items",
-        "loading-alt": "{{pdf-reader.loading-message}}"
+        "loading-alt": "{{pdf-reader.loading-message}}",
+        "tags-title": "{{metadata-fields.tags-title}}",
+        "filter-label": "{{common.filter}}"
     },
 
     "events-widget": {
@@ -2426,7 +2466,8 @@
         "double-click": "double click",
         "close-reader": "Close reader",
         "toggle-menu": "Toggle Menu",
-        "offset-double-page": "{{keybind-setting-description-pipe.key-bind-title-offset-double-page}}"
+        "offset-double-page": "{{keybind-setting-description-pipe.key-bind-title-offset-double-page}}",
+        "navigate-to-settings": "{{keybind-setting-description-pipe.key-bind-title-navigate-to-settings}}"
     },
 
     "grouped-typeahead": {
@@ -2517,13 +2558,15 @@
         "month-validation": "Must be between 1 and 12 or blank",
         "name-unique-validation": "Name must be unique",
         "required-field": "{{validation.required-field}}",
+        "name-label": "{{edit-series-modal.name-label}}",
         "summary-label": "Summary",
         "year-label": "Year",
         "month-label": "Month",
         "ending-title": "Ending",
         "starting-title": "Starting",
         "promote-label": "{{actionable.promote}}",
-        "promote-tooltip": "Promotion means that the collection can be seen server-wide, not just for you. All series within this collection will still have user-access restrictions placed on them."
+        "promote-tooltip": "Promotion means that the collection can be seen server-wide, not just for you. All series within this collection will still have user-access restrictions placed on them.",
+        "tags-label": "{{metadata-fields.tags-title}}"
     },
 
     "import-mal-collection-modal": {
@@ -2603,7 +2646,8 @@
         "light-theme-alt": "Light Theme",
         "dark-theme-alt": "Dark Theme",
         "close-reader-alt": "Close Reader",
-        "toggle-incognito": "Turn off Incognito Mode"
+        "toggle-incognito": "Turn off Incognito Mode",
+        "shortcuts-menu-alt": "{{manga-reader.shortcuts-menu-alt}}"
     },
 
     "pdf-layout-mode-pipe": {
@@ -2744,12 +2788,17 @@
         "average-rating": "Average Rating",
         "random": "Random",
         "user-rating": "My rating",
+        "unread-chapter-count": "Unread Chapters Count",
         "person-name": "Name",
         "person-series-count": "Series Count",
         "person-chapter-count": "Chapter Count",
         "annotation-owner": "Owner",
         "annotation-series": "Series name",
-        "annotation-color": "Color"
+        "annotation-color": "Color",
+        "readinglist-title": "Title",
+        "readinglist-releaseyear-start": "Release Year (Start)",
+        "readinglist-releaseyear-end": "Release Year (End)",
+        "readinglist-item-count": "Item Count"
     },
 
     "edit-series-modal": {
@@ -3379,6 +3428,7 @@
         "save": "{{common.save}}",
         "edit-smart-filter": "Edit {{name}}",
         "name-label": "Name",
+        "entity-type-label": "Entity Type",
         "required-field": "Smart Filters need a name",
         "filter-name-unique": "Smart Filter names must be unique",
         "no-content": "This smart filter has no results on the dashboard"
@@ -3449,6 +3499,13 @@
         "file-size": "File size"
     },
 
+    "filter-entity-type-pipe": {
+        "series": "{{tabs.series-tab}}",
+        "reading-list": "{{add-to-list-modal.reading-list-label}}",
+        "person": "Person",
+        "annotation": "Annotation"
+    },
+
     "filter-comparison-pipe": {
         "begins-with": "Begins with",
         "contains": "Contains",
@@ -3466,7 +3523,8 @@
         "is-in-last": "Is in last",
         "is-not-in-last": "Is not in last",
         "must-contains": "Must Contains",
-        "is-empty": "Is Empty"
+        "is-empty": "Is Empty",
+        "is-not-empty": "Is Not Empty"
     },
 
     "log-level-pipe": {
@@ -3528,6 +3586,7 @@
         "person-name": "Name",
         "person-series-count": "Series Count",
         "person-chapter-count": "Chapter Count",
+        "person-library": "{{stream-list-item.library}}",
         "average-rating": "Average Rating",
         "annotation-owner": "Owner",
         "annotation-series": "Series name",
@@ -3537,7 +3596,15 @@
         "annotation-selection": "Highlight Text",
         "annotation-likes": "Likes",
         "annotation-liked-by": "Liked by",
-        "series": "{{tabs.series-tab}}"
+        "series": "{{tabs.series-tab}}",
+        "readinglist-title": "Title",
+        "readinglist-release-year": "{{sort-field-pipe.release-year}}",
+        "readinglist-item-count": "{{sort-field-pipe.readinglist-item-count}}",
+        "readinglist-tags": "{{metadata-fields.tags-title}}",
+        "readinglist-writer": "{{person-role-pipe.writer}}",
+        "readinglist-artist": "{{person-role-pipe.artist}}",
+        "readinglist-provider": "Provider",
+        "readinglist-missing-item-count": "Missing Item Count"
     },
 
 
@@ -3793,7 +3860,13 @@
         "export-v1": "CBL v1",
         "export-v1-tooltip": "Use CBL v1 (XML)",
         "export-v2": "CBL v2",
-        "export-v2-tooltip": "Use CBL v2 (JSON)"
+        "export-v2-tooltip": "Use CBL v2 (JSON)",
+        "cbl-manager": "CBL Manager",
+        "cbl-manager-tooltip": "Manage/Sync CBLs",
+        "add-to-dashboard": "Add to Dashboard",
+        "add-to-dashboard-tooltip": "Adds the smart filter to the bottom of your Dashboard",
+        "add-to-side-nav": "Add to Side Nav",
+        "add-to-side-nav-tooltip": "Adds the smart filter to the bottom of your Side Nav"
     },
 
     "preferences": {
@@ -3936,7 +4009,9 @@
         "mangaBakaId-label": "MangaBaka Id",
         "hardcoverId-label": "Hardcover Id",
         "comicVineId-label": "Comic Vine Id",
-        "metronId-label": "Metron Id"
+        "metronId-label": "Metron Id",
+        "not-set-label": "Not set",
+        "isbn-label": "{{edit-chapter-modal.isbn-label}}"
     },
 
 

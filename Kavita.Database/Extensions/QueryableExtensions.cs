@@ -6,11 +6,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kavita.API.Repositories;
 using Kavita.Models.DTOs.Annotations;
-using Kavita.Models.DTOs.Filtering;
+using Kavita.Models.DTOs.Filtering.v2.SortFields;
+using Kavita.Models.DTOs.Filtering.v2.SortOptions;
 using Kavita.Models.DTOs.KavitaPlus.Manage;
 using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
 using Kavita.Models.Entities.Person;
+using Kavita.Models.Entities.ReadingLists;
 using Kavita.Models.Entities.Scrobble;
 using Kavita.Models.Entities.User;
 using Microsoft.EntityFrameworkCore;
@@ -56,11 +58,6 @@ public static class QueryableExtensions
         if (context.HasFlag(QueryContext.Dashboard))
         {
             query = query.Where(l => l.IncludeInDashboard);
-        }
-
-        if (context.HasFlag(QueryContext.Recommended))
-        {
-            query = query.Where(l => l.IncludeInRecommended);
         }
 
         if (context.HasFlag(QueryContext.Search))
@@ -116,24 +113,6 @@ public static class QueryableExtensions
             .Select(lib => lib.Id);
     }
 
-    /// <summary>
-    /// Returns all libraries for a given user and library type
-    /// </summary>
-    /// <param name="library"></param>
-    /// <param name="userId"></param>
-    /// <param name="queryContext"></param>
-    /// <returns></returns>
-    public static IQueryable<int> GetUserLibrariesByType(this IQueryable<Library> library, int userId, LibraryType type, QueryContext queryContext = QueryContext.None)
-    {
-        return library
-            .Include(l => l.AppUsers)
-            .Where(lib => lib.AppUsers.Any(user => user.Id == userId))
-            .Where(lib => lib.Type == type)
-            .IsRestricted(queryContext)
-            .AsNoTracking()
-            .AsSplitQuery()
-            .Select(lib => lib.Id);
-    }
 
     public static IEnumerable<DateTime> Range(this DateTime startDate, int numberOfDays) =>
         Enumerable.Range(0, numberOfDays).Select(e => startDate.AddDays(e));
@@ -252,11 +231,12 @@ public static class QueryableExtensions
     {
         if (!condition || string.IsNullOrEmpty(searchQuery)) return queryable;
 
-        var method = typeof(DbFunctionsExtensions).GetMethod(nameof(DbFunctionsExtensions.Like), new[] { typeof(DbFunctions), typeof(string), typeof(string) });
+        var method = typeof(DbFunctionsExtensions).GetMethod(nameof(DbFunctionsExtensions.Like), [typeof(DbFunctions), typeof(string), typeof(string)
+        ]);
         var dbFunctions = typeof(EF).GetMethod(nameof(EF.Functions))?.Invoke(null, null);
         var searchExpression = Expression.Constant($"%{searchQuery}%");
 
-        Expression orExpression = null;
+        Expression? orExpression = null;
         foreach (var propertySelector in propertySelectors)
         {
             var likeExpression = Expression.Call(method, Expression.Constant(dbFunctions), propertySelector.Body, searchExpression);
@@ -303,7 +283,7 @@ public static class QueryableExtensions
         };
     }
 
-    public static IQueryable<Person> SortBy(this IQueryable<Person> query, PersonSortOptions? sort)
+    public static IQueryable<Person> SortBy(this IQueryable<Person> query, PersonSortOptionDto? sort)
     {
         if (sort == null)
         {
@@ -312,8 +292,8 @@ public static class QueryableExtensions
 
         return sort.SortField switch
         {
-            PersonSortField.Name when sort.IsAscending => query.OrderBy(p => p.Name),
-            PersonSortField.Name => query.OrderByDescending(p => p.Name),
+            PersonSortField.Name when sort.IsAscending => query.OrderBy(p => p.Name.ToLower()),
+            PersonSortField.Name => query.OrderByDescending(p => p.Name.ToLower()),
             PersonSortField.SeriesCount when sort.IsAscending => query.OrderBy(p => p.SeriesMetadataPeople.Count),
             PersonSortField.SeriesCount => query.OrderByDescending(p => p.SeriesMetadataPeople.Count),
             PersonSortField.ChapterCount when sort.IsAscending => query.OrderBy(p => p.ChapterPeople.Count),
@@ -322,7 +302,28 @@ public static class QueryableExtensions
         };
     }
 
-    public static IQueryable<AppUserAnnotation> SortBy(this IQueryable<AppUserAnnotation> query, AnnotationSortOptions? sort)
+    public static IQueryable<ReadingList> SortBy(this IQueryable<ReadingList> query, ReadingListSortOptionDto? sort)
+    {
+        if (sort == null)
+        {
+            return query.OrderBy(p => p.Title.ToLower());
+        }
+
+        return sort.SortField switch
+        {
+            ReadingListSortField.Title when sort.IsAscending => query.OrderBy(p => p.Title.ToLower()),
+            ReadingListSortField.Title  => query.OrderByDescending(p => p.Title.ToLower()),
+            ReadingListSortField.ReleaseYearStart when sort.IsAscending => query.OrderBy(r => r.StartingYear),
+            ReadingListSortField.ReleaseYearStart => query.OrderByDescending(r => r.StartingYear),
+            ReadingListSortField.ReleaseYearEnd when sort.IsAscending => query.OrderBy(r => r.EndingYear),
+            ReadingListSortField.ReleaseYearEnd => query.OrderByDescending(r => r.EndingYear),
+            ReadingListSortField.ItemCount when sort.IsAscending => query.OrderBy(r => r.Items.Count),
+            ReadingListSortField.ItemCount =>  query.OrderByDescending(r => r.Items.Count),
+            _ => query.OrderBy(p => p.Title.ToLower()),
+        };
+    }
+
+    public static IQueryable<AppUserAnnotation> SortBy(this IQueryable<AppUserAnnotation> query, AnnotationSortOptionDto? sort)
     {
         if (sort == null)
         {
@@ -348,11 +349,11 @@ public static class QueryableExtensions
     /// </summary>
     /// <param name="query"></param>
     /// <param name="keySelector"></param>
-    /// <param name="sortOptions"></param>
+    /// <param name="sortOptionDto"></param>
     /// <returns></returns>
-    public static IOrderedQueryable<T> DoOrderBy<T, TKey>(this IQueryable<T> query, Expression<Func<T, TKey>> keySelector, SortOptions sortOptions)
+    public static IOrderedQueryable<T> DoOrderBy<T, TKey>(this IQueryable<T> query, Expression<Func<T, TKey>> keySelector, SeriesSortOptionDto sortOptionDto)
     {
-        return sortOptions.IsAscending ? query.OrderBy(keySelector) : query.OrderByDescending(keySelector);
+        return sortOptionDto.IsAscending ? query.OrderBy(keySelector) : query.OrderByDescending(keySelector);
     }
 
     public static IQueryable<Series> FilterMatchState(this IQueryable<Series> query, MatchStateOption stateOption)

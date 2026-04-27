@@ -5,10 +5,13 @@ import {environment} from 'src/environments/environment';
 import {UtilityService} from '../shared/_services/utility.service';
 import {Person, PersonRole} from '../_models/metadata/person';
 import {PaginatedResult} from '../_models/pagination';
-import {ReadingList, ReadingListCast, ReadingListInfo, ReadingListItem} from '../_models/reading-list';
+import {ReadingList, ReadingListCast, ReadingListInfo, ReadingListItem} from '../_models/reading-list/reading-list';
 import {TextResonse} from '../_types/text-response';
 import {ActionItem} from "../_models/actionables/action-item";
 import {Action} from "../_models/actionables/action";
+import {FilterV2} from "../_models/metadata/v2/filter-v2";
+import {ReadingListFilterField} from "../_models/metadata/v2/reading-list-filter-field";
+import {ReadingListSortField} from "../_models/metadata/v2/reading-list-sort-field";
 
 @Injectable({
   providedIn: 'root'
@@ -36,6 +39,17 @@ export class ReadingListService {
     );
   }
 
+  getAllReadingLists(filter: FilterV2<ReadingListFilterField, ReadingListSortField>, pageNum?: number, itemsPerPage?: number) {
+    let params = new HttpParams();
+    params = this.utilityService.addPaginationIfExists(params, pageNum, itemsPerPage);
+
+    return this.httpClient.post<PaginatedResult<ReadingList[]>>(this.baseUrl + `readinglist/all`, filter, {observe: 'response', params}).pipe(
+      map((response: any) => {
+        return this.utilityService.createPaginatedResult(response) as PaginatedResult<ReadingList[]>;
+      })
+    );
+  }
+
   getReadingListsForSeries(seriesId: number) {
     return this.httpClient.get<ReadingList[]>(this.baseUrl + 'readinglist/lists-for-series?seriesId=' + seriesId);
   }
@@ -52,8 +66,8 @@ export class ReadingListService {
     return this.httpClient.post<ReadingList>(this.baseUrl + 'readinglist/create', {title});
   }
 
-  update(model: {readingListId: number, title?: string, summary?: string, promoted: boolean}) {
-    return this.httpClient.post(this.baseUrl + 'readinglist/update', model, TextResonse);
+  update(model: {readingListId: number, title?: string, summary?: string, promoted: boolean, tags: string[]}) {
+    return this.httpClient.post<ReadingList>(this.baseUrl + 'readinglist/update', model);
   }
 
   updateByMultiple(readingListId: number, seriesId: number, volumeIds: Array<number>,  chapterIds?: Array<number>) {

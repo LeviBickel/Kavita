@@ -1,21 +1,23 @@
 import {inject, Injectable, PipeTransform} from '@angular/core';
 import {Params, Router} from '@angular/router';
-import {allSeriesSortFields, SortField} from 'src/app/_models/metadata/series-filter';
+import {allSeriesSortFields, SeriesSortField} from 'src/app/_models/metadata/series-filter';
 import {MetadataService} from "../../_services/metadata.service";
 import {FilterV2} from "../../_models/metadata/v2/filter-v2";
 import {FilterCombination} from "../../_models/metadata/v2/filter-combination";
-import {allSeriesFilterFields, FilterField} from "../../_models/metadata/v2/filter-field";
+import {allSeriesFilterFields, SeriesFilterField} from "../../_models/metadata/v2/series-filter-field";
 import {FilterComparison} from "../../_models/metadata/v2/filter-comparison";
 import {HttpClient} from "@angular/common/http";
 import {TextResonse} from "../../_types/text-response";
 import {environment} from "../../../environments/environment";
 import {map, tap} from "rxjs/operators";
-import {switchMap} from "rxjs";
+import {of, switchMap} from "rxjs";
 import {allPersonFilterFields, PersonFilterField} from "../../_models/metadata/v2/person-filter-field";
 import {allPersonSortFields} from "../../_models/metadata/v2/person-sort-field";
 import {
+  AnnotationFilterSettings,
   FilterSettingsBase,
   PersonFilterSettings,
+  ReadingListFilterSettings,
   SeriesFilterSettings,
   ValidFilterEntity
 } from "../../metadata-filter/filter-settings";
@@ -26,6 +28,9 @@ import {
   allAnnotationsSortFields,
   AnnotationsFilterField
 } from "../../_models/metadata/v2/annotations-filter";
+import {allReadingListFilterFields, ReadingListFilterField} from "../../_models/metadata/v2/reading-list-filter-field";
+import {allReadingListSortFields, ReadingListSortField} from "../../_models/metadata/v2/reading-list-sort-field";
+import {FilterEntityType} from "../../_models/metadata/v2/filter-entity-type";
 
 export interface FieldOption<T extends number> {
   title: string,
@@ -47,7 +52,10 @@ export class FilterUtilitiesService {
   private readonly apiUrl = environment.apiUrl;
 
   encodeFilter(filter: FilterV2 | undefined) {
-    return this.http.post<string>(this.apiUrl + 'filter/encode', filter, TextResonse);
+    if (filter === undefined) { return of(''); }
+    const apiRoute = FilterUtilitiesService.getApiRoutePrefixForEntityType('filter/encode/', filter.entityType);
+
+    return this.http.post<string>(this.apiUrl + apiRoute, filter, TextResonse);
   }
 
   decodeFilter(encodedFilter: string) {
@@ -74,11 +82,11 @@ export class FilterUtilitiesService {
   /**
    * Applies and redirects to the passed page with the filter encoded (Series only)
    * @param page
-   * @param filter
+   * @param filter - One of the filter fieldsFix
    * @param comparison
    * @param value
    */
-  applyFilter(page: Array<any>, filter: FilterField, comparison: FilterComparison, value: string) {
+  applyFilter(page: Array<any>, filter: SeriesFilterField | ReadingListFilterField | PersonFilterField | AnnotationsFilterField, comparison: FilterComparison, value: string) {
     const dto = this.metadataService.createDefaultFilterDto('series');
     dto.statements.push(this.metadataService.createFilterStatement(filter, comparison, value + ''));
 
@@ -102,15 +110,64 @@ export class FilterUtilitiesService {
     }));
   }
 
+  public static getApiRoutePrefixForEntityType(apiRoute: string, entityType: FilterEntityType) {
+    switch (entityType) {
+      case FilterEntityType.Series:
+        apiRoute += 'series';
+        break;
+      case FilterEntityType.ReadingList:
+        apiRoute += 'reading-list';
+        break;
+      case FilterEntityType.Person:
+        apiRoute += 'person';
+        break;
+      case FilterEntityType.Annotation:
+        apiRoute += 'annotation';
+        break;
+    }
+    return apiRoute;
+  }
+
+  /** Returns the url route of a filter **/
+  public static getFilterLink(entityType: FilterEntityType, encodedFilter: string) {
+    if (encodedFilter) {
+      encodedFilter = '?' + encodedFilter;
+    }
+    switch (entityType) {
+      case FilterEntityType.Series:
+        return 'all-series' + encodedFilter;
+      case FilterEntityType.ReadingList:
+        return 'lists' + encodedFilter;
+      case FilterEntityType.Person:
+        return 'browse/people' + encodedFilter;
+      case FilterEntityType.Annotation:
+        return 'browse/annotations' + encodedFilter;
+    }
+  }
+
 
   createPersonV2Filter(): FilterV2<PersonFilterField> {
     return {
+      entityType: FilterEntityType.Person,
       combination: FilterCombination.And,
       statements: [],
       limitTo: 0,
       sortOptions: {
         isAscending: true,
-        sortField: SortField.SortName
+        sortField: SeriesSortField.SortName
+      },
+    };
+  }
+
+  createReadingListV2Filter(): FilterV2<ReadingListFilterField> {
+    return {
+      entityType: FilterEntityType.ReadingList,
+      combination: FilterCombination.And,
+      statements: [],
+      limitTo: 0,
+      sortOptions: {
+        isAscending: true,
+        sortField: ReadingListSortField.Title
       },
     };
   }
@@ -121,12 +178,14 @@ export class FilterUtilitiesService {
    */
   getSortFields<T extends number>(type: ValidFilterEntity) {
     switch (type) {
-      case "annotation":
+      case 'annotation':
         return this.translateAndSort(type, this.sortFieldPipe, allAnnotationsSortFields) as FieldOption<T>[];
       case 'series':
         return this.translateAndSort(type, this.sortFieldPipe, allSeriesSortFields) as FieldOption<T>[];
       case 'person':
         return this.translateAndSort(type, this.sortFieldPipe, allPersonSortFields) as FieldOption<T>[];
+      case 'readinglist':
+        return this.translateAndSort(type, this.sortFieldPipe, allReadingListSortFields) as FieldOption<T>[];
     }
   }
 
@@ -136,12 +195,14 @@ export class FilterUtilitiesService {
    */
   getFilterFields<T extends number>(type: ValidFilterEntity): FieldOption<T>[] {
     switch (type) {
-      case "annotation":
+      case 'annotation':
         return this.translateAndSort(type, this.genericFilterFieldPipe, allAnnotationsFilterFields) as FieldOption<T>[];
       case 'series':
         return this.translateAndSort(type, this.genericFilterFieldPipe, allSeriesFilterFields) as FieldOption<T>[];
       case 'person':
         return this.translateAndSort(type, this.genericFilterFieldPipe, allPersonFilterFields) as FieldOption<T>[];
+      case 'readinglist':
+        return this.translateAndSort(type, this.genericFilterFieldPipe, allReadingListFilterFields) as FieldOption<T>[];
     }
   }
 
@@ -161,12 +222,14 @@ export class FilterUtilitiesService {
    */
   getDefaultFilterField<T extends number>(type: ValidFilterEntity) {
     switch (type) {
-      case "annotation":
+      case 'annotation':
         return AnnotationsFilterField.Owner as unknown as T;
       case 'series':
-        return FilterField.SeriesName as unknown as T;
+        return SeriesFilterField.SeriesName as unknown as T;
       case 'person':
         return PersonFilterField.Role as unknown as T;
+      case 'readinglist':
+        return ReadingListFilterField.Title as unknown as T;
     }
   }
 
@@ -176,7 +239,7 @@ export class FilterUtilitiesService {
    */
   getDropdownFields<T extends number>(type: ValidFilterEntity) {
     switch (type) {
-      case "annotation":
+      case 'annotation':
         return [
           AnnotationsFilterField.Owner, AnnotationsFilterField.Library,
           AnnotationsFilterField.HighlightSlots, AnnotationsFilterField.Series,
@@ -184,17 +247,21 @@ export class FilterUtilitiesService {
         ] as T[];
       case 'series':
         return [
-          FilterField.PublicationStatus, FilterField.Languages, FilterField.AgeRating,
-          FilterField.Translators, FilterField.Characters, FilterField.Publisher,
-          FilterField.Editor, FilterField.CoverArtist, FilterField.Letterer,
-          FilterField.Colorist, FilterField.Inker, FilterField.Penciller,
-          FilterField.Writers, FilterField.Genres, FilterField.Libraries,
-          FilterField.Formats, FilterField.CollectionTags, FilterField.Tags,
-          FilterField.Imprint, FilterField.Team, FilterField.Location
+          SeriesFilterField.PublicationStatus, SeriesFilterField.Languages, SeriesFilterField.AgeRating,
+          SeriesFilterField.Translators, SeriesFilterField.Characters, SeriesFilterField.Publisher,
+          SeriesFilterField.Editor, SeriesFilterField.CoverArtist, SeriesFilterField.Letterer,
+          SeriesFilterField.Colorist, SeriesFilterField.Inker, SeriesFilterField.Penciller,
+          SeriesFilterField.Writers, SeriesFilterField.Genres, SeriesFilterField.Libraries,
+          SeriesFilterField.Formats, SeriesFilterField.CollectionTags, SeriesFilterField.Tags,
+          SeriesFilterField.Imprint, SeriesFilterField.Team, SeriesFilterField.Location
         ] as unknown as T[];
       case 'person':
         return [
-          PersonFilterField.Role
+          PersonFilterField.Role, PersonFilterField.Library,
+        ] as unknown as T[];
+      case 'readinglist':
+        return [
+          ReadingListFilterField.Writer, ReadingListFilterField.Artist, ReadingListFilterField.Tags, ReadingListFilterField.Provider
         ] as unknown as T[];
     }
   }
@@ -205,172 +272,178 @@ export class FilterUtilitiesService {
    */
   getStringFields<T extends number>(type: ValidFilterEntity) {
     switch (type) {
-      case "annotation":
+      case 'annotation':
         return [
           AnnotationsFilterField.Comment, AnnotationsFilterField.Selection,
         ] as T[];
       case 'series':
         return [
-          FilterField.SeriesName, FilterField.Summary, FilterField.Path, FilterField.FilePath, FilterField.FileSize,
+          SeriesFilterField.SeriesName, SeriesFilterField.Summary, SeriesFilterField.Path, SeriesFilterField.FilePath, SeriesFilterField.FileSize,
         ] as unknown as T[];
       case 'person':
         return [
           PersonFilterField.Name
+        ] as unknown as T[];
+      case 'readinglist':
+        return [
+          ReadingListFilterField.Title
         ] as unknown as T[];
     }
   }
 
   getNumberFields<T extends number>(type: ValidFilterEntity) {
     switch (type) {
-      case "annotation":
+      case 'annotation':
         return [
           AnnotationsFilterField.Likes,
         ] as T[];
       case 'series':
         return [
-          FilterField.ReadTime, FilterField.ReleaseYear, FilterField.ReadProgress,
-          FilterField.UserRating, FilterField.AverageRating, FilterField.ReadLast
+          SeriesFilterField.ReadTime, SeriesFilterField.ReleaseYear, SeriesFilterField.ReadProgress,
+          SeriesFilterField.UserRating, SeriesFilterField.AverageRating, SeriesFilterField.ReadLast
         ] as unknown as T[];
       case 'person':
         return [
           PersonFilterField.ChapterCount, PersonFilterField.SeriesCount
+        ] as unknown as T[];
+      case 'readinglist':
+        return [
+          ReadingListFilterField.ItemCount, ReadingListFilterField.MissingItemCount
         ] as unknown as T[];
     }
   }
 
   getBooleanFields<T extends number>(type: ValidFilterEntity) {
     switch (type) {
-      case "annotation":
+      case 'annotation':
         return [
           AnnotationsFilterField.Spoiler,
         ] as T[];
       case 'series':
         return [
-          FilterField.WantToRead
+          SeriesFilterField.WantToRead
         ] as unknown as T[];
       case 'person':
-        return [
-
-        ] as unknown as T[];
+        return [] as unknown as T[];
+      case 'readinglist':
+        return [] as unknown as T[];
     }
   }
 
   getDateFields<T extends number>(type: ValidFilterEntity) {
     switch (type) {
-      case "annotation":
-        return [
-
-        ] as T[];
+      case 'annotation':
+        return [] as T[];
       case 'series':
         return [
-          FilterField.ReadingDate
+          SeriesFilterField.ReadingDate
         ] as unknown as T[];
       case 'person':
-        return [
-
-        ] as unknown as T[];
+        return [] as unknown as T[];
+      case 'readinglist':
+        return [] as unknown as T[];
     }
   }
 
   getNumberFieldsThatIncludeDateComparisons<T extends number>(type: ValidFilterEntity) {
     switch (type) {
-      case "annotation":
-        return [
-
-        ] as T[];
+      case 'annotation':
+        return [] as T[];
       case 'series':
         return [
-          FilterField.ReleaseYear
+          SeriesFilterField.ReleaseYear
         ] as unknown as T[];
       case 'person':
+        return [] as unknown as T[];
+      case 'readinglist':
         return [
-
+          ReadingListFilterField.ReleaseYear
         ] as unknown as T[];
     }
   }
 
   getDropdownFieldsThatIncludeDateComparisons<T extends number>(type: ValidFilterEntity) {
     switch (type) {
-      case "annotation":
-        return [
-
-        ] as T[];
+      case 'annotation':
+        return [] as T[];
       case 'series':
         return [
-          FilterField.AgeRating
+          SeriesFilterField.AgeRating
         ] as unknown as T[];
       case 'person':
-        return [
-
-        ] as unknown as T[];
+        return [] as unknown as T[];
+      case 'readinglist':
+        return [] as unknown as T[];
     }
   }
 
   getDropdownFieldsWithoutMustContains<T extends number>(type: ValidFilterEntity) {
     switch (type) {
-      case "annotation":
-        return [
-
-        ] as T[];
+      case 'annotation':
+        return [] as T[];
       case 'series':
         return [
-          FilterField.Libraries, FilterField.Formats, FilterField.AgeRating, FilterField.PublicationStatus
+          SeriesFilterField.Libraries, SeriesFilterField.Formats, SeriesFilterField.AgeRating, SeriesFilterField.PublicationStatus
         ] as unknown as T[];
       case 'person':
-        return [
-
-        ] as unknown as T[];
+        return [] as unknown as T[];
+      case 'readinglist':
+        return [ReadingListFilterField.Provider] as unknown as T[];
     }
   }
 
   getDropdownFieldsThatIncludeNumberComparisons<T extends number>(type: ValidFilterEntity) {
     switch (type) {
-      case "annotation":
-        return [
-
-        ] as T[];
+      case 'annotation':
+        return [] as T[];
       case 'series':
         return [
-          FilterField.AgeRating
+          SeriesFilterField.AgeRating
         ] as unknown as T[];
       case 'person':
-        return [
-
-        ] as unknown as T[];
+        return [] as unknown as T[];
+      case 'readinglist':
+        return [] as unknown as T[];
     }
   }
 
   getFieldsThatShouldIncludeIsEmpty<T extends number>(type: ValidFilterEntity) {
     switch (type) {
-      case "annotation":
-        return [
-
-        ] as T[];
+      case 'annotation':
+        return [] as T[];
       case 'series':
         return [
-          FilterField.Summary, FilterField.UserRating, FilterField.Genres,
-          FilterField.CollectionTags, FilterField.Tags, FilterField.ReleaseYear,
-          FilterField.Translators, FilterField.Characters, FilterField.Publisher,
-          FilterField.Editor, FilterField.CoverArtist, FilterField.Letterer,
-          FilterField.Colorist, FilterField.Inker, FilterField.Penciller,
-          FilterField.Writers, FilterField.Imprint, FilterField.Team,
-          FilterField.Location
+          SeriesFilterField.Summary, SeriesFilterField.UserRating, SeriesFilterField.Genres,
+          SeriesFilterField.CollectionTags, SeriesFilterField.Tags, SeriesFilterField.ReleaseYear,
+          SeriesFilterField.Translators, SeriesFilterField.Characters, SeriesFilterField.Publisher,
+          SeriesFilterField.Editor, SeriesFilterField.CoverArtist, SeriesFilterField.Letterer,
+          SeriesFilterField.Colorist, SeriesFilterField.Inker, SeriesFilterField.Penciller,
+          SeriesFilterField.Writers, SeriesFilterField.Imprint, SeriesFilterField.Team,
+          SeriesFilterField.Location
         ] as unknown as T[];
       case 'person':
         return [] as unknown as T[];
+      case 'readinglist':
+        return [ReadingListFilterField.Tags] as unknown as T[];
     }
   }
 
-  getDefaultSettings(entityType: ValidFilterEntity | "other" | undefined): FilterSettingsBase<any, any> {
-    if (entityType === 'other' || entityType === undefined) {
-      // It doesn't matter, return series type
-      return new SeriesFilterSettings();
+  getFieldsThatShouldIncludeIsNotEmpty<T extends number>(type: ValidFilterEntity) {
+    // For now, we just delegate as they overlap, but we create a new method so it's easier to update in the future
+    return this.getFieldsThatShouldIncludeIsEmpty<T>(type);
+  }
+
+  getDefaultSettings(entityType: ValidFilterEntity): FilterSettingsBase<any, any> {
+    switch (entityType) {
+      case "series":
+        return new SeriesFilterSettings();
+      case "person":
+        return new PersonFilterSettings();
+      case "annotation":
+        return new AnnotationFilterSettings();
+      case "readinglist":
+        return new ReadingListFilterSettings();
     }
-
-    if (entityType == 'series') return new SeriesFilterSettings();
-    if (entityType == 'person') return new PersonFilterSettings();
-
-    return new SeriesFilterSettings();
   }
 
   /**
@@ -378,14 +451,23 @@ export class FilterUtilitiesService {
    */
   getCustomComparisons<T extends number>(entityType: ValidFilterEntity, field: T): FilterComparison[] | null {
     switch (entityType) {
-      case "series":
+      case 'series':
         switch (field) {
-          case FilterField.FileSize:
+          case SeriesFilterField.FileSize:
             return [
               FilterComparison.Equal, FilterComparison.GreaterThan, FilterComparison.GreaterThanEqual,
               FilterComparison.LessThan, FilterComparison.LessThanEqual
             ]
         }
+        break;
+      case 'readinglist':
+        switch (field) {
+          case ReadingListFilterField.Provider:
+            return [
+              FilterComparison.Equal, FilterComparison.NotEqual
+            ]
+        }
+        break;
     }
 
     return null;

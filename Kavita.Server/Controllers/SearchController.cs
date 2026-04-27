@@ -28,7 +28,7 @@ public class SearchController(IUnitOfWork unitOfWork, ILocalizationService local
     [HttpGet("series-for-mangafile")]
     public async Task<ActionResult<SeriesDto>> GetSeriesForMangaFile(int mangaFileId)
     {
-        var series = await unitOfWork.SeriesRepository.GetSeriesForMangaFile(mangaFileId, UserId);
+        var series = await unitOfWork.SeriesRepository.GetSeriesForMangaFileAsync(mangaFileId, UserId);
         if (series == null) return NotFound();
 
         if (!await unitOfWork.UserRepository.HasAccessToSeries(UserId, series.Id))
@@ -47,7 +47,7 @@ public class SearchController(IUnitOfWork unitOfWork, ILocalizationService local
     [HttpGet("series-for-chapter")]
     public async Task<ActionResult<SeriesDto>> GetSeriesForChapter(int chapterId)
     {
-        return Ok(await unitOfWork.SeriesRepository.GetSeriesForChapter(chapterId, UserId));
+        return Ok(await unitOfWork.SeriesRepository.GetSeriesForChapterAsync(chapterId, UserId));
     }
 
     /// <summary>
@@ -62,11 +62,11 @@ public class SearchController(IUnitOfWork unitOfWork, ILocalizationService local
         queryString = Parser.CleanQuery(queryString);
 
         var libraries = await unitOfWork.LibraryRepository.GetLibraryIdsForUserIdAsync(UserId, QueryContext.Search);
-        if (libraries.Count == 0) return BadRequest(await localizationService.Translate(UserId, "libraries-restricted"));
+        if (libraries.Count == 0) return BadRequest(await localizationService.TranslateAsync(UserId, "libraries-restricted"));
 
         var isAdmin = UserContext.HasRole(PolicyConstants.AdminRole);
 
-        var series = await unitOfWork.SeriesRepository.SearchSeries(UserId, isAdmin,
+        var series = await unitOfWork.SeriesRepository.SearchSeriesAsync(UserId, isAdmin,
             libraries, queryString, includeChapterAndFiles);
 
         return Ok(series);

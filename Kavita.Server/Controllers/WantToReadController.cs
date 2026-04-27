@@ -9,6 +9,7 @@ using Kavita.API.Services.Plus;
 using Kavita.Common.Helpers;
 using Kavita.Models.DTOs;
 using Kavita.Models.DTOs.Filtering.v2;
+using Kavita.Models.DTOs.Filtering.v2.Requests;
 using Kavita.Models.DTOs.WantToRead;
 using Kavita.Models.Entities.User;
 using Kavita.Server.Attributes;
@@ -31,20 +32,23 @@ public class WantToReadController(
     /// Return all Series that are in the current logged in user's Want to Read list, filtered
     /// </summary>
     /// <param name="userParams"></param>
-    /// <param name="filterDto"></param>
+    /// <param name="seriesFilterDto"></param>
     /// <param name="userId">Optional user id to request the OnDeck for someone else. They must have profile sharing enabled when doing so</param>
     /// <returns></returns>
     [HttpPost("v2")]
     [ProfilePrivacy(allowMissingUserId: true)]
-    public async Task<ActionResult<PagedList<SeriesDto>>> GetWantToReadV2([FromQuery] UserParams? userParams, FilterV2Dto filterDto, [FromQuery] int? userId = null)
+    public async Task<ActionResult<PagedList<SeriesDto>>> GetWantToReadV2([FromQuery] UserParams? userParams, SeriesFilterV2Dto seriesFilterDto, [FromQuery] int? userId = null)
     {
         var wantToReadForUser = userId ?? UserId;
         userParams ??= new UserParams();
 
         // Add profile privacy filter
-        filterDto.Statements.AddRange(await seriesService.GetProfilePrivacyStatements(wantToReadForUser, UserId));
+        foreach (var stmt in await seriesService.GetProfilePrivacyStatements(wantToReadForUser, UserId))
+        {
+            seriesFilterDto.Statements.Add(stmt);
+        }
 
-        var pagedList = await unitOfWork.SeriesRepository.GetWantToReadForUserV2Async(wantToReadForUser, userParams, filterDto);
+        var pagedList = await unitOfWork.SeriesRepository.GetWantToReadDtosForUserAsync(wantToReadForUser, userParams, seriesFilterDto);
         Response.AddPaginationHeader(pagedList.CurrentPage, pagedList.PageSize, pagedList.TotalCount, pagedList.TotalPages);
 
         return Ok(pagedList);
@@ -90,7 +94,7 @@ public class WantToReadController(
             return Ok();
         }
 
-        return BadRequest(await localizationService.Translate(UserId, "generic-reading-list-update"));
+        return BadRequest(await localizationService.TranslateAsync(UserId, "generic-reading-list-update"));
     }
 
     /// <summary>
@@ -120,6 +124,6 @@ public class WantToReadController(
             return Ok();
         }
 
-        return BadRequest(await localizationService.Translate(UserId, "generic-reading-list-update"));
+        return BadRequest(await localizationService.TranslateAsync(UserId, "generic-reading-list-update"));
     }
 }

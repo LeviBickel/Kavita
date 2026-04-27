@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Kavita.Common.Helpers;
 using Kavita.Models.DTOs;
 using Kavita.Models.DTOs.Annotations;
-using Kavita.Models.DTOs.Metadata.Browse.Requests;
+using Kavita.Models.DTOs.Filtering.v2.Requests;
 using Kavita.Models.DTOs.Reader;
 using Kavita.Models.Entities.User;
 
@@ -22,6 +22,6 @@ public interface IAnnotationRepository
     Task<IList<AppUserAnnotation>> GetAnnotations(int userId, IList<int> ids, CancellationToken ct = default);
     Task<IList<FullAnnotationDto>> GetFullAnnotationsByUserIdAsync(int userId, CancellationToken ct = default);
     Task<IList<FullAnnotationDto>> GetFullAnnotations(int userId, IList<int> annotationIds, CancellationToken ct = default);
-    Task<PagedList<AnnotationDto>> GetAnnotationDtos(int userId, BrowseAnnotationFilterDto filter, UserParams userParams, CancellationToken ct = default);
+    Task<PagedList<AnnotationDto>> GetAnnotationDtos(int userId, AnnotationFilterDto filter, UserParams userParams, CancellationToken ct = default);
     Task<List<SeriesDto>> GetSeriesWithAnnotations(int userId, CancellationToken ct = default);
 }

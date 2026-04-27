@@ -77,7 +77,7 @@ For all other support, refer to the upstream project:
 
 
 ## Notice
-Kavita is being actively developed and should be considered beta software until the 1.0 release.
+Kavita is being actively developed and should be considered beta software until the 1.0.0 release.
 Kavita may be subject to changes in how the platform functions as it is being built out toward the
 vision. You may lose data and have to restart. The Kavita team strives to avoid any data loss.
 
@@ -98,4 +98,5 @@ If you find Kavita valuable, consider supporting the original project:
 
 ### License
 * [GNU GPL v3](http://www.gnu.org/licenses/gpl.html)
-* Copyright 2020-2024 Kavita Contributors
+* Copyright 2020-2026 Kavita Contributors
+

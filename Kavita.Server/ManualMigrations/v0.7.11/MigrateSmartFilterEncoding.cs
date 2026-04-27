@@ -7,6 +7,7 @@ using Kavita.Database;
 using Kavita.Models.DTOs.Filtering.v2;
 using Kavita.Models.Entities.History;
 using Kavita.Services.Helpers;
+using Kavita.Services.Helpers.SmartFilter;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -87,17 +88,17 @@ public static class MigrateSmartFilterEncoding
         });
 
         //name=Zero&sortOptions=sortField=2&isAscending=False&limitTo=0&combination=1
-        var filterDto = SmartFilterHelper.Decode(noStmt);
+        var filterDto = SmartFilterHelper.DecodeLegacy(noStmt);
 
         // Now we just parse each individual stmt into the core components and add to statements
 
         var individualParts = Uri.UnescapeDataString(statements).Split(',').Select(Uri.UnescapeDataString);
         foreach (var part in individualParts)
         {
-            filterDto.Statements.Add(new FilterStatementDto()
+            filterDto.Statements.Add(new SeriesFilterStatementDto()
             {
                 Value = Regex.Match(part, ValueRegex).Groups["value"].Value,
-                Field = Enum.Parse<FilterField>(Regex.Match(part, FieldRegex).Groups["value"].Value),
+                Field = Enum.Parse<SeriesFilterField>(Regex.Match(part, FieldRegex).Groups["value"].Value),
                 Comparison = Enum.Parse<FilterComparison>(Regex.Match(part, ComparisonRegex).Groups["value"].Value),
             });
         }

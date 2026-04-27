@@ -17,7 +17,7 @@ import {SeriesAddedEvent} from '../_models/events/series-added-event';
 import {Library} from '../_models/library/library';
 import {Pagination} from '../_models/pagination';
 import {Series} from '../_models/series';
-import {FilterEvent, SortField} from '../_models/metadata/series-filter';
+import {FilterEvent, SeriesSortField} from '../_models/metadata/series-filter';
 import {ActionFactoryService} from '../_services/action-factory.service';
 import {LibraryService} from '../_services/library.service';
 import {EVENTS, MessageHubService} from '../_services/message-hub.service';
@@ -37,7 +37,7 @@ import {
 import {TranslocoDirective} from "@jsverse/transloco";
 import {FilterV2} from "../_models/metadata/v2/filter-v2";
 import {FilterComparison} from "../_models/metadata/v2/filter-comparison";
-import {FilterField} from "../_models/metadata/v2/filter-field";
+import {SeriesFilterField} from "../_models/metadata/v2/series-filter-field";
 import {CardActionablesComponent} from "../_single-module/card-actionables/card-actionables.component";
 import {LoadingComponent} from "../shared/loading/loading.component";
 import {debounceTime, ReplaySubject, tap} from "rxjs";
@@ -47,7 +47,6 @@ import {ActionResult} from "../_models/actionables/action-result";
 import {KavitaTitleStrategy} from "../_services/kavita-title.strategy";
 import {getWritableResolvedData} from "../../libs/route-util";
 import {JumpbarService} from "../_services/jumpbar.service";
-import {ProgressEvent} from "../_models/events/progress-event";
 import {NotificationProgressEvent} from "../_models/events/notification-progress-event";
 
 @Component({
@@ -85,11 +84,11 @@ export class LibraryDetailComponent implements OnInit {
   loadingSeries = false;
   pagination: Pagination = {currentPage: 0, totalPages: 0, totalItems: 0, itemsPerPage: 0};
   actions = computed(() => this.actionFactoryService.getLibraryActions());
-  filter: FilterV2<FilterField> | undefined = undefined;
+  filter: FilterV2<SeriesFilterField> | undefined = undefined;
   filterSettings: SeriesFilterSettings = new SeriesFilterSettings();
   filterOpen: EventEmitter<boolean> = new EventEmitter();
   filterActive: boolean = false;
-  filterActiveCheck!: FilterV2<FilterField>;
+  filterActiveCheck!: FilterV2<SeriesFilterField>;
   refresh: EventEmitter<void> = new EventEmitter();
   jumpKeys = signal<JumpKey[]>([]);
   bulkLoader: boolean = false;
@@ -115,9 +114,9 @@ export class LibraryDetailComponent implements OnInit {
     });
 
     this.route.data.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(data => {
-      this.filter = data['filter'] as FilterV2<FilterField, SortField>;
+      this.filter = data['filter'] as FilterV2<SeriesFilterField, SeriesSortField>;
 
-      const defaultStmt = {field: FilterField.Libraries, value: this.libraryId() + '', comparison: FilterComparison.Equal};
+      const defaultStmt = {field: SeriesFilterField.Libraries, value: this.libraryId() + '', comparison: FilterComparison.Equal};
 
       if (this.filter == null) {
         this.filter = this.metadataService.createDefaultFilterDto('series');
@@ -177,7 +176,7 @@ export class LibraryDetailComponent implements OnInit {
     });
   }
 
-  updateFilter(data: FilterEvent<FilterField, SortField>) {
+  updateFilter(data: FilterEvent<SeriesFilterField, SeriesSortField>) {
     if (data.filterV2 === undefined) return;
     this.filter = data.filterV2;
 

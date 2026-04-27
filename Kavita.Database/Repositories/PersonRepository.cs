@@ -13,8 +13,9 @@ using Kavita.Database.Extensions;
 using Kavita.Database.Extensions.Filters;
 using Kavita.Models.DTOs;
 using Kavita.Models.DTOs.Filtering.v2;
+using Kavita.Models.DTOs.Filtering.v2.FilterFields;
+using Kavita.Models.DTOs.Filtering.v2.Requests;
 using Kavita.Models.DTOs.Metadata.Browse;
-using Kavita.Models.DTOs.Metadata.Browse.Requests;
 using Kavita.Models.DTOs.Person;
 using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
@@ -46,10 +47,6 @@ public class PersonRepository(DataContext context, IMapper mapper) : IPersonRepo
         context.ChapterPeople.Remove(person);
     }
 
-    public void Remove(SeriesMetadataPeople person)
-    {
-        context.SeriesMetadataPeople.Remove(person);
-    }
 
     public void Update(Person person)
     {
@@ -74,7 +71,7 @@ public class PersonRepository(DataContext context, IMapper mapper) : IPersonRepo
     public async Task<IList<PersonDto>> GetAllPeopleDtosForLibrariesAsync(int userId, List<int>? libraryIds = null,
         PersonIncludes includes = PersonIncludes.None, CancellationToken ct = default)
     {
-        var ageRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var ageRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         var userLibs = await context.Library.GetUserLibraries(userId).ToListAsync(ct);
 
         if (libraryIds is {Count: > 0})
@@ -96,14 +93,6 @@ public class PersonRepository(DataContext context, IMapper mapper) : IPersonRepo
     }
 
 
-    public async Task<string?> GetCoverImageAsync(int personId, CancellationToken ct = default)
-    {
-        return await context.Person
-            .Where(c => c.Id == personId)
-            .Select(c => c.CoverImage)
-            .SingleOrDefaultAsync(ct);
-    }
-
     public async Task<IList<string?>> GetAllCoverImagesAsync(CancellationToken ct = default)
     {
         return await context.Person
@@ -111,19 +100,10 @@ public class PersonRepository(DataContext context, IMapper mapper) : IPersonRepo
             .ToListAsync(ct);
     }
 
-    public async Task<string?> GetCoverImageByNameAsync(string name, CancellationToken ct = default)
-    {
-        var normalized = name.ToNormalized();
-        return await context.Person
-            .Where(c => c.NormalizedName == normalized)
-            .Select(c => c.CoverImage)
-            .SingleOrDefaultAsync(ct);
-    }
-
     public async Task<IEnumerable<PersonRole>> GetRolesForPersonByName(int personId, int userId,
         CancellationToken ct = default)
     {
-        var ageRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var ageRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         var userLibs = context.Library.GetUserLibraries(userId);
 
         // Query roles from ChapterPeople
@@ -150,17 +130,17 @@ public class PersonRepository(DataContext context, IMapper mapper) : IPersonRepo
         return chapterRoles.Union(seriesRoles).Distinct();
     }
 
-    public async Task<PagedList<BrowsePersonDto>> GetBrowsePersonDtos(int userId, BrowsePersonFilterDto filter,
+    public async Task<PagedList<BrowsePersonDto>> GetBrowsePersonDtos(int userId, PersonFilterDto filter,
         UserParams userParams, CancellationToken ct = default)
     {
-        var ageRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var ageRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
 
         var query = await CreateFilteredPersonQueryable(userId, filter, ageRating, ct);
 
         return await PagedList<BrowsePersonDto>.CreateAsync(query, userParams.PageNumber, userParams.PageSize, ct);
     }
 
-    private async Task<IQueryable<BrowsePersonDto>> CreateFilteredPersonQueryable(int userId, BrowsePersonFilterDto filter, AgeRestriction ageRating, CancellationToken ct = default)
+    private async Task<IQueryable<BrowsePersonDto>> CreateFilteredPersonQueryable(int userId, PersonFilterDto filter, AgeRestriction ageRating, CancellationToken ct = default)
     {
         var allLibrariesCount = await context.Library.CountAsync(ct);
         var userLibs = await context.Library.GetUserLibraries(userId).ToListAsync(ct);
@@ -170,7 +150,8 @@ public class PersonRepository(DataContext context, IMapper mapper) : IPersonRepo
         var query = context.Person.AsNoTracking();
 
         // Apply filtering based on statements
-        query = BuildPersonFilterQuery(userId, filter, query);
+        query = FilterQueryBuilder.Apply(filter, query,
+            (stmt, q) => BuildPersonFilterGroup(userId, stmt, q));
 
         // Apply restrictions
         query = query.RestrictAgainstAgeRestriction(ageRating)
@@ -181,7 +162,7 @@ public class PersonRepository(DataContext context, IMapper mapper) : IPersonRepo
         // Apply sorting and limiting
         var sortedQuery = query.SortBy(filter.SortOptions);
 
-        var limitedQuery = ApplyPersonLimit(sortedQuery, filter.LimitTo);
+        var limitedQuery = sortedQuery.ApplyLimit(filter.LimitTo);
 
         return limitedQuery.Select(p => new BrowsePersonDto
         {
@@ -204,19 +185,6 @@ public class PersonRepository(DataContext context, IMapper mapper) : IPersonRepo
         });
     }
 
-    private static IQueryable<Person> BuildPersonFilterQuery(int userId, BrowsePersonFilterDto filterDto, IQueryable<Person> query)
-    {
-        if (filterDto.Statements == null || filterDto.Statements.Count == 0) return query;
-
-        var queries = filterDto.Statements
-            .Select(statement => BuildPersonFilterGroup(userId, statement, query))
-            .ToList();
-
-        return filterDto.Combination == FilterCombination.And
-            ? queries.Aggregate((q1, q2) => q1.Intersect(q2))
-            : queries.Aggregate((q1, q2) => q1.Union(q2));
-    }
-
     private static IQueryable<Person> BuildPersonFilterGroup(int userId, PersonFilterStatementDto statement, IQueryable<Person> query)
     {
         var value = PersonFilterFieldValueConverter.ConvertValue(statement.Field, statement.Value);
@@ -227,13 +195,9 @@ public class PersonRepository(DataContext context, IMapper mapper) : IPersonRepo
             PersonFilterField.Role => query.HasPersonRole(true, statement.Comparison, (IList<PersonRole>)value),
             PersonFilterField.SeriesCount => query.HasPersonSeriesCount(true, statement.Comparison, (int)value),
             PersonFilterField.ChapterCount => query.HasPersonChapterCount(true, statement.Comparison, (int)value),
+            PersonFilterField.Library => query.HasChaptersInLibrary(true, statement.Comparison, (IList<int>)value),
             _ => throw new ArgumentOutOfRangeException(nameof(statement.Field), $"Unexpected value for field: {statement.Field}")
         };
-    }
-
-    private static IQueryable<Person> ApplyPersonLimit(IQueryable<Person> query, int limit)
-    {
-        return limit <= 0 ? query : query.Take(limit);
     }
 
     public async Task<Person?> GetPersonById(int personId, PersonIncludes includes = PersonIncludes.None,
@@ -248,7 +212,7 @@ public class PersonRepository(DataContext context, IMapper mapper) : IPersonRepo
         PersonIncludes includes = PersonIncludes.Aliases, CancellationToken ct = default)
     {
         var normalized = name.ToNormalized();
-        var ageRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var ageRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         var userLibs = context.Library.GetUserLibraries(userId);
 
         return await context.Person
@@ -280,7 +244,7 @@ public class PersonRepository(DataContext context, IMapper mapper) : IPersonRepo
 
     public async Task<IEnumerable<SeriesDto>> GetSeriesKnownFor(int personId, int userId, CancellationToken ct = default)
     {
-        var ageRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var ageRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         var userLibs = await context.Library.GetUserLibraries(userId).ToListAsync(ct);
 
         return await context.Person
@@ -300,7 +264,7 @@ public class PersonRepository(DataContext context, IMapper mapper) : IPersonRepo
     public async Task<IEnumerable<StandaloneChapterDto>> GetChaptersForPersonByRole(int personId, int userId,
         PersonRole role, CancellationToken ct = default)
     {
-        var ageRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var ageRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         var userLibs = context.Library.GetUserLibraries(userId);
 
         return await context.ChapterPeople
@@ -367,7 +331,7 @@ public class PersonRepository(DataContext context, IMapper mapper) : IPersonRepo
     public async Task<IList<PersonDto>> GetAllPersonDtosAsync(int userId, PersonIncludes includes = PersonIncludes.None,
         CancellationToken ct = default)
     {
-        var ageRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var ageRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         var userLibs = context.Library.GetUserLibraries(userId);
 
         return await context.Person
@@ -382,7 +346,7 @@ public class PersonRepository(DataContext context, IMapper mapper) : IPersonRepo
     public async Task<IList<PersonDto>> GetAllPersonDtosByRoleAsync(int userId, PersonRole role,
         PersonIncludes includes = PersonIncludes.None, CancellationToken ct = default)
     {
-        var ageRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var ageRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         var userLibs = context.Library.GetUserLibraries(userId);
 
         return await context.Person

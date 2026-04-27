@@ -45,7 +45,7 @@ public class TagRepository(DataContext context, IMapper mapper) : ITagRepository
     public async Task<IList<TagDto>> GetAllTagDtosForLibrariesAsync(int userId, IList<int>? libraryIds = null,
         CancellationToken ct = default)
     {
-        var userRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var userRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         var userLibs = await context.Library.GetUserLibraries(userId).ToListAsync(ct);
 
         if (libraryIds is {Count: > 0})
@@ -90,7 +90,7 @@ public class TagRepository(DataContext context, IMapper mapper) : ITagRepository
     public async Task<PagedList<BrowseTagDto>> GetBrowseableTag(int userId, UserParams userParams,
         CancellationToken ct = default)
     {
-        var ageRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var ageRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
 
         var allLibrariesCount = await context.Library.CountAsync(ct);
         var userLibs = await context.Library.GetUserLibraries(userId).ToListAsync(ct);
@@ -122,26 +122,11 @@ public class TagRepository(DataContext context, IMapper mapper) : ITagRepository
         return await PagedList<BrowseTagDto>.CreateAsync(query, userParams.PageNumber, userParams.PageSize, ct);
     }
 
-    public async Task<IList<Tag>> GetAllTagsAsync(CancellationToken ct = default)
-    {
-        return await context.Tag.ToListAsync(ct);
-    }
 
     public async Task<IList<Tag>> GetAllTagsByNameAsync(IEnumerable<string> normalizedNames, CancellationToken ct = default)
     {
         return await context.Tag
             .Where(t => normalizedNames.Contains(t.NormalizedTitle))
-            .ToListAsync(ct);
-    }
-
-    public async Task<IList<TagDto>> GetAllTagDtosAsync(int userId, CancellationToken ct = default)
-    {
-        var userRating = await context.AppUser.GetUserAgeRestriction(userId);
-        return await context.Tag
-            .AsNoTracking()
-            .RestrictAgainstAgeRestriction(userRating)
-            .OrderBy(t => t.NormalizedTitle)
-            .ProjectTo<TagDto>(mapper.ConfigurationProvider)
             .ToListAsync(ct);
     }
 }

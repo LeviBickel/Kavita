@@ -40,12 +40,12 @@ import {filter, tap} from "rxjs";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {translate, TranslocoDirective} from "@jsverse/transloco";
 import {FilterComparison} from "../_models/metadata/v2/filter-comparison";
-import {FilterField} from '../_models/metadata/v2/filter-field';
+import {SeriesFilterField} from '../_models/metadata/v2/series-filter-field';
 import {AgeRating} from '../_models/metadata/age-rating';
 import {Volume} from "../_models/volume";
 import {VolumeService} from "../_services/volume.service";
 import {LoadingComponent} from "../shared/loading/loading.component";
-import {DetailsTabComponent} from "../_single-module/details-tab/details-tab.component";
+import {BasicMetadataInfo, DetailsTabComponent} from "../_single-module/details-tab/details-tab.component";
 import {ReadMoreComponent} from "../shared/read-more/read-more.component";
 import {Person} from "../_models/metadata/person";
 import {IHasCast} from "../_models/common/i-has-cast";
@@ -54,7 +54,7 @@ import {VirtualScrollerModule} from "@iharbeck/ngx-virtual-scroller";
 import {UtilityService} from "../shared/_services/utility.service";
 import {EditVolumeModalComponent} from "../_single-module/edit-volume-modal/edit-volume-modal.component";
 import {RelatedTabChangeEvent, RelatedTabComponent} from "../_single-module/related-tab/related-tab.component";
-import {ReadingList} from "../_models/reading-list";
+import {ReadingList} from "../_models/reading-list/reading-list";
 import {ReadingListService} from "../_services/reading-list.service";
 import {BadgeExpanderComponent} from "../shared/badge-expander/badge-expander.component";
 import {
@@ -289,6 +289,18 @@ export class VolumeDetailComponent implements OnInit {
     return translate(chapterLocaleKey, {num: currentlyReadingChapter.minNumber});
   })
 
+  volumeBasicMetadata = computed<BasicMetadataInfo>(() => {
+    const v = this.volume();
+    return {
+      readingTime: v,
+      pages: v.pages,
+      words: v.wordCount,
+      addedAt: v.createdUtc,
+      updatedAt: v.lastModifiedUtc,
+      kavitaId: v.id,
+    };
+  });
+
   volumeCast = computed<VolumeCast>(() => {
     const chapters = this.volume()?.chapters || [];
     return {
@@ -480,7 +492,7 @@ export class VolumeDetailComponent implements OnInit {
     }
   }
 
-  openFilter(field: FilterField, value: string | number) {
+  openFilter(field: SeriesFilterField, value: string | number) {
     this.filterUtilityService.applyFilter(['all-series'], field, FilterComparison.Equal, `${value}`).subscribe();
   }
 
@@ -515,6 +527,6 @@ export class VolumeDetailComponent implements OnInit {
   protected readonly Breakpoint = Breakpoint;
   protected readonly AgeRating = AgeRating;
   protected readonly Tabs = Tabs;
-  protected readonly FilterField = FilterField;
+  protected readonly FilterField = SeriesFilterField;
   protected readonly encodeURIComponent = encodeURIComponent;
 }

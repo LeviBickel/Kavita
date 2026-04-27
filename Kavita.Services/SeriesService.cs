@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Kavita.API.Database;
 using Kavita.API.Repositories;
 using Kavita.API.Services;
-using Kavita.API.Services.Reading;
 using Kavita.API.Services.ReadingLists;
 using Kavita.API.Services.SignalR;
 using Kavita.Common;
@@ -16,6 +15,9 @@ using Kavita.Models.Builders;
 using Kavita.Models.DTOs;
 using Kavita.Models.DTOs.Filtering;
 using Kavita.Models.DTOs.Filtering.v2;
+using Kavita.Models.DTOs.Filtering.v2.Requests;
+using Kavita.Models.DTOs.Filtering.v2.SortFields;
+using Kavita.Models.DTOs.Filtering.v2.SortOptions;
 using Kavita.Models.DTOs.Person;
 using Kavita.Models.DTOs.SeriesDetail;
 using Kavita.Models.DTOs.SignalR;
@@ -143,15 +145,15 @@ public class SeriesService(
             }
 
 
-            if (updateSeriesMetadataDto.SeriesMetadata?.Genres != null &&
-                updateSeriesMetadataDto.SeriesMetadata.Genres.Count != 0)
+            if (updateSeriesMetadataDto.SeriesMetadata?.Genres is {Count: > 0})
             {
                 var allGenres = (await unitOfWork.GenreRepository.GetAllGenresByNamesAsync(updateSeriesMetadataDto.SeriesMetadata.Genres.Select(t => Parser.Normalize(t.Title)), ct)).ToList();
                 series.Metadata.Genres ??= [];
-                GenreHelper.UpdateGenreList(updateSeriesMetadataDto.SeriesMetadata?.Genres, series, allGenres, genre =>
-                {
-                    series.Metadata.Genres.Add(genre);
-                }, () => series.Metadata.GenresLocked = true);
+                TagHelper.UpdateTagList(updateSeriesMetadataDto.SeriesMetadata?.Genres.Select(t => t.Title).ToList(),
+                    series.Metadata.Genres, allGenres, genre =>
+                    {
+                        series.Metadata.Genres.Add(genre);
+                    }, () => series.Metadata.GenresLocked = true);
             }
             else
             {
@@ -162,13 +164,14 @@ public class SeriesService(
             if (updateSeriesMetadataDto.SeriesMetadata?.Tags is {Count: > 0})
             {
                 var allTags = (await unitOfWork.TagRepository
-                    .GetAllTagsByNameAsync(updateSeriesMetadataDto.SeriesMetadata.Tags.Select(t => Parser.Normalize(t.Title)), ct))
+                        .GetAllTagsByNameAsync(updateSeriesMetadataDto.SeriesMetadata.Tags.Select(t => Parser.Normalize(t.Title)), ct))
                     .ToList();
                 series.Metadata.Tags ??= [];
-                TagHelper.UpdateTagList(updateSeriesMetadataDto.SeriesMetadata?.Tags, series, allTags, tag =>
-                {
-                    series.Metadata.Tags.Add(tag);
-                }, () => series.Metadata.TagsLocked = true);
+                TagHelper.UpdateTagList(updateSeriesMetadataDto.SeriesMetadata?.Tags?.Select(t => t.Title).ToList(),
+                    series.Metadata.Tags, allTags, tag =>
+                    {
+                        series.Metadata.Tags.Add(tag);
+                    }, () => series.Metadata.TagsLocked = true);
             }
             else
             {
@@ -494,7 +497,7 @@ public class SeriesService(
     public async Task<SeriesDetailDto> GetSeriesDetail(int seriesId, int userId, CancellationToken ct = default)
     {
         var series = await unitOfWork.SeriesRepository.GetSeriesDtoByIdAsync(seriesId, userId, ct);
-        if (series == null) throw new KavitaException(await localizationService.Translate(userId, "series-doesnt-exist"));
+        if (series == null) throw new KavitaException(await localizationService.TranslateAsync(userId, "series-doesnt-exist"));
 
         var libraryIds = await unitOfWork.LibraryRepository.GetLibraryIdsForUserIdAsync(userId, ct: ct);
         if (!libraryIds.Contains(series.LibraryId))
@@ -503,7 +506,7 @@ public class SeriesService(
         var user = await unitOfWork.UserRepository.GetUserByIdAsync(userId, ct: ct);
         if (user!.AgeRestriction != AgeRating.NotApplicable)
         {
-            var seriesMetadata = await unitOfWork.SeriesRepository.GetSeriesMetadata(seriesId, ct);
+            var seriesMetadata = await unitOfWork.SeriesRepository.GetSeriesMetadataAsync(seriesId, ct);
             if (seriesMetadata!.AgeRating > user.AgeRestriction)
                 throw new UnauthorizedAccessException("series-restricted-age-restriction");
         }
@@ -601,7 +604,7 @@ public class SeriesService(
     /// <returns></returns>
     public async Task<RelatedSeriesDto> GetRelatedSeries(int userId, int seriesId, CancellationToken ct = default)
     {
-        return await unitOfWork.SeriesRepository.GetRelatedSeries(userId, seriesId, ct);
+        return await unitOfWork.SeriesRepository.GetRelatedSeriesAsync(userId, seriesId, ct);
     }
 
     /// <summary>
@@ -747,7 +750,7 @@ public class SeriesService(
         CancellationToken ct = default)
     {
         var series = await unitOfWork.SeriesRepository.GetSeriesByIdAsync(seriesId, SeriesIncludes.Metadata | SeriesIncludes.Library, ct);
-        if (series == null) throw new KavitaException(await localizationService.Translate(userId, "series-doesnt-exist"));
+        if (series == null) throw new KavitaException(await localizationService.TranslateAsync(userId, "series-doesnt-exist"));
         if (!(await unitOfWork.UserRepository.HasAccessToSeries(userId, seriesId, ct)))
         {
             throw new UnauthorizedAccessException("user-no-access-library-from-series");
@@ -888,19 +891,19 @@ public class SeriesService(
             // Manga uses "Chapter X", Comics use "Issue #X", Books use "Book X"
             result.Title = series.Library.Type switch
             {
-                LibraryType.Manga => await localizationService.Translate(userId, "chapter-num", result.ChapterNumber),
-                LibraryType.Comic => await localizationService.Translate(userId, "issue-num", "#", result.ChapterNumber),
-                LibraryType.ComicVine => await localizationService.Translate(userId, "issue-num", "#", result.ChapterNumber),
-                LibraryType.Book => await localizationService.Translate(userId, "book-num", result.ChapterNumber),
-                LibraryType.LightNovel => await localizationService.Translate(userId, "book-num", result.ChapterNumber),
-                _ => await localizationService.Translate(userId, "chapter-num", result.ChapterNumber)
+                LibraryType.Manga => await localizationService.TranslateAsync(userId, "chapter-num", result.ChapterNumber),
+                LibraryType.Comic => await localizationService.TranslateAsync(userId, "issue-num", "#", result.ChapterNumber),
+                LibraryType.ComicVine => await localizationService.TranslateAsync(userId, "issue-num", "#", result.ChapterNumber),
+                LibraryType.Book => await localizationService.TranslateAsync(userId, "book-num", result.ChapterNumber),
+                LibraryType.LightNovel => await localizationService.TranslateAsync(userId, "book-num", result.ChapterNumber),
+                _ => await localizationService.TranslateAsync(userId, "chapter-num", result.ChapterNumber)
             };
         }
         else
         {
             // Volume-only numbering - common for omnibus editions or series without chapter breaks
             result.VolumeNumber = (int)highestVolumeNumber + 1;
-            result.Title = await localizationService.Translate(userId, "volume-num", result.VolumeNumber);
+            result.Title = await localizationService.TranslateAsync(userId, "volume-num", result.VolumeNumber);
         }
 
         return result;
@@ -911,42 +914,45 @@ public class SeriesService(
     {
         var serverSettings = await unitOfWork.SettingsRepository.GetSettingsDtoAsync(ct);
 
-        var filter = new FilterV2Dto
+        var filter = new SeriesFilterV2Dto
         {
             Combination = FilterCombination.And,
-            SortOptions = new SortOptions
+            SortOptions = new SeriesSortOptionDto
             {
-                SortField = SortField.ReadProgress,
+                SortField = SeriesSortField.ReadProgress,
                 IsAscending = false,
             },
             Statements = [
-                new FilterStatementDto
+                new SeriesFilterStatementDto
                 {
                   Comparison = FilterComparison.GreaterThan,
-                  Field = FilterField.ReadLast,
+                  Field = SeriesFilterField.ReadLast,
                   Value = serverSettings.OnDeckProgressDays.ToString(),
                 },
-                new FilterStatementDto
+                new SeriesFilterStatementDto
                 {
                     Comparison = FilterComparison.LessThan,
-                    Field = FilterField.ReadProgress,
+                    Field = SeriesFilterField.ReadProgress,
                     Value = "100",
                 },
-                new FilterStatementDto
+                new SeriesFilterStatementDto
                 {
                     Comparison = FilterComparison.GreaterThan,
-                    Field = FilterField.ReadProgress,
+                    Field = SeriesFilterField.ReadProgress,
                     Value = "0",
                 },
             ],
         };
 
-        filter.Statements.AddRange(await GetProfilePrivacyStatements(userId, requestingUserId, ct));
+        foreach (var stmt in await GetProfilePrivacyStatements(userId, requestingUserId, ct))
+        {
+            filter.Statements.Add(stmt);
+        }
 
-        return await unitOfWork.SeriesRepository.GetSeriesDtoForLibraryIdV2Async(userId, userParams, filter, ct: ct);
+        return await unitOfWork.SeriesRepository.GetSeriesDtoForLibraryIdAsync(userId, userParams, filter, ct: ct);
     }
 
-    public async Task<List<FilterStatementDto>> GetProfilePrivacyStatements(int userId, int requestingUserId,
+    public async Task<List<SeriesFilterStatementDto>> GetProfilePrivacyStatements(int userId, int requestingUserId,
         CancellationToken ct = default)
     {
         if (userId == requestingUserId) return [];
@@ -968,12 +974,12 @@ public class SeriesService(
         var ageRating = socialPreferences.SocialMaxAgeRating < requestingUser.AgeRestriction ? socialPreferences.SocialMaxAgeRating : requestingUser.AgeRestriction;
         var includeUnknowns = socialPreferences.SocialIncludeUnknowns && requestingUser.AgeRestrictionIncludeUnknowns;
 
-        List<FilterStatementDto> filters =
+        List<SeriesFilterStatementDto> filters =
         [
             new()
             {
                 Comparison = FilterComparison.Contains,
-                Field = FilterField.Libraries,
+                Field = SeriesFilterField.Libraries,
                 Value = string.Join(',', libraries),
             }
 
@@ -981,20 +987,20 @@ public class SeriesService(
 
         if (!includeUnknowns)
         {
-            filters.Add(new FilterStatementDto
+            filters.Add(new SeriesFilterStatementDto
             {
                 Comparison = FilterComparison.NotEqual,
-                Field = FilterField.AgeRating,
+                Field = SeriesFilterField.AgeRating,
                 Value = nameof(AgeRating.Unknown),
             });
         }
 
         if (ageRating != AgeRating.NotApplicable)
         {
-            filters.Add(new FilterStatementDto
+            filters.Add(new SeriesFilterStatementDto
             {
                 Comparison = FilterComparison.LessThanEqual,
-                Field = FilterField.AgeRating,
+                Field = SeriesFilterField.AgeRating,
                 Value = ageRating.ToString(),
             });
         }

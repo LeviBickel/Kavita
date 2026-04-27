@@ -1,5 +1,5 @@
 import {inject, Pipe, PipeTransform} from '@angular/core';
-import {ReadingListProvider} from "../_models/reading-list";
+import {ReadingListProvider} from "../_models/reading-list/reading-list";
 import {TranslocoService} from "@jsverse/transloco";
 
 @Pipe({
@@ -19,7 +19,6 @@ export class ReadingListProviderPipe implements PipeTransform {
         return this.translocoService.translate('reading-list-provider-pipe.file');
       case ReadingListProvider.Url:
         return this.translocoService.translate('reading-list-provider-pipe.url');
-
     }
   }
 

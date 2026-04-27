@@ -32,7 +32,7 @@ import {CHAPTER_ID_DOESNT_EXIST, ReaderService} from 'src/app/_services/reader.s
 import {SeriesService} from 'src/app/_services/series.service';
 import {ThemeService} from 'src/app/_services/theme.service';
 import {NgbTooltip} from '@ng-bootstrap/ng-bootstrap';
-import {AsyncPipe, DOCUMENT, NgStyle} from '@angular/common';
+import {DOCUMENT, NgStyle} from '@angular/common';
 import {translate, TranslocoDirective} from "@jsverse/transloco";
 import {PdfLayoutMode} from "../../../_models/preferences/pdf-layout-mode";
 import {PdfScrollMode} from "../../../_models/preferences/pdf-scroll-mode";
@@ -47,12 +47,19 @@ import {KeyBindService} from "../../../_services/key-bind.service";
 import {KeyBindTarget} from "../../../_models/preferences/preferences";
 import {Breakpoint, BreakpointService} from "../../../_services/breakpoint.service";
 
+const KEYBIND_TARGETS = [
+  {keyBindTarget: KeyBindTarget.OpenHelp},
+  {keyBindTarget: KeyBindTarget.Escape},
+  {keyBindTarget: KeyBindTarget.FirstPage, description: 'first-page'},
+  {keyBindTarget: KeyBindTarget.LastPage, description: 'last-page'},
+];
+
 @Component({
   selector: 'app-pdf-reader',
   templateUrl: './pdf-reader.component.html',
   styleUrls: ['./pdf-reader.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgStyle, NgxExtendedPdfViewerModule, NgbTooltip, AsyncPipe, TranslocoDirective,
+  imports: [NgStyle, NgxExtendedPdfViewerModule, NgbTooltip, TranslocoDirective,
     PdfScrollModeTypePipe, PdfSpreadTypePipe]
 })
 export class PdfReaderComponent implements OnInit, OnDestroy {
@@ -147,8 +154,25 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
 
       this.keyBindService.registerListener(
         this.destroyRef,
-        () => this.closeReader(),
-        [KeyBindTarget.Escape],
+        (e) => {
+          switch (e.target) {
+            case KeyBindTarget.Escape:
+              this.closeReader();
+              break;
+            case KeyBindTarget.FirstPage:
+              this.currentPage = 0;
+              this.cdRef.markForCheck();
+              break;
+            case KeyBindTarget.LastPage:
+              this.currentPage = this.maxPages;
+              this.cdRef.markForCheck();
+              break;
+            case KeyBindTarget.OpenHelp:
+              this.openShortcutModal();
+          }
+
+        },
+        KEYBIND_TARGETS.map(k => k.keyBindTarget as KeyBindTarget),
       );
 
       effect(() => {
@@ -387,7 +411,12 @@ export class PdfReaderComponent implements OnInit, OnDestroy {
   }
 
   closeReader() {
-    this.readerService.closeReader(this.libraryId, this.seriesId, this.chapterId, this.readingListMode, this.readingListId);
+     this.readerService.closeShortCutModal();
+     this.readerService.closeReader(this.libraryId, this.seriesId, this.chapterId, this.readingListMode, this.readingListId);
+  }
+
+  openShortcutModal() {
+     this.readerService.openShortcutModal(KEYBIND_TARGETS);
   }
 
   updateLoading(state: boolean) {

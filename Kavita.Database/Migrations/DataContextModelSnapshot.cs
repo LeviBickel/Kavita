@@ -1738,6 +1738,9 @@ namespace Kavita.Database.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("TotalItemsAtImport")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AppUserId");
@@ -1835,6 +1838,26 @@ namespace Kavita.Database.Migrations
                         .HasDatabaseName("IX_ReadingListRemapRule_NormalizedCblSeriesName_IsGlobal_AppUserId");
 
                     b.ToTable("ReadingListRemapRule");
+                });
+
+            modelBuilder.Entity("Kavita.Models.Entities.ReadingLists.ReadingListTag", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("NormalizedTitle")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedTitle")
+                        .IsUnique();
+
+                    b.ToTable("ReadingListTag");
                 });
 
             modelBuilder.Entity("Kavita.Models.Entities.Scrobble.ScrobbleError", b =>
@@ -3207,6 +3230,9 @@ namespace Kavita.Database.Migrations
                     b.Property<int>("AppUserId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("EntityType")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Filter")
                         .HasColumnType("TEXT");
 
@@ -3553,6 +3579,21 @@ namespace Kavita.Database.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("ReadingListReadingListTag", b =>
+                {
+                    b.Property<int>("ReadingListsId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TagsId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ReadingListsId", "TagsId");
+
+                    b.HasIndex("TagsId");
+
+                    b.ToTable("ReadingListReadingListTag");
                 });
 
             modelBuilder.Entity("AppUserCollectionSeries", b =>
@@ -4520,6 +4561,21 @@ namespace Kavita.Database.Migrations
                     b.HasOne("Kavita.Models.Entities.User.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ReadingListReadingListTag", b =>
+                {
+                    b.HasOne("Kavita.Models.Entities.ReadingLists.ReadingList", null)
+                        .WithMany()
+                        .HasForeignKey("ReadingListsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Kavita.Models.Entities.ReadingLists.ReadingListTag", null)
+                        .WithMany()
+                        .HasForeignKey("TagsId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

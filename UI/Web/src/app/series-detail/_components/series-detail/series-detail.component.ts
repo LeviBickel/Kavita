@@ -39,7 +39,7 @@ import {Chapter, LooseLeafOrDefaultNumber, SpecialVolumeNumber} from 'src/app/_m
 import {ScanSeriesEvent} from 'src/app/_models/events/scan-series-event';
 import {SeriesRemovedEvent} from 'src/app/_models/events/series-removed-event';
 import {LibraryType} from 'src/app/_models/library/library';
-import {ReadingList} from 'src/app/_models/reading-list';
+import {ReadingList} from 'src/app/_models/reading-list/reading-list';
 import {Series} from 'src/app/_models/series';
 import {RelatedSeries} from 'src/app/_models/series-detail/related-series';
 import {RelationKind} from 'src/app/_models/series-detail/relation-kind';
@@ -69,10 +69,10 @@ import {NextExpectedCardComponent} from "../../../cards/next-expected-card/next-
 import {MetadataService} from "../../../_services/metadata.service";
 import {Rating} from "../../../_models/rating";
 import {ThemeService} from "../../../_services/theme.service";
-import {DetailsTabComponent} from "../../../_single-module/details-tab/details-tab.component";
+import {BasicMetadataInfo, DetailsTabComponent} from "../../../_single-module/details-tab/details-tab.component";
 import {ChapterRemovedEvent} from "../../../_models/events/chapter-removed-event";
 import {SettingsTabId} from "../../../sidenav/preference-nav/preference-nav.component";
-import {FilterField} from "../../../_models/metadata/v2/filter-field";
+import {SeriesFilterField} from "../../../_models/metadata/v2/series-filter-field";
 import {AgeRating} from "../../../_models/metadata/age-rating";
 import {DefaultValuePipe} from "../../../_pipes/default-value.pipe";
 import {ExternalRatingComponent} from "../external-rating/external-rating.component";
@@ -239,9 +239,7 @@ class SeriesDetailComponent implements OnInit, AfterViewInit {
   protected readonly isLoadingReadingHistory = signal(false);
   protected readonly readingHistoryCurrentPage = signal(1);
 
-  isAdmin = computed(() => {
-    return this.accountService.hasAdminRole();
-  });
+  readonly isAdmin = this.accountService.hasAdminRole;
 
   activeTabId = Tabs.Storyline;
   mobileSeriesImgBackground = this.themeService.getCssVariable('--mobile-series-img-background');
@@ -410,6 +408,21 @@ class SeriesDetailComponent implements OnInit, AfterViewInit {
     if (!webLinks) return [];
 
     return webLinks.split(',');
+  });
+
+  seriesBasicMetadata = computed<BasicMetadataInfo>(() => {
+    const s = this.series();
+    const meta = this.seriesMetadata();
+    return {
+      readingTime: s,
+      pages: s.pages,
+      words: s.wordCount,
+      addedAt: s.created,
+      updatedAt: s.lastChapterAdded,
+      kavitaId: s.id,
+      language: meta?.language || null,
+      publicationStatus: meta?.publicationStatus ?? null,
+    };
   });
 
   trackStoryLineIdentity = (index: number, item: StoryLineItem) => item.isChapter ? `${item.chapter!.data.id}_ch_storyline` : `${item.volume!.data.id}_vol_storyline`;
@@ -882,10 +895,9 @@ class SeriesDetailComponent implements OnInit, AfterViewInit {
     this.isWantToRead.update(x => !x);
   }
 
-  openFilter(field: FilterField, value: string | number) {
+  openFilter(field: SeriesFilterField, value: string | number) {
     this.filterUtilityService.applyFilter(['all-series'], field, FilterComparison.Equal, `${value}`).subscribe();
   }
-
 
   toggleScrobbling(evt: any) {
     evt.stopPropagation();
@@ -927,7 +939,7 @@ class SeriesDetailComponent implements OnInit, AfterViewInit {
   protected readonly LooseLeafOrSpecialNumber = LooseLeafOrDefaultNumber;
   protected readonly SpecialVolumeNumber = SpecialVolumeNumber;
   protected readonly SettingsTabId = SettingsTabId;
-  protected readonly FilterField = FilterField;
+  protected readonly FilterField = SeriesFilterField;
   protected readonly AgeRating = AgeRating;
   protected readonly encodeURIComponent = encodeURIComponent;
   protected readonly Breakpoint = Breakpoint;

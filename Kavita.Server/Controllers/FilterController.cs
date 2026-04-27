@@ -1,19 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
-using Kavita.API.Attributes;
 using Kavita.API.Database;
 using Kavita.API.Repositories;
 using Kavita.API.Services;
+using Kavita.Common;
 using Kavita.Models;
 using Kavita.Models.Constants;
 using Kavita.Models.DTOs.Dashboard;
 using Kavita.Models.DTOs.Filtering.v2;
+using Kavita.Models.DTOs.Filtering.v2.Requests;
 using Kavita.Models.Entities.User;
 using Kavita.Server.Attributes;
-using Kavita.Services;
-using Kavita.Services.Helpers;
+using Kavita.Services.Helpers.SmartFilter;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -27,47 +28,127 @@ public class FilterController(
     : BaseApiController
 {
     /// <summary>
-    /// Creates or Updates the filter
+    /// Creates or Updates the Series filter
     /// </summary>
     /// <param name="dto"></param>
     /// <returns></returns>
-    [HttpPost("update")]
+    [HttpPost("update/series")]
     [DisallowRole(PolicyConstants.ReadOnlyRole)]
-    public async Task<ActionResult> CreateOrUpdateSmartFilter(FilterV2Dto dto)
+    public async Task<ActionResult> CreateOrUpdateSeriesSmartFilter(SeriesFilterV2Dto dto)
     {
-        var user = await unitOfWork.UserRepository.GetUserByIdAsync(UserId, AppUserIncludes.SmartFilters);
-        if (user == null) return Unauthorized();
-
-        if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("Name must be set");
-        if (Defaults.DefaultStreams.Any(s => s.Name.Equals(dto.Name, StringComparison.InvariantCultureIgnoreCase)))
+        try
         {
-            return BadRequest("You cannot use the name of a system provided stream");
+            if (string.IsNullOrEmpty(dto.Name)) return BadRequest("Name is required");
+            var encodedString = SmartFilterHelper.Encode(dto);
+            await ValidateAndSaveFilterUpsert(dto.Name!, encodedString, dto.EntityType);
+            return Ok();
+        }
+        catch (KavitaException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Creates or Updates the Reading List filter
+    /// </summary>
+    /// <param name="dto"></param>
+    /// <returns></returns>
+    [HttpPost("update/reading-list")]
+    [DisallowRole(PolicyConstants.ReadOnlyRole)]
+    public async Task<ActionResult> CreateOrUpdateReadingListSmartFilter(ReadingListFilterDto dto)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(dto.Name)) return BadRequest("Name is required");
+            var encodedString = SmartFilterHelper.Encode(dto);
+            await ValidateAndSaveFilterUpsert(dto.Name!, encodedString, dto.EntityType);
+            return Ok();
+        }
+        catch (KavitaException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Creates or Updates the Person filter
+    /// </summary>
+    /// <param name="dto"></param>
+    /// <returns></returns>
+    [HttpPost("update/person")]
+    [DisallowRole(PolicyConstants.ReadOnlyRole)]
+    public async Task<ActionResult> CreateOrUpdatePersonSmartFilter(PersonFilterDto dto)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(dto.Name)) return BadRequest("Name is required");
+            var encodedString = SmartFilterHelper.Encode(dto);
+            await ValidateAndSaveFilterUpsert(dto.Name!, encodedString, dto.EntityType);
+            return Ok();
+        }
+        catch (KavitaException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Creates or Updates the Reading List filter
+    /// </summary>
+    /// <param name="dto"></param>
+    /// <returns></returns>
+    [HttpPost("update/annotation")]
+    [DisallowRole(PolicyConstants.ReadOnlyRole)]
+    public async Task<ActionResult> CreateOrUpdateAnnotationSmartFilter(AnnotationFilterDto dto)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(dto.Name)) return BadRequest("Name is required");
+            var encodedString = SmartFilterHelper.Encode(dto);
+            await ValidateAndSaveFilterUpsert(dto.Name!, encodedString, dto.EntityType);
+            return Ok();
+        }
+        catch (KavitaException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    private async Task ValidateAndSaveFilterUpsert(string filterName, string encodedFilter,  FilterEntityType entityType)
+    {
+        var user = (await unitOfWork.UserRepository.GetUserByIdAsync(UserId, AppUserIncludes.SmartFilters))!;
+
+        if (string.IsNullOrWhiteSpace(filterName)) throw new KavitaException("Name must be set");
+        if (Defaults.DefaultStreams.Any(s => s.Name.Equals(filterName, StringComparison.InvariantCultureIgnoreCase)))
+        {
+            // NOTE: This checks against localization keys (on-deck), so this case will almost never happen
+            throw new KavitaException("You cannot use the name of a system provided stream");
         }
 
-        var existingFilter =
-            user.SmartFilters.FirstOrDefault(f => f.Name.Equals(dto.Name, StringComparison.InvariantCultureIgnoreCase));
+        var existingFilter = user.SmartFilters.FirstOrDefault(s => s.Name.Equals(filterName, StringComparison.InvariantCultureIgnoreCase));
         if (existingFilter != null)
         {
             // Update the filter
-            existingFilter.Filter = SmartFilterHelper.Encode(dto);
+            existingFilter.Filter = encodedFilter;
             unitOfWork.AppUserSmartFilterRepository.Update(existingFilter);
         }
         else
         {
             existingFilter = new AppUserSmartFilter()
             {
-                Name = dto.Name,
-                Filter = SmartFilterHelper.Encode(dto)
+                Name = filterName,
+                Filter = encodedFilter,
+                EntityType = entityType
             };
             user.SmartFilters.Add(existingFilter);
             unitOfWork.UserRepository.Update(user);
         }
 
-        if (!unitOfWork.HasChanges()) return Ok();
+        if (!unitOfWork.HasChanges()) return;
         await unitOfWork.CommitAsync();
-
-        return Ok();
     }
+
 
     /// <summary>
     /// All Smart Filters for the authenticated user
@@ -91,6 +172,7 @@ public class FilterController(
     {
         var filter = await unitOfWork.AppUserSmartFilterRepository.GetById(filterId);
         if (filter == null) return Ok();
+
         // This needs to delete any dashboard filters that have it too
         var streams = await unitOfWork.UserRepository.GetDashboardStreamWithFilter(filter.Id);
         unitOfWork.UserRepository.Delete(streams);
@@ -104,12 +186,45 @@ public class FilterController(
     }
 
     /// <summary>
-    /// Encode the Filter
+    /// Encode a Series filter
     /// </summary>
-    /// <param name="dto"></param>
+    /// <param name="dto">This must be entityType Series</param>
     /// <returns></returns>
-    [HttpPost("encode")]
-    public ActionResult<string> EncodeFilter(FilterV2Dto dto)
+    [HttpPost("encode/series")]
+    public ActionResult<string> EncodeSeriesFilter(SeriesFilterV2Dto dto)
+    {
+        return Ok(SmartFilterHelper.Encode(dto));
+    }
+
+    /// <summary>
+    /// Encode a Reading List filter
+    /// </summary>
+    /// <param name="dto">This must be entityType ReadingList</param>
+    /// <returns></returns>
+    [HttpPost("encode/reading-list")]
+    public ActionResult<string> EncodeRlFilter(ReadingListFilterDto dto)
+    {
+        return Ok(SmartFilterHelper.Encode(dto));
+    }
+
+    /// <summary>
+    /// Encode a Person Filter
+    /// </summary>
+    /// <param name="dto">This must be entityType Person</param>
+    /// <returns></returns>
+    [HttpPost("encode/person")]
+    public ActionResult<string> EncodePersonFilter(PersonFilterDto dto)
+    {
+        return Ok(SmartFilterHelper.Encode(dto));
+    }
+
+    /// <summary>
+    /// Encode an Annotation Filter
+    /// </summary>
+    /// <param name="dto">This must be entityType Annotation</param>
+    /// <returns></returns>
+    [HttpPost("encode/annotation")]
+    public ActionResult<string> EncodeAnnotationFilter(AnnotationFilterDto dto)
     {
         return Ok(SmartFilterHelper.Encode(dto));
     }
@@ -117,10 +232,14 @@ public class FilterController(
     /// <summary>
     /// Decodes the Filter
     /// </summary>
+    /// <remarks>Decoded filter will always have the same shape of <see cref="IFilterDto{TStatement,TSortOption}"/>.
+    /// The concrete class is driven by <c>EntityType</c>.
+    /// Classes: <see cref="SeriesFilterV2Dto"/>, <see cref="PersonFilterDto"/>, <see cref="AnnotationFilterDto"/>, <see cref="ReadingListFilterDto"/>
+    /// </remarks>
     /// <param name="dto"></param>
     /// <returns></returns>
     [HttpPost("decode")]
-    public ActionResult<FilterV2Dto> DecodeFilter(DecodeFilterDto dto)
+    public ActionResult<IFilterDto> DecodeFilter(DecodeFilterDto dto)
     {
         return Ok(SmartFilterHelper.Decode(dto.EncodedFilter));
     }
@@ -133,30 +252,29 @@ public class FilterController(
     /// <returns></returns>
     [HttpPost("rename")]
     [DisallowRole(PolicyConstants.ReadOnlyRole)]
-    public async Task<ActionResult> RenameFilter([FromQuery] int filterId, [FromQuery] string name)
+    public async Task<ActionResult> RenameFilter([FromQuery] int filterId, [FromQuery] [Required] string name)
     {
         try
         {
-            var user = await unitOfWork.UserRepository.GetUserByIdAsync(UserId,
-                AppUserIncludes.SmartFilters);
+            var user = await unitOfWork.UserRepository.GetUserByIdAsync(UserId, AppUserIncludes.SmartFilters);
             if (user == null) return Unauthorized();
 
             name = name.Trim();
 
             if (string.IsNullOrWhiteSpace(name))
             {
-                return BadRequest(await localizationService.Translate(user.Id, "smart-filter-name-required"));
+                return BadRequest(await localizationService.TranslateAsync(user.Id, "smart-filter-name-required"));
             }
 
             if (Defaults.DefaultStreams.Any(s => s.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase)))
             {
-                return BadRequest(await localizationService.Translate(user.Id, "smart-filter-system-name"));
+                return BadRequest(await localizationService.TranslateAsync(user.Id, "smart-filter-system-name"));
             }
 
             var filter = user.SmartFilters.FirstOrDefault(f => f.Id == filterId);
             if (filter == null)
             {
-                return BadRequest(await localizationService.Translate(user.Id, "filter-not-found"));
+                return BadRequest(await localizationService.TranslateAsync(user.Id, "filter-not-found"));
             }
 
             filter.Name = name;
@@ -169,7 +287,7 @@ public class FilterController(
         catch (Exception ex)
         {
             logger.LogError(ex, "There was an exception when renaming smart filter: {FilterId}", filterId);
-            return BadRequest(await localizationService.Translate(UserId, "generic-error"));
+            return BadRequest(await localizationService.TranslateAsync(UserId, "generic-error"));
         }
 
     }

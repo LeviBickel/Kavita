@@ -17,12 +17,10 @@ import {
   output,
   Renderer2,
   Signal,
-  SimpleChanges,
-  viewChild
+  SimpleChanges, viewChild
 } from '@angular/core';
-import {BehaviorSubject, fromEvent, map, Observable, of, ReplaySubject, tap} from 'rxjs';
-import {debounceTime} from 'rxjs/operators';
-import {ScrollService} from 'src/app/_services/scroll.service';
+import {BehaviorSubject, fromEvent, map, Observable, of, ReplaySubject, Subject, tap} from 'rxjs';
+import {debounceTime, distinctUntilChanged} from 'rxjs/operators';
 import {ReaderService} from '../../../_services/reader.service';
 import {PAGING_DIRECTION} from '../../_models/reader-enums';
 import {WebtoonImage} from '../../_models/webtoon-image';
@@ -32,14 +30,11 @@ import {TranslocoDirective} from "@jsverse/transloco";
 import {InfiniteScrollDirective} from "ngx-infinite-scroll";
 import {ReaderSetting} from "../../_models/reader-setting";
 import {SafeStylePipe} from "../../../_pipes/safe-style.pipe";
-import {UtilityService} from "../../../shared/_services/utility.service";
 import {ReadingProfile} from "../../../_models/preferences/reading-profiles";
 import {BreakpointService} from "../../../_services/breakpoint.service";
+import {Queue} from "../../../shared/data-structures/queue";
+import {PullToLoadComponent} from "../../../shared/_components/pull-to-load/pull-to-load.component";
 
-/**
- * How much additional space should pass, past the original bottom of the document height before we trigger the next chapter load
- */
-const SPACER_SCROLL_INTO_PX = 200;
 /**
  * Default debounce time from scroll and scrollend event listeners
  */
@@ -53,7 +48,16 @@ const EMULATE_SCROLL_END_DEBOUNCE = 100;
  * See: https://github.com/Kareadita/Kavita/issues/3970
  */
 const INITIAL_LOAD_GRACE_PERIOD = 1000;
-
+/**
+ * How many times the Webtoon reader will retry failed images
+ */
+const MAX_FAILED_IMG_RETRIES = 3;
+/**
+ * How long to wait for an image load/error event before treating it as a failure
+ */
+const IMAGE_RETRY_TIMEOUT_MS = 10_000;
+/** Time to wait between progress events **/
+const PROGRESS_SAVE_TIMEOUT_MS = 200;
 /**
  * Bitwise enums for configuring how much debug information we want
  */
@@ -81,21 +85,23 @@ const enum DEBUG_MODES {
     templateUrl: './infinite-scroller.component.html',
     styleUrls: ['./infinite-scroller.component.scss'],
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [AsyncPipe, TranslocoDirective, InfiniteScrollDirective, SafeStylePipe]
+  imports: [AsyncPipe, TranslocoDirective, InfiniteScrollDirective, SafeStylePipe, PullToLoadComponent]
 })
 export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, AfterViewInit {
   private readonly document = inject<Document>(DOCUMENT);
-
-
   private readonly mangaReaderService = inject(MangaReaderService);
   private readonly readerService = inject(ReaderService);
   private readonly renderer = inject(Renderer2);
-  private readonly scrollService = inject(ScrollService);
-  private readonly utilityService = inject(UtilityService);
   private readonly injector = inject(Injector);
   private readonly cdRef = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly breakpointService = inject(BreakpointService);
+
+  scrollContainer = viewChild.required<ElementRef<HTMLDivElement>>('scroller');
+
+  get scrollElement(): HTMLElement {
+    return this.isFullscreenMode ? this.readerElemRef.nativeElement : this.document.body;
+  }
 
   /**
    * Current page number aka what's recorded on screen
@@ -115,6 +121,8 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
   @Input({required: true}) urlProvider!: (page: number) => string;
   @Input({required: true}) readerSettings$!: Observable<ReaderSetting>;
   @Input({required: true}) readingProfile!: ReadingProfile;
+  @Input({required: true}) chapterId!: number;
+
   readonly pageNumberChange = output<number>();
   readonly loadNextChapter = output<void>();
   readonly loadPrevChapter = output<void>();
@@ -123,18 +131,19 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
   @Input() bookmarkPage: ReplaySubject<number> = new ReplaySubject<number>();
   @Input() fullscreenToggled: ReplaySubject<boolean> = new ReplaySubject<boolean>();
 
-  readonly bottomSpacer = viewChild.required<ElementRef>('bottomSpacer');
-  bottomSpacerIntersectionObserver: IntersectionObserver = new IntersectionObserver((entries) => this.handleBottomIntersection(entries),
-    { threshold: 1.0 });
-
   darkness$: Observable<string> = of('brightness(100%)');
 
   readerElemRef!: ElementRef<HTMLDivElement>;
+  /** This will update the output to allow for throttling, since we hit the page change on scroll event **/
+  private pageChangeSubject = new Subject<number>();
 
   /**
    * Stores and emits all the src urls
    */
   webtoonImages: BehaviorSubject<WebtoonImage[]> = new BehaviorSubject<WebtoonImage[]>([]);
+  /** Urls that need to be retried for download **/
+  retryImages = new Queue<{page: number, src: string, chapterId: number, retryCount: number}>();
+  isProcessingRetries = false;
 
   /**
    * Responsible for calculating current page on screen and uses hooks to trigger prefetching.
@@ -182,10 +191,6 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
     */
    isFullscreenMode: boolean = false;
    /**
-    * Keeps track of the previous scrolling height for restoring scroll position after we inject spacer block
-    */
-   previousScrollHeightMinusTop: number = 0;
-   /**
     * Tracks the first load, until all the initial prefetched images are loaded. We use this to reduce opacity so images can load without jerk.
     */
    initFinished: boolean = false;
@@ -226,6 +231,12 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
     if (reader !== null) {
       this.readerElemRef = new ElementRef(reader as HTMLDivElement);
     }
+
+    this.pageChangeSubject.pipe(
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef),
+      tap(page => this.pageNumberChange.emit(page)),
+    ).subscribe();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -240,6 +251,10 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
     this.intersectionObserver.disconnect();
   }
 
+  ngAfterViewInit() {
+    this.scrollContainer().nativeElement.focus();
+  }
+
   /**
    * Responsible for binding the scroll handler to the correct event. On non-fullscreen, body is correct. However, on fullscreen, we must use the reader as that is what
    * gets promoted to fullscreen.
@@ -249,8 +264,10 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
 
     // Reset any modal-induced overflow lock (this can happen when Starting Over and ngBootstrap modal hasn't completed teardown)
     if (element === this.document.body) {
-      this.document.body.style.overflow = 'auto';
-      this.document.body.classList.remove('modal-open'); // ngBootstrap adds this
+      setTimeout(() => {
+        this.document.body.style.overflow = 'auto';
+        this.document.body.classList.remove('modal-open'); // ngBootstrap adds this
+      }, 100);
     }
 
     fromEvent(element, 'scroll')
@@ -288,8 +305,6 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
       takeUntilDestroyed(this.destroyRef)
     );
 
-    // We need the injector as toSignal is only allowed in injection context
-    // https://angular.dev/guide/signals#injection-context
     this.readerSettings = toSignal(this.readerSettings$, {injector: this.injector, requireSync: true});
 
     // Automatically updates when the breakpoint changes, or when reader settings changes
@@ -303,9 +318,9 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
       return (parseInt(value) <= 0) ? '' : value + '%';
     });
 
-    //perform jump so the page stays in view
+    // perform jump so the page stays in view
     effect(() => {
-      const width = this.widthOverride(); // needs to be at the top for effect to work
+      const width = this.widthOverride();
       this.currentPageElem = this.document.querySelector('img#page-' + this.pageNum);
       if(!this.currentPageElem)
         return;
@@ -324,7 +339,7 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
       this.goToPage.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(page => {
         const isSamePage = this.pageNum === page;
         if (isSamePage) { return; }
-        this.debugLog('[GoToPage] jump has occured from ' + this.pageNum + ' to ' + page);
+        this.debugLog('[GoToPage] jump has occurred from ' + this.pageNum + ' to ' + page);
 
         if (this.pageNum < page) {
           this.scrollingDirection = PAGING_DIRECTION.FORWARD;
@@ -362,9 +377,6 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
     }
   }
 
-  ngAfterViewInit() {
-    this.bottomSpacerIntersectionObserver.observe(this.bottomSpacer().nativeElement);
-  }
 
   recalculateImageWidth() {
     const [_, innerWidth] = this.getInnerDimensions();
@@ -390,7 +402,7 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
 
   /**
    * On scroll in document, calculate if the user/javascript has scrolled to the current image element (and it's visible), update that scrolling has ended completely,
-   * and calculate the direction the scrolling is occuring. This is not used for prefetching.
+   * and calculate the direction the scrolling is occurring. This is not used for prefetching.
    * @param event Scroll Event
    */
   handleScrollEvent(event?: any) {
@@ -408,20 +420,6 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
       this.isScrolling = false;
       this.cdRef.markForCheck();
     }
-
-    // if (!this.isScrolling) {
-    //   // Use offset of the image against the scroll container to test if the most of the image is visible on the screen. We can use this
-    //   // to mark the current page and separate the prefetching code.
-    //   const midlineImages = Array.from(document.querySelectorAll('img[id^="page-"]'))
-    //   .filter(entry => this.shouldElementCountAsCurrentPage(entry));
-    //
-    //   if (midlineImages.length > 0) {
-    //     this.setPageNum(parseInt(midlineImages[0].getAttribute('page') || this.pageNum + '', 10));
-    //   }
-    // }
-    //
-    // Check if we hit the last page
-    this.checkIfShouldTriggerContinuousReader();
   }
 
   handleScrollEndEvent(event?: any) {
@@ -454,55 +452,6 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
       return this.readerElemRef.nativeElement.scrollTop;
     }
     return document.body.scrollTop;
-  }
-
-  checkIfShouldTriggerContinuousReader() {
-    if (this.isScrolling || this.isInitialLoad) return;
-
-    if (this.scrollingDirection === PAGING_DIRECTION.FORWARD) {
-      const totalHeight = this.getTotalHeight();
-      const totalScroll = this.getTotalScroll();
-
-      // If we were at top but have started scrolling down past page 0, remove top spacer
-      if (this.atTop && this.pageNum > 0) {
-        this.atTop = false;
-        this.cdRef.markForCheck();
-      }
-
-      if (totalHeight != 0 && totalScroll >= totalHeight && !this.atBottom) {
-        this.atBottom = true;
-        this.cdRef.markForCheck();
-        this.setPageNum(this.totalPages);
-
-        // Scroll user back to original location
-        this.previousScrollHeightMinusTop = this.getScrollTop();
-        requestAnimationFrame(() => {
-          document.body.scrollTop = this.previousScrollHeightMinusTop + (SPACER_SCROLL_INTO_PX / 2);
-          this.cdRef.markForCheck();
-        });
-        this.checkIfShouldTriggerContinuousReader()
-      } else if (totalScroll >= totalHeight + SPACER_SCROLL_INTO_PX && this.atBottom) {
-        // This if statement will fire once we scroll into the spacer at all
-        this.moveToNextChapter();
-      }
-    } else {
-      // < 5 because debug mode and FF (mobile) can report non 0, despite being at 0
-      if (this.getScrollTop() < 5 && this.pageNum === 0 && !this.atTop) {
-        this.atBottom = false;
-        this.atTop = true;
-        this.cdRef.markForCheck();
-
-        // Scroll user back to original location
-        this.previousScrollHeightMinusTop = document.body.scrollHeight - document.body.scrollTop;
-
-        const reader = this.isFullscreenMode ? this.readerElemRef.nativeElement : this.document.body;
-        requestAnimationFrame(() => this.scrollService.scrollTo((SPACER_SCROLL_INTO_PX / 2), reader));
-      } else if (this.getScrollTop() < 5 && this.pageNum === 0 && this.atTop) {
-        // If already at top, then we are moving on
-        this.loadPrevChapter.emit(undefined);
-        this.cdRef.markForCheck();
-      }
-    }
   }
 
   /**
@@ -597,8 +546,8 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
     this.recalculateImageWidth();
     this.imagesLoaded = {};
     this.webtoonImages.next([]);
+    this.retryImages = new Queue<{page: number, src: string, chapterId: number, retryCount: number}>();
     this.atBottom = false;
-    this.checkIfShouldTriggerContinuousReader();
     this.cdRef.markForCheck();
     const [startingIndex, endingIndex] = this.calculatePrefetchIndecies();
 
@@ -650,12 +599,81 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
     }
   }
 
-  handleBottomIntersection(entries: IntersectionObserverEntry[]) {
-    if (entries.length > 0 && this.pageNum > this.totalPages - 5 && this.initFinished) {
-      this.debugLog('[Intersection] The whole bottom spacer is visible', entries[0].isIntersecting);
-      this.moveToNextChapter();
+  onImageLoadError(event: any) {
+    const imagePage = this.readerService.imageUrlToPageNum(event.target.src);
+    const chapterId = this.readerService.imageUrlToChapterId(event.target.src);
+    this.debugLog('[Image Error] Failed to load page: ', imagePage);
+
+    // Let's set the height of the img since we already know it then retry
+    const dimensions = this.mangaReaderService.getPageDimensions(imagePage);
+    if (dimensions?.height) {
+      this.renderer.setStyle(event.target, 'height', dimensions?.height + 'px');
+      this.renderer.setStyle(event.target, 'border', '1px solid red');
+    }
+
+    this.retryImages.enqueue({retryCount: 0, page: imagePage, src: event.target.src, chapterId: chapterId});
+    this.processImageRetry();
+  }
+
+  private async processImageRetry() {
+    if (this.isProcessingRetries) return;
+    this.isProcessingRetries = true;
+
+    try {
+      while (!this.retryImages.isEmpty()) {
+        const item = this.retryImages.dequeue();
+        if (!item) continue;
+
+        this.debugLog('Retrying failed load of page ' +  item.page, ' retry count: ' + item.retryCount)
+        // Skip stale (chapter id has changed)
+        if (item?.chapterId !== this.chapterId) continue;
+
+        // Skip descoped DOM
+        const pageElem = this.document.querySelector('img#page-' + item.page) as HTMLImageElement;
+        if (!pageElem) continue;
+
+        const urlWithoutRetry = item.src.split('&retry=')[0];
+        pageElem.src = urlWithoutRetry + '&retry=' + item.retryCount;
+
+        const success = await this.waitForLoadOrError(pageElem);
+
+        if (success) {
+          this.debugLog('Resolved a failed load for page: ', item.page);
+          // Remove the error styling
+          this.renderer.removeStyle(pageElem, 'border');
+          this.renderer.removeStyle(pageElem, 'height');
+          this.onImageLoad({ target: pageElem });
+        } else if (item.retryCount < MAX_FAILED_IMG_RETRIES) {
+          item.retryCount++;
+          this.retryImages.enqueue(item);
+          await this.delay(1000 * item.retryCount); // Backoff pressure
+        } else {
+          console.error('Failed to load page ' + item.page + ' for chapter ' + item.chapterId + ' after ' + MAX_FAILED_IMG_RETRIES + ' retries');
+        }
+      }
+    } finally {
+      this.isProcessingRetries = false;
     }
   }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private waitForLoadOrError(img: HTMLImageElement): Promise<boolean> {
+    return new Promise(resolve => {
+      const cleanup = () => {
+        img.onload = null;
+        img.onerror = null;
+        clearTimeout(timer);
+      };
+      // Allow the image to load or timeout after ~10 seconds
+      const timer = setTimeout(() => { cleanup(); resolve(false); }, IMAGE_RETRY_TIMEOUT_MS);
+      img.onload = () => { cleanup(); resolve(true); };
+      img.onerror = () => { cleanup(); resolve(false); };
+    });
+  }
+
 
   handleIntersection(entries: IntersectionObserverEntry[]) {
     if (!this.allImagesLoaded || this.isScrolling) {
@@ -694,8 +712,10 @@ export class InfiniteScrollerComponent implements OnInit, OnChanges, OnDestroy, 
     } else if (pageNum < 0) {
       pageNum = 0;
     }
+
     this.pageNum = pageNum;
-    this.pageNumberChange.emit(this.pageNum);
+    this.pageChangeSubject.next(this.pageNum);
+
     this.cdRef.markForCheck();
 
     this.prefetchWebtoonImages();

@@ -60,10 +60,10 @@ public class ChapterController(
         var chapter = await unitOfWork.ChapterRepository.GetChapterAsync(chapterId,
             ChapterIncludes.Files | ChapterIncludes.ExternalReviews | ChapterIncludes.ExternalRatings);
         if (chapter == null)
-            return BadRequest(localizationService.Translate(UserId, "chapter-doesnt-exist"));
+            return BadRequest(await localizationService.TranslateAsync(UserId, "chapter-doesnt-exist"));
 
         var vol = await unitOfWork.VolumeRepository.GetVolumeByIdAsync(chapter.VolumeId, VolumeIncludes.Chapters);
-        if (vol == null) return BadRequest(localizationService.Translate(UserId, "volume-doesnt-exist"));
+        if (vol == null) return BadRequest(await localizationService.TranslateAsync(UserId, "volume-doesnt-exist"));
 
         // If there is only 1 chapter within the volume, then we need to remove the volume
         var needToRemoveVolume = vol.Chapters.Count == 1;
@@ -136,7 +136,7 @@ public class ChapterController(
                 // Fetch the volume
                 var volume = await unitOfWork.VolumeRepository.GetVolumeByIdAsync(volumeId, VolumeIncludes.Chapters);
                 if (volume == null)
-                    return BadRequest(localizationService.Translate(UserId, "volume-doesnt-exist"));
+                    return BadRequest(await localizationService.TranslateAsync(UserId, "volume-doesnt-exist"));
 
                 // Check if all chapters in the volume are being deleted
                 var isVolumeToBeRemoved = volume.Chapters.Count == chaptersToDelete.Count;
@@ -174,7 +174,7 @@ public class ChapterController(
         catch (Exception ex)
         {
             logger.LogError(ex, "An error occured while deleting chapters");
-            return BadRequest(localizationService.Translate(UserId, "generic-error"));
+            return BadRequest(await localizationService.TranslateAsync(UserId, "generic-error"));
         }
 
     }
@@ -192,7 +192,7 @@ public class ChapterController(
         var chapter = await unitOfWork.ChapterRepository.GetChapterAsync(dto.Id,
             ChapterIncludes.People | ChapterIncludes.Genres | ChapterIncludes.Tags, HttpContext.RequestAborted);
         if (chapter == null)
-            return BadRequest(localizationService.Translate(UserId, "chapter-doesnt-exist"));
+            return BadRequest(await localizationService.TranslateAsync(UserId, "chapter-doesnt-exist"));
 
         var seriesId = await unitOfWork.ChapterRepository.GetSeriesIdForChapter(chapter.Id, HttpContext.RequestAborted);
 
@@ -255,12 +255,12 @@ public class ChapterController(
 
         #region Genres
         chapter.Genres ??= [];
-        await GenreHelper.UpdateChapterGenres(chapter, dto.Genres.Select(t => t.Title), unitOfWork);
+        await TagHelper.UpdateEntityTags(chapter.Genres, dto.Genres.Select(t => t.Title), unitOfWork.DataContext.Genre, unitOfWork);
         #endregion
 
         #region Tags
         chapter.Tags ??= [];
-        await TagHelper.UpdateChapterTags(chapter, dto.Tags.Select(t => t.Title), unitOfWork);
+        await TagHelper.UpdateEntityTags(chapter.Tags, dto.Tags.Select(t => t.Title), unitOfWork.DataContext.Tag, unitOfWork);
         #endregion
 
         #region People

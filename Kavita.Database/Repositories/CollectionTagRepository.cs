@@ -59,23 +59,28 @@ public class CollectionTagRepository(DataContext context, IMapper mapper) : ICol
     }
 
     public async Task<IEnumerable<AppUserCollectionDto>> GetCollectionDtosAsync(int userId,
-        bool includePromoted = false, CancellationToken ct = default)
+        bool includePromoted = false, bool sortByLastModified = false, CancellationToken ct = default)
     {
-        var ageRating = await context.AppUser.GetUserAgeRestriction(userId);
-        return await context.AppUserCollection
+        var ageRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
+        var query = context.AppUserCollection
             .Where(uc => uc.AppUserId == userId || (includePromoted && uc.Promoted))
-            .WhereIf(ageRating.AgeRating != AgeRating.NotApplicable, uc => uc.AgeRating <= ageRating.AgeRating)
-            .OrderBy(uc => uc.Title)
+            .RestrictAgainstAgeRestriction(ageRating);
+
+        query = sortByLastModified ? query.OrderByDescending(l => l.LastModified) : query.OrderBy(l => l.Title.ToUpper());
+
+        var finalQuery = query
             .ProjectTo<AppUserCollectionDto>(mapper.ConfigurationProvider)
             .ToListAsync(ct);
+
+        return await finalQuery;
     }
 
     public async Task<AppUserCollectionDto?> GetCollectionDtoAsync(int collectionId, int userId, CancellationToken ct = default)
     {
-        var ageRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var ageRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         return await context.AppUserCollection
             .Where(uc => (uc.AppUserId == userId || uc.Promoted) && uc.Id == collectionId)
-            .WhereIf(ageRating.AgeRating != AgeRating.NotApplicable, uc => uc.AgeRating <= ageRating.AgeRating)
+            .RestrictAgainstAgeRestriction(ageRating)
             .OrderBy(uc => uc.Title)
             .ProjectTo<AppUserCollectionDto>(mapper.ConfigurationProvider)
             .FirstOrDefaultAsync(ct);
@@ -84,10 +89,10 @@ public class CollectionTagRepository(DataContext context, IMapper mapper) : ICol
     public async Task<PagedList<AppUserCollectionDto>> GetCollectionDtosPagedAsync(int userId, UserParams userParams,
         bool includePromoted = false, CancellationToken ct = default)
     {
-        var ageRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var ageRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         var collections = context.AppUserCollection
             .Where(uc => uc.AppUserId == userId || (includePromoted && uc.Promoted))
-            .WhereIf(ageRating.AgeRating != AgeRating.NotApplicable, uc => uc.AgeRating <= ageRating.AgeRating)
+            .RestrictAgainstAgeRestriction(ageRating)
             .OrderBy(uc => uc.Title)
             .ProjectTo<AppUserCollectionDto>(mapper.ConfigurationProvider);
 
@@ -97,11 +102,11 @@ public class CollectionTagRepository(DataContext context, IMapper mapper) : ICol
     public async Task<IEnumerable<AppUserCollectionDto>> GetCollectionDtosBySeriesAsync(int userId, int seriesId,
         bool includePromoted = false, CancellationToken ct = default)
     {
-        var ageRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var ageRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         return await context.AppUserCollection
             .Where(uc => uc.AppUserId == userId || (includePromoted && uc.Promoted))
             .Where(uc => uc.Items.Any(s => s.Id == seriesId))
-            .WhereIf(ageRating.AgeRating != AgeRating.NotApplicable, uc => uc.AgeRating <= ageRating.AgeRating)
+            .RestrictAgainstAgeRestriction(ageRating)
             .OrderBy(uc => uc.Title)
             .ProjectTo<AppUserCollectionDto>(mapper.ConfigurationProvider)
             .ToListAsync(ct);

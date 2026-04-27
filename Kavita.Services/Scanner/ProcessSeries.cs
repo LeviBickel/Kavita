@@ -53,6 +53,8 @@ internal sealed record UpdateChapterComicInfoArgs
     public bool ForceUpdate { get; init; } = false;
 }
 
+internal sealed record TemporaryPerson(string Name, string NormalizedName);
+
 /// <summary>
 /// All code needed to Update a Series from a Scan action
 /// </summary>
@@ -116,7 +118,7 @@ public class ProcessSeries(
 
             // parsedInfos[0] is not the first volume or chapter. We need to find it using a ComicInfo check (as it uses firstParsedInfo for series sort)
             var firstParsedInfo = parsedInfos.FirstOrDefault(p => p.ComicInfo != null, firstInfo);
-            var databasePeople = await LoadAndCreateMissingChapterPeople(parsedInfos);
+            var databasePeople = await LoadAndCreateMissingChapterPeople(series, parsedInfos);
 
             await UpdateVolumes(databasePeople, settings, series, parsedInfos, args.ForceUpdate);
             series.Pages = series.Volumes.Sum(v => v.Pages);
@@ -147,9 +149,9 @@ public class ProcessSeries(
 
             // parsedInfos[0] is not the first volume or chapter. We need to find it
             var localizedSeries = parsedInfos.Select(p => p.LocalizedSeries).FirstOrDefault(p => !string.IsNullOrEmpty(p));
-            if (!series.LocalizedNameLocked && !string.IsNullOrEmpty(localizedSeries))
+            if (!series.LocalizedNameLocked)
             {
-                series.LocalizedName = localizedSeries;
+                series.LocalizedName = localizedSeries ?? string.Empty;
                 series.NormalizedLocalizedName = series.LocalizedName.ToNormalized();
             }
 
@@ -240,7 +242,7 @@ public class ProcessSeries(
 
     private async Task ReportDuplicateSeriesLookup(Library library, ParserInfo firstInfo, Exception ex)
     {
-        var seriesCollisions = await unitOfWork.SeriesRepository.GetAllSeriesByAnyName(firstInfo.LocalizedSeries, string.Empty, library.Id, firstInfo.Format);
+        var seriesCollisions = await unitOfWork.SeriesRepository.GetAllSeriesByAnyNameAsync(firstInfo.LocalizedSeries, string.Empty, library.Id, firstInfo.Format);
 
         seriesCollisions = seriesCollisions.Where(collision =>
             collision.Name != firstInfo.Series || collision.LocalizedName != firstInfo.LocalizedSeries).ToList();
@@ -320,9 +322,9 @@ public class ProcessSeries(
 
         DeterminePublicationStatus(series, chapters);
 
-        if (!string.IsNullOrEmpty(firstChapter?.Summary) && !series.Metadata.SummaryLocked)
+        if (!series.Metadata.SummaryLocked)
         {
-            series.Metadata.Summary = firstChapter.Summary;
+            series.Metadata.Summary = firstChapter?.Summary ?? string.Empty;
         }
 
         if (!series.Metadata.LanguageLocked)
@@ -352,7 +354,7 @@ public class ProcessSeries(
 
         #region PeopleAndTagsAndGenres
 
-        foreach (var personRole in Enum.GetValues<PersonRole>().Where(r => r != PersonRole.Other))
+        foreach (var personRole in Enum.GetValues<PersonRole>())
         {
             if (series.Metadata.IsPersonRoleLocked(personRole)) continue;
 
@@ -853,57 +855,46 @@ public class ProcessSeries(
             chapter.AgeRating = ComicInfo.ConvertAgeRatingToEnum(comicInfo.AgeRating);
         }
 
-        if (!chapter.TitleNameLocked && !string.IsNullOrEmpty(comicInfo.Title))
+        if (!chapter.TitleNameLocked)
         {
             chapter.TitleName = comicInfo.Title.Trim();
         }
 
-        if (!chapter.SummaryLocked && !string.IsNullOrEmpty(comicInfo.Summary))
+        if (!chapter.SummaryLocked)
         {
             chapter.Summary = comicInfo.Summary;
         }
 
-        if (!chapter.LanguageLocked && !string.IsNullOrEmpty(comicInfo.LanguageISO))
+        if (!chapter.LanguageLocked)
         {
             chapter.Language = comicInfo.LanguageISO;
         }
 
-        if (!string.IsNullOrEmpty(comicInfo.SeriesGroup))
-        {
-            chapter.SeriesGroup = comicInfo.SeriesGroup;
-        }
+        chapter.SeriesGroup = comicInfo.SeriesGroup;
+        chapter.StoryArc = comicInfo.StoryArc;
+        chapter.AlternateSeries = comicInfo.AlternateSeries;
+        chapter.AlternateNumber = comicInfo.AlternateNumber;
+        chapter.StoryArcNumber = comicInfo.StoryArcNumber;
+        chapter.AlternateCount = comicInfo.AlternateCount;
 
-        if (!string.IsNullOrEmpty(comicInfo.StoryArc))
-        {
-            chapter.StoryArc = comicInfo.StoryArc;
-        }
-
-        if (!string.IsNullOrEmpty(comicInfo.AlternateSeries))
-        {
-            chapter.AlternateSeries = comicInfo.AlternateSeries;
-        }
-
-        if (!string.IsNullOrEmpty(comicInfo.AlternateNumber))
-        {
-            chapter.AlternateNumber = comicInfo.AlternateNumber;
-        }
-
-        if (!string.IsNullOrEmpty(comicInfo.StoryArcNumber))
-        {
-            chapter.StoryArcNumber = comicInfo.StoryArcNumber;
-        }
-
-        if (comicInfo.AlternateCount > 0)
-        {
-            chapter.AlternateCount = comicInfo.AlternateCount;
-        }
 
         if (!string.IsNullOrEmpty(comicInfo.Web))
         {
-            chapter.WebLinks = string.Join(",", comicInfo.Web.SplitBy(','));
+            if (comicInfo.Web.Contains(','))
+            {
+                chapter.WebLinks = string.Join(",", comicInfo.Web.SplitBy(','));
+            }
+            else
+            {
+                chapter.WebLinks = string.Join(",", comicInfo.Web.SplitBy(' '));
+            }
+        }
+        else
+        {
+            chapter.WebLinks = string.Empty;
         }
 
-        if (!chapter.ISBNLocked && !string.IsNullOrEmpty(comicInfo.Isbn))
+        if (!chapter.ISBNLocked)
         {
             chapter.ISBN = comicInfo.Isbn;
         }
@@ -915,7 +906,7 @@ public class ProcessSeries(
             chapter.ReleaseDate = new DateTime(comicInfo.Year, month, day);
         }
 
-        foreach (var personRole in Enum.GetValues<PersonRole>().Where(r => r != PersonRole.Other))
+        foreach (var personRole in Enum.GetValues<PersonRole>())
         {
             if (chapter.IsPersonRoleLocked(personRole)) continue;
 
@@ -953,7 +944,7 @@ public class ProcessSeries(
     {
         try
         {
-            await GenreHelper.UpdateChapterGenres(chapter, genreNames, unitOfWork);
+            await TagHelper.UpdateEntityTags(chapter.Genres, genreNames, unitOfWork.DataContext.Genre, unitOfWork);
         }
         catch (Exception ex)
         {
@@ -965,7 +956,7 @@ public class ProcessSeries(
     {
         try
         {
-            await TagHelper.UpdateChapterTags(chapter, tagNames, unitOfWork);
+            await TagHelper.UpdateEntityTags(chapter.Tags, tagNames, unitOfWork.DataContext.Tag, unitOfWork);
         }
         catch (Exception ex)
         {
@@ -973,23 +964,32 @@ public class ProcessSeries(
         }
     }
 
-    private async Task<Dictionary<string, Person>> LoadAndCreateMissingChapterPeople(IList<ParserInfo> parserInfos)
+    private async Task<Dictionary<string, Person>> LoadAndCreateMissingChapterPeople(Series series, IList<ParserInfo> parserInfos)
     {
         var comicInfos = parserInfos.Select(pi => pi.ComicInfo).WhereNotNull().ToList();
 
+        // We must ensure existing people are loaded as well. As a Chapter (entity) can have people locked, but a person
+        // removed from the ComicInfo. Which would later not be present in the dictionary
+        var existingPeople = series.Volumes
+            .SelectMany(v => v.Chapters
+                .SelectMany(c => c.People)
+                .Select(cp => cp.Person)
+                .Select(p => new TemporaryPerson(p.Name, p.NormalizedName)));
+
         var allPeople = Enum.GetValues<PersonRole>()
             .SelectMany(role => comicInfos.SelectMany(ci => ci.GetPeopleForRole(role)))
-            .Select(person => new {Name = person, NormalizaedName = person.ToNormalized()})
-            .DistinctBy(person => person.NormalizaedName)
+            .Select(person => new TemporaryPerson(person, person.ToNormalized()))
+            .Concat(existingPeople)
+            .DistinctBy(person => person.NormalizedName)
             .ToList();
 
-        var normalizedNames = allPeople.Select(p => p.NormalizaedName).ToList();
+        var normalizedNames = allPeople.Select(p => p.NormalizedName).ToList();
 
         var peopleInDatabase = await unitOfWork.PersonRepository.GetPeopleByNames(normalizedNames);
         var existingPeopleDict = PersonHelper.ConstructNameAndAliasDictionary(peopleInDatabase);
 
         var peopleToAdd = allPeople
-            .Where(p => !existingPeopleDict.ContainsKey(p.NormalizaedName))
+            .Where(p => !existingPeopleDict.ContainsKey(p.NormalizedName))
             .Select(p => new PersonBuilder(p.Name).Build())
             .ToList();
 

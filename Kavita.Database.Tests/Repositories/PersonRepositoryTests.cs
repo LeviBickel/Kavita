@@ -5,8 +5,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Kavita.Common.Helpers;
 using Kavita.Models.Builders;
+using Kavita.Models.DTOs.Filtering.v2.Requests;
 using Kavita.Models.DTOs.Metadata.Browse;
-using Kavita.Models.DTOs.Metadata.Browse.Requests;
 using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
 using Kavita.Models.Entities.Person;
@@ -177,7 +177,7 @@ public class PersonRepositoryTests(ITestOutputHelper outputHelper): AbstractDbTe
         var allPeople = context.Person.ToList();
 
         var fullAccessPeople =
-            await unitOfWork.PersonRepository.GetBrowsePersonDtos(fullAccess.Id, new BrowsePersonFilterDto(),
+            await unitOfWork.PersonRepository.GetBrowsePersonDtos(fullAccess.Id, new PersonFilterDto(),
                 new UserParams());
         Assert.Equal(allPeople.Count, fullAccessPeople.TotalCount);
 
@@ -194,7 +194,7 @@ public class PersonRepositoryTests(ITestOutputHelper outputHelper): AbstractDbTe
         Assert.Equal(2, fullAccessPeople.First(dto => dto.Id == lib1SeriesPerson.Id).SeriesCount);
 
         var restrictedAccessPeople =
-            await unitOfWork.PersonRepository.GetBrowsePersonDtos(restrictedAccess.Id, new BrowsePersonFilterDto(),
+            await unitOfWork.PersonRepository.GetBrowsePersonDtos(restrictedAccess.Id, new PersonFilterDto(),
                 new UserParams());
 
         Assert.Equal(7, restrictedAccessPeople.TotalCount);
@@ -215,7 +215,7 @@ public class PersonRepositoryTests(ITestOutputHelper outputHelper): AbstractDbTe
         Assert.Equal(2, restrictedAccessPeople.First(dto => dto.Id == lib1SeriesPerson.Id).SeriesCount);
 
         var restrictedAgeAccessPeople = await unitOfWork.PersonRepository.GetBrowsePersonDtos(restrictedAgeAccess.Id,
-            new BrowsePersonFilterDto(), new UserParams());
+            new PersonFilterDto(), new UserParams());
 
         // Note: There is a potential bug here where a person in a different chapter of an age restricted series will show up
         Assert.Equal(6, restrictedAgeAccessPeople.TotalCount);

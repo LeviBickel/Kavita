@@ -30,6 +30,7 @@ import {BreakpointService} from "../../../_services/breakpoint.service";
 import {ActionItem} from "../../../_models/actionables/action-item";
 import {Action} from "../../../_models/actionables/action";
 import {ActionResult} from "../../../_models/actionables/action-result";
+import {FilterUtilitiesService} from "../../../shared/_services/filter-utilities.service";
 
 @Component({
   selector: 'app-side-nav',
@@ -58,6 +59,7 @@ export class SideNavComponent {
   cachedData: SideNavStream[] | null = null;
   actions: ActionItem<Library>[] = this.actionFactoryService.getLibraryActions();
   homeActions: ActionItem<{}>[] = this.actionFactoryService.getSideNavHomeActions();
+  readingListActions: ActionItem<{}>[] = this.actionFactoryService.getSideNavReadingListActions();
 
   filterQuery: string = '';
   filterLibrary = (stream: SideNavStream) => {
@@ -169,6 +171,12 @@ export class SideNavComponent {
       this.showMore(true);
     }
   }
+  performReadingListAction(event: ActionItem<{}> | ActionResult<{}>) {
+    if (event.action === Action.Navigate) {
+      this.router.navigateByUrl('/settings#cbl-import');
+      return;
+    }
+  }
 
   getLibraryTypeIcon(format: LibraryType) {
     switch (format) {
@@ -207,6 +215,10 @@ export class SideNavComponent {
     this.showAllSubject.next(false);
     this.editMode = false;
     this.cdRef.markForCheck();
+  }
+
+  getSmartFilterBaseLink(item: SideNavStream) {
+    return '/' + FilterUtilitiesService.getFilterLink(item.entityType, '');
   }
 
   async reorderDrop($event: CdkDragDrop<any, any, SideNavStream>) {

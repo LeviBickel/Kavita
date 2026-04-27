@@ -24,19 +24,7 @@ public class GenreRepository(DataContext context, IMapper mapper) : IGenreReposi
         context.Genre.Attach(genre);
     }
 
-    public void Remove(Genre genre)
-    {
-        context.Genre.Remove(genre);
-    }
-
-    public async Task<Genre?> FindByNameAsync(string genreName, CancellationToken ct = default)
-    {
-        var normalizedName = genreName.ToNormalized();
-        return await context.Genre
-            .FirstOrDefaultAsync(g => g.NormalizedTitle != null && g.NormalizedTitle.Equals(normalizedName), cancellationToken: ct);
-    }
-
-    public async Task RemoveAllGenreNoLongerAssociated(bool removeExternal = false, CancellationToken ct = default)
+    public async Task RemoveAllGenreNoLongerAssociated(CancellationToken ct = default)
     {
         var genresWithNoConnections = await context.Genre
             .Include(p => p.SeriesMetadatas)
@@ -50,7 +38,7 @@ public class GenreRepository(DataContext context, IMapper mapper) : IGenreReposi
         await context.SaveChangesAsync(ct);
     }
 
-    public async Task<int> GetCountAsync(CancellationToken ct = default)
+    private async Task<int> GetCountAsync(CancellationToken ct = default)
     {
         return await context.Genre.CountAsync(cancellationToken: ct);
     }
@@ -101,7 +89,7 @@ public class GenreRepository(DataContext context, IMapper mapper) : IGenreReposi
     public async Task<IList<GenreTagDto>> GetAllGenreDtosForLibrariesAsync(int userId, IList<int>? libraryIds = null,
         QueryContext context1 = QueryContext.None, CancellationToken ct = default)
     {
-        var userRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var userRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         var userLibs = await context.Library.GetUserLibraries(userId, context1).ToListAsync(ct);
 
         if (libraryIds is {Count: > 0})
@@ -154,7 +142,7 @@ public class GenreRepository(DataContext context, IMapper mapper) : IGenreReposi
     public async Task<PagedList<BrowseGenreDto>> GetBrowseableGenre(int userId, UserParams userParams,
         CancellationToken ct = default)
     {
-        var ageRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var ageRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
 
         var allLibrariesCount = await context.Library.CountAsync(ct);
         var userLibs = await context.Library.GetUserLibraries(userId).ToListAsync(ct);

@@ -15,23 +15,13 @@
     </div>
   }
 
-  @if (atTop) {
-    <div #topSpacer class="spacer top" role="alert" (click)="loadPrevChapter.emit(undefined)">
-      <div class="empty-space"></div>
-      <div>
-        <button class="btn btn-icon mx-auto">
-          <i class="fa fa-angle-double-up animate" aria-hidden="true"></i>
-        </button>
-        <span class="mx-auto text">{{t('continuous-reading-prev-chapter')}}</span>
-        <button class="btn btn-icon mx-auto">
-          <i class="fa fa-angle-double-up animate" aria-hidden="true"></i>
-        </button>
-        <span class="visually-hidden">{{t('continuous-reading-prev-chapter-alt')}}</span>
-      </div>
-    </div>
-  }
+  <app-pull-to-load
+    [direction]="'down'"
+    [title]="t('continuous-reading-prev-chapter')"
+    [scrollContainer]="scrollElement"
+    (triggered)="loadPrevChapter.emit()" />
 
-  <div infinite-scroll [infiniteScrollDistance]="1" [infiniteScrollThrottle]="50">
+  <div #scroller tabindex="0" [style.outline]="'none'" infinite-scroll [infiniteScrollDistance]="1" [infiniteScrollThrottle]="50">
     @for(item of webtoonImages | async; let index = $index; track item.src) {
       <img src="{{item.src}}" style="display: block;"
            [style.filter]="(darkness$ | async)  ?? '' | safeStyle"
@@ -40,6 +30,7 @@
            rel="nofollow"
            alt="image {{item.page}}"
            (load)="onImageLoad($event)"
+           (error)="onImageLoadError($event)"
            id="page-{{item.page}}"
            [attr.page]="item.page"
            ondragstart="return false;"
@@ -47,18 +38,10 @@
     }
   </div>
 
-  <div #bottomSpacer class="spacer bottom" role="alert" (click)="loadNextChapter.emit(undefined)">
-    <div>
-      <button class="btn btn-icon mx-auto">
-        <i class="fa fa-angle-double-down animate" aria-hidden="true"></i>
-      </button>
-      <span class="mx-auto text">{{t('continuous-reading-next-chapter')}}</span>
-      <button class="btn btn-icon mx-auto">
-        <i class="fa fa-angle-double-down animate" aria-hidden="true"></i>
-      </button>
-      <span class="visually-hidden">{{t('continuous-reading-next-chapter-alt')}}</span>
-    </div>
-    <div class="empty-space"></div>
-  </div>
+  <app-pull-to-load
+    [direction]="'up'"
+    [title]="t('continuous-reading-next-chapter')"
+    [scrollContainer]="scrollElement"
+    (triggered)="moveToNextChapter()" />
 
 </ng-container>

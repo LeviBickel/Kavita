@@ -36,13 +36,13 @@ public interface ICollectionTagRepository
     Task<IEnumerable<AppUserCollection>> GetAllCollectionsAsync(CollectionIncludes includes = CollectionIncludes.None, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all of the user's collections with the option of other user's promoted
+    /// Returns all the user's collections with the option of other user's promoted
     /// </summary>
     /// <param name="userId"></param>
     /// <param name="includePromoted"></param>
     /// <param name="ct"></param>
     /// <returns></returns>
-    Task<IEnumerable<AppUserCollectionDto>> GetCollectionDtosAsync(int userId, bool includePromoted = false, CancellationToken ct = default);
+    Task<IEnumerable<AppUserCollectionDto>> GetCollectionDtosAsync(int userId, bool includePromoted = false, bool sortByLastModified = false, CancellationToken ct = default);
     Task<PagedList<AppUserCollectionDto>> GetCollectionDtosPagedAsync(int userId, UserParams userParams, bool includePromoted = false, CancellationToken ct = default);
     Task<IEnumerable<AppUserCollectionDto>> GetCollectionDtosBySeriesAsync(int userId, int seriesId, bool includePromoted = false, CancellationToken ct = default);
 

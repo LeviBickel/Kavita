@@ -23,7 +23,7 @@ import {UserCollection} from 'src/app/_models/collection-tag';
 import {SeriesAddedToCollectionEvent} from 'src/app/_models/events/series-added-to-collection-event';
 import {Pagination} from 'src/app/_models/pagination';
 import {Series} from 'src/app/_models/series';
-import {FilterEvent, SortField} from 'src/app/_models/metadata/series-filter';
+import {FilterEvent, SeriesSortField} from 'src/app/_models/metadata/series-filter';
 import {CollectionTagService} from 'src/app/_services/collection-tag.service';
 import {ImageService} from 'src/app/_services/image.service';
 import {JumpbarService} from 'src/app/_services/jumpbar.service';
@@ -42,7 +42,7 @@ import {
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {TranslocoDirective} from "@jsverse/transloco";
 import {CardActionablesComponent} from "../../../_single-module/card-actionables/card-actionables.component";
-import {FilterField} from "../../../_models/metadata/v2/filter-field";
+import {SeriesFilterField} from "../../../_models/metadata/v2/series-filter-field";
 import {FilterV2} from "../../../_models/metadata/v2/filter-v2";
 import {AccountService} from "../../../_services/account.service";
 import {ScrobbleProvider} from "../../../_services/scrobbling.service";
@@ -107,7 +107,7 @@ export class CollectionDetailComponent implements AfterContentChecked {
   isLoading = signal(true);
   series = signal<Array<Series>>([]);
   pagination = signal(new Pagination());
-  filter = signal<FilterV2<FilterField> | undefined>(undefined);
+  filter = signal<FilterV2<SeriesFilterField> | undefined>(undefined);
   filterSettings = signal(new SeriesFilterSettings());
   actionInProgress = signal(false);
   filterActive = signal(false);
@@ -123,7 +123,7 @@ export class CollectionDetailComponent implements AfterContentChecked {
   filterActiveCheck = computed(() => {
     const tagId = this.collectionTag()?.id ?? 0;
     const check = this.metadataService.createDefaultFilterDto('series');
-    check.statements.push({field: FilterField.CollectionTags, value: tagId + '', comparison: FilterComparison.Equal});
+    check.statements.push({field: SeriesFilterField.CollectionTags, value: tagId + '', comparison: FilterComparison.Equal});
     return check;
   });
 
@@ -134,18 +134,18 @@ export class CollectionDetailComponent implements AfterContentChecked {
       this.router.routeReuseStrategy.shouldReuseRoute = () => false;
 
       this.route.data.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(data => {
-        let filter = data['filter'] as FilterV2<FilterField, SortField>;
+        let filter = data['filter'] as FilterV2<SeriesFilterField, SeriesSortField>;
         const tag = this.collectionTag();
         const tagId = tag?.id ?? 0;
 
-        const defaultStmt =  {field: FilterField.CollectionTags, value: tagId + '', comparison: FilterComparison.Equal};
+        const defaultStmt =  {field: SeriesFilterField.CollectionTags, value: tagId + '', comparison: FilterComparison.Equal};
 
         if (filter == null) {
           filter = this.metadataService.createDefaultFilterDto('series');
           filter.statements.push(defaultStmt);
         }
 
-        if (filter.statements.filter((stmt: FilterStatement<FilterField>) => stmt.field === FilterField.CollectionTags).length === 0) {
+        if (filter.statements.filter((stmt: FilterStatement<SeriesFilterField>) => stmt.field === SeriesFilterField.CollectionTags).length === 0) {
           filter!.statements.push(defaultStmt);
         }
 
@@ -230,7 +230,7 @@ export class CollectionDetailComponent implements AfterContentChecked {
   }
 
 
-  updateFilter(data: FilterEvent<FilterField, SortField>) {
+  updateFilter(data: FilterEvent<SeriesFilterField, SeriesSortField>) {
     if (data.filterV2 === undefined) return;
     this.filter.set(data.filterV2);
 

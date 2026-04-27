@@ -141,7 +141,6 @@
     "generic-cover-person-save": "Unable to save cover image to Person",
     "generic-cover-volume-save": "Unable to save cover image to Volume",
     "access-denied": "You do not have access",
-    "reset-chapter-lock": "Unable to resetting cover lock for Chapter",
     "generic-user-delete": "Could not delete the user",
     "generic-user-pref": "There was an issue saving preferences",
     "opds-disabled": "OPDS is not enabled on this server",
@@ -158,8 +157,6 @@
     "browse-libraries": "Browse by Libraries",
     "collections": "All Collections",
     "browse-collections": "Browse by Collections",
-    "more-in-genre": "More in Genre {0}",
-    "browse-more-in-genre": "Browse more in {0}",
     "recently-updated": "Recently Updated",
     "browse-recently-updated": "Browse Recently Updated",
     "smart-filters": "Smart Filters",
@@ -230,6 +227,9 @@
     "auth-key-unique": "The Auth Key name must be unique to your account",
     "role-restricted": "Access forbidden: Your role does not permit this action",
 
+    "cbl-import-download-from-url": "Unable to download file from URL",
+    "cbl-import-validation-types": "Only .cbl and .json files are allowed",
+
 
 
     "email.auth-key-expired.subject": "Kavita - One or more Auth Keys have expired!",
@@ -286,5 +286,9 @@
     "email.send-to-device.subject": "Kavita - Send file from Kavita",
     "email.send-to-device.preheader": "File(s) sent from Kavita",
     "email.send-to-device.header": "You sent file(s) from Kavita",
-    "email.send-to-device.description": "Please find attached the file(s) you've sent."
+    "email.send-to-device.description": "Please find attached the file(s) you've sent.",
+
+    "email.username-change.subject": "Your username has been changed on {{InvitingUser}}'s Server",
+    "email.username-change.title": "Username Change Update",
+    "email.username-change.description": "Your account's username has been updated on {{InvitingUser}}'s Kavita instance. There is no action required from you."
 }

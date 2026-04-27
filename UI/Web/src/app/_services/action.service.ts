@@ -14,7 +14,7 @@ import {
 import {Chapter} from '../_models/chapter';
 import {Device} from '../_models/device/device';
 import {Library, LibraryType} from '../_models/library/library';
-import {ReadingList} from '../_models/reading-list';
+import {ReadingList} from '../_models/reading-list/reading-list';
 import {Series} from '../_models/series';
 import {Volume} from '../_models/volume';
 import {DeviceService} from './device.service';
@@ -63,6 +63,7 @@ import {ModalResult} from "../_models/modal/modal-result";
 import {addToModal, editModal} from "../_models/modal/modal-options";
 import {ModalService, TypedModalRef} from "./modal.service";
 import {FilterService} from "src/app/_services/filter.service";
+import {DashboardService} from "./dashboard.service";
 
 
 export type LibraryActionCallback = (library: Partial<Library>) => void;
@@ -101,6 +102,7 @@ export class ActionService {
   private readonly annotationsService = inject(AnnotationService);
   private readonly sideNavService = inject(NavService);
   private readonly filterService = inject(FilterService);
+  private readonly dashboardService = inject(DashboardService);
 
   private readingListModalRef: TypedModalRef<BulkSetReadingProfileModalComponent> |  TypedModalRef<ListSelectModalComponent<ReadingList>> | null = null;
   private collectionModalRef: TypedModalRef<ListSelectModalComponent<UserCollection>> | null = null;
@@ -296,7 +298,7 @@ export class ActionService {
         colRef.setInput('inputItems', []);
         colRef.setInput('loading', true);
 
-        this.collectionService.allCollections(true).pipe(
+        this.collectionService.allCollections(true, true).pipe(
           take(1),
           catchError(() => EMPTY),
           finalize(() => colRef.setInput('loading', false))
@@ -821,13 +823,21 @@ export class ActionService {
    */
   handleSmartFilterAction(action: ActionItem<SmartFilter>, smartFilter: SmartFilter, allFilters: SmartFilter[]) {
     switch (action.action) {
+      case Action.AddToDashboard:
+        return this.dashboardService.createDashboardStream(smartFilter.id).pipe(
+          map(() => this.fromAction(action, smartFilter, 'none'))
+        );
+      case Action.AddToSideNav:
+        return this.sideNavService.createSideNavStream(smartFilter.id).pipe(
+          map(() => this.fromAction(action, smartFilter, 'none'))
+        );
       case Action.Edit:
         const ref = this.modalService.open(EditSmartFilterModalComponent, editModal());
         ref.componentInstance.smartFilter = smartFilter;
         ref.componentInstance.allFilters = allFilters;
         return this.handleEditModal(ref, action, smartFilter);
       case Action.Delete:
-        return from(this.confirmService.confirm(translate('toasts.confirm-delete-smart-filter'))).pipe(
+      return from(this.confirmService.confirm(translate('toasts.confirm-delete-smart-filter'))).pipe(
           filter(confirmed => confirmed),
           switchMap(() => this.filterService.deleteFilter(smartFilter.id)),
           tap(() => this.toastr.success(translate('toasts.smart-filter-deleted'))),
@@ -866,6 +876,16 @@ export class ActionService {
   handleSideNavHomeStream(action: ActionItem<{}>, entity: {}) {
     switch (action.action) {
       case Action.Edit:
+        return of(this.fromAction(action, entity, 'none'));
+
+      default:
+        return of(this.fromAction(action, entity, 'none'));
+    }
+  }
+
+  handleSideNavReadingListStream(action: ActionItem<{}>, entity: {}) {
+    switch (action.action) {
+      case Action.Navigate:
         return of(this.fromAction(action, entity, 'none'));
 
       default:
@@ -984,7 +1004,7 @@ export class ActionService {
         colRef.setInput('inputItems', []);
         colRef.setInput('loading', true);
 
-        this.collectionService.allCollections(true).pipe(
+        this.collectionService.allCollections(true, true).pipe(
           take(1),
           catchError(() => EMPTY),
           finalize(() => colRef.setInput('loading', false))

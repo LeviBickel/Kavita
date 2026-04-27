@@ -10,8 +10,8 @@ import {PublicationStatusDto} from '../_models/metadata/publication-status-dto';
 import {allPeopleRoles, Person, PersonRole} from '../_models/metadata/person';
 import {Tag} from '../_models/tag';
 import {FilterComparison} from '../_models/metadata/v2/filter-comparison';
-import {FilterField} from '../_models/metadata/v2/filter-field';
-import {mangaFormatFilters, SortField} from "../_models/metadata/series-filter";
+import {SeriesFilterField} from '../_models/metadata/v2/series-filter-field';
+import {mangaFormatFilters, SeriesSortField} from "../_models/metadata/series-filter";
 import {FilterCombination} from "../_models/metadata/v2/filter-combination";
 import {FilterV2} from "../_models/metadata/v2/filter-v2";
 import {FilterStatement} from "../_models/metadata/v2/filter-statement";
@@ -22,7 +22,7 @@ import {TextResonse} from "../_types/text-response";
 import {QueryContext} from "../_models/metadata/v2/query-context";
 import {AgeRatingPipe} from "../_pipes/age-rating.pipe";
 import {MangaFormatPipe} from "../_pipes/manga-format.pipe";
-import {translate, TranslocoService} from "@jsverse/transloco";
+import {translate} from "@jsverse/transloco";
 import {LibraryService} from './library.service';
 import {CollectionTagService} from "./collection-tag.service";
 import {PaginatedResult} from "../_models/pagination";
@@ -33,20 +33,23 @@ import {ValidFilterEntity} from "../metadata-filter/filter-settings";
 import {PersonFilterField} from "../_models/metadata/v2/person-filter-field";
 import {PersonRolePipe} from "../_pipes/person-role.pipe";
 import {PersonSortField} from "../_models/metadata/v2/person-sort-field";
-import {AnnotationsFilterField} from "../_models/metadata/v2/annotations-filter";
+import {AnnotationsFilterField, AnnotationsSortField} from "../_models/metadata/v2/annotations-filter";
 import {AccountService} from "./account.service";
 import {MemberService} from "./member.service";
 import {RgbaColor} from "../book-reader/_models/annotations/highlight-slot";
 import {SeriesService} from "./series.service";
+import {ReadingListTag} from "../_models/reading-list/reading-list-tag";
+import {ReadingListSortField} from "../_models/metadata/v2/reading-list-sort-field";
+import {ReadingListFilterField} from "../_models/metadata/v2/reading-list-filter-field";
+import {FilterEntityType} from "../_models/metadata/v2/filter-entity-type";
+import {allReadingListProviders} from "../_models/reading-list/reading-list";
+import {ReadingListProviderPipe} from "../_pipes/reading-list-provider.pipe";
 
 @Injectable({
   providedIn: 'root'
 })
 export class MetadataService {
-  private httpClient = inject(HttpClient);
-
-
-  private readonly translocoService = inject(TranslocoService);
+  private readonly httpClient = inject(HttpClient);
   private readonly libraryService = inject(LibraryService);
   private readonly collectionTagService = inject(CollectionTagService);
   private readonly utilityService = inject(UtilityService);
@@ -63,13 +66,10 @@ export class MetadataService {
   private ageRatingPipe = new AgeRatingPipe();
   private mangaFormatPipe = new MangaFormatPipe();
   private personRolePipe = new PersonRolePipe();
+  private readingListProviderPipe = new ReadingListProviderPipe();
 
   getSeriesMetadataFromPlus(seriesId: number, libraryType: LibraryType) {
     return this.httpClient.get<SeriesDetailPlus | null>(this.baseUrl + 'metadata/series-detail-plus?seriesId=' + seriesId + '&libraryType=' + libraryType);
-  }
-
-  forceRefreshFromPlus(seriesId: number) {
-    return this.httpClient.post(this.baseUrl + 'metadata/force-refresh?seriesId=' + seriesId, {});
   }
 
   getAllAgeRatings(libraries?: Array<number>) {
@@ -94,6 +94,11 @@ export class MetadataService {
       method += '?libraryIds=' + libraries.join(',');
     }
     return this.httpClient.get<Array<Tag>>(this.baseUrl + method);
+  }
+
+  getAllReadingListTags() {
+    let method = 'metadata/readinglist-tags'
+    return this.httpClient.get<Array<ReadingListTag>>(this.baseUrl + method);
   }
 
   getAllGenres(libraries?: Array<number>, context: QueryContext = QueryContext.None) {
@@ -167,15 +172,43 @@ export class MetadataService {
 
   createDefaultFilterDto<TFilter extends number, TSort extends number>(entityType: ValidFilterEntity): FilterV2<TFilter, TSort> {
     return {
+      entityType: this.getEntityType(entityType),
       statements: [] as FilterStatement<TFilter>[],
       combination: FilterCombination.And,
       limitTo: 0,
       sortOptions: {
         isAscending: true,
-        sortField: (entityType === 'series' ? SortField.SortName : PersonSortField.Name) as TSort
+        sortField: this.getDefaultSortField(entityType) as TSort
       }
     };
   }
+
+  getEntityType(entityType: ValidFilterEntity) {
+    switch (entityType) {
+      case 'series':
+        return FilterEntityType.Series;
+      case 'person':
+        return FilterEntityType.Person;
+      case 'annotation':
+        return FilterEntityType.Annotation;
+      case 'readinglist':
+        return FilterEntityType.ReadingList;
+    }
+  }
+
+  getDefaultSortField(entityType: ValidFilterEntity) {
+    switch (entityType) {
+      case 'series':
+        return SeriesSortField.SortName;
+      case 'person':
+        return PersonSortField.Name;
+      case 'annotation':
+        return AnnotationsSortField.Owner;
+      case 'readinglist':
+        return ReadingListSortField.Title;
+    }
+  }
+
 
   createDefaultFilterStatement(entityType: ValidFilterEntity) {
     switch (entityType) {
@@ -186,9 +219,11 @@ export class MetadataService {
         }
         return this.createFilterStatement(AnnotationsFilterField.Owner);
       case 'series':
-        return this.createFilterStatement(FilterField.SeriesName);
+        return this.createFilterStatement(SeriesFilterField.SeriesName);
       case 'person':
         return this.createFilterStatement(PersonFilterField.Role, FilterComparison.Contains, `${PersonRole.CoverArtist},${PersonRole.Writer}`);
+      case 'readinglist':
+        return this.createFilterStatement(ReadingListFilterField.Title);
     }
   }
 
@@ -208,8 +243,6 @@ export class MetadataService {
 
   updatePerson(entity: IHasCast, persons: Person[], role: PersonRole) {
     switch (role) {
-      case PersonRole.Other:
-        break;
       case PersonRole.CoverArtist:
         entity.coverArtists = persons;
         break;
@@ -262,9 +295,11 @@ export class MetadataService {
       case "annotation":
         return this.getAnnotationOptionsForFilterField(filterField as AnnotationsFilterField);
       case 'series':
-        return this.getSeriesOptionsForFilterField(filterField as FilterField);
+        return this.getSeriesOptionsForFilterField(filterField as SeriesFilterField);
       case 'person':
         return this.getPersonOptionsForFilterField(filterField as PersonFilterField);
+      case 'readinglist':
+        return this.getReadingListOptionsForFilterField(filterField as ReadingListFilterField);
     }
   }
 
@@ -280,7 +315,7 @@ export class MetadataService {
           return {value: lib.id, label: lib.name};
         })));
       case AnnotationsFilterField.HighlightSlots:
-        return of(this.highlightSlots().map((slot, idx) => {
+        return of(this.highlightSlots().map((slot, _) => {
           return {value: slot.slotNumber, label: translate('highlight-bar.slot-label', {slot: slot.slotNumber + 1}), color: slot.color}; // Slots start at 0
         }));
       case AnnotationsFilterField.Series:
@@ -296,57 +331,76 @@ export class MetadataService {
     switch (field) {
       case PersonFilterField.Role:
         return of(allPeopleRoles.map(r => {return {value: r, label: this.personRolePipe.transform(r)}}));
+      case PersonFilterField.Library:
+        return this.libraryService.getLibraries().pipe(map(libs => libs.map(lib => ({value: lib.id, label: lib.name}))));
     }
     return of([])
   }
 
-  private getSeriesOptionsForFilterField(field: FilterField) {
+  private getSeriesOptionsForFilterField(field: SeriesFilterField) {
     switch (field) {
-      case FilterField.PublicationStatus:
+      case SeriesFilterField.PublicationStatus:
         return this.getAllPublicationStatus().pipe(map(pubs => pubs.map(pub => {
           return {value: pub.value, label: pub.title}
         })));
-      case FilterField.AgeRating:
+      case SeriesFilterField.AgeRating:
         return this.getAllAgeRatings().pipe(map(ratings => ratings.map(rating => {
           return {value: rating.value, label: this.ageRatingPipe.transform(rating.value)}
         })));
-      case FilterField.Genres:
+      case SeriesFilterField.Genres:
         return this.getAllGenres().pipe(map(genres => genres.map(genre => {
           return {value: genre.id, label: genre.title}
         })));
-      case FilterField.Languages:
+      case SeriesFilterField.Languages:
         return this.getAllLanguages().pipe(map(statuses => statuses.map(status => {
           return {value: status.isoCode, label: status.title + ` (${status.isoCode})`}
         })));
-      case FilterField.Formats:
+      case SeriesFilterField.Formats:
         return of(mangaFormatFilters).pipe(map(statuses => statuses.map(status => {
           return {value: status.value, label: this.mangaFormatPipe.transform(status.value)}
         })));
-      case FilterField.Libraries:
+      case SeriesFilterField.Libraries:
         return this.libraryService.getLibraries().pipe(map(libs => libs.map(lib => {
           return {value: lib.id, label: lib.name}
         })));
-      case FilterField.Tags:
+      case SeriesFilterField.Tags:
         return this.getAllTags().pipe(map(statuses => statuses.map(status => {
           return {value: status.id, label: status.title}
         })));
-      case FilterField.CollectionTags:
-        return this.collectionTagService.allCollections().pipe(map(statuses => statuses.map(status => {
+      case SeriesFilterField.CollectionTags:
+        return this.collectionTagService.allCollections(false, false).pipe(map(statuses => statuses.map(status => {
           return {value: status.id, label: status.title}
         })));
-      case FilterField.Characters: return this.getPersonOptions(PersonRole.Character);
-      case FilterField.Colorist: return this.getPersonOptions(PersonRole.Colorist);
-      case FilterField.CoverArtist: return this.getPersonOptions(PersonRole.CoverArtist);
-      case FilterField.Editor: return this.getPersonOptions(PersonRole.Editor);
-      case FilterField.Inker: return this.getPersonOptions(PersonRole.Inker);
-      case FilterField.Letterer: return this.getPersonOptions(PersonRole.Letterer);
-      case FilterField.Penciller: return this.getPersonOptions(PersonRole.Penciller);
-      case FilterField.Publisher: return this.getPersonOptions(PersonRole.Publisher);
-      case FilterField.Imprint: return this.getPersonOptions(PersonRole.Imprint);
-      case FilterField.Team: return this.getPersonOptions(PersonRole.Team);
-      case FilterField.Location: return this.getPersonOptions(PersonRole.Location);
-      case FilterField.Translators: return this.getPersonOptions(PersonRole.Translator);
-      case FilterField.Writers: return this.getPersonOptions(PersonRole.Writer);
+      case SeriesFilterField.Characters: return this.getPersonOptions(PersonRole.Character);
+      case SeriesFilterField.Colorist: return this.getPersonOptions(PersonRole.Colorist);
+      case SeriesFilterField.CoverArtist: return this.getPersonOptions(PersonRole.CoverArtist);
+      case SeriesFilterField.Editor: return this.getPersonOptions(PersonRole.Editor);
+      case SeriesFilterField.Inker: return this.getPersonOptions(PersonRole.Inker);
+      case SeriesFilterField.Letterer: return this.getPersonOptions(PersonRole.Letterer);
+      case SeriesFilterField.Penciller: return this.getPersonOptions(PersonRole.Penciller);
+      case SeriesFilterField.Publisher: return this.getPersonOptions(PersonRole.Publisher);
+      case SeriesFilterField.Imprint: return this.getPersonOptions(PersonRole.Imprint);
+      case SeriesFilterField.Team: return this.getPersonOptions(PersonRole.Team);
+      case SeriesFilterField.Location: return this.getPersonOptions(PersonRole.Location);
+      case SeriesFilterField.Translators: return this.getPersonOptions(PersonRole.Translator);
+      case SeriesFilterField.Writers: return this.getPersonOptions(PersonRole.Writer);
+    }
+
+    return of([]);
+  }
+
+  private getReadingListOptionsForFilterField(field: ReadingListFilterField) {
+    switch (field) {
+      case ReadingListFilterField.Tags:
+        return this.getAllReadingListTags().pipe(map(tags => tags.map(tag => {
+          return {value: tag.id, label: tag.title}
+        })));
+      case ReadingListFilterField.Writer:
+        return this.getPersonOptions(PersonRole.Writer);
+      case ReadingListFilterField.Artist:
+        return this.getPersonOptions(PersonRole.CoverArtist);
+      case ReadingListFilterField.Provider:
+        return of(allReadingListProviders.map(p => { return {value: p, label: this.readingListProviderPipe.transform(p)} }));
     }
 
     return of([]);

@@ -40,8 +40,6 @@
         "download": "{{changelog.download}}",
         "apply": "{{common.apply}}",
         "delete": "{{common.delete}}",
-        "drag-n-drop": "{{cover-image-chooser.drag-n-drop}}",
-        "upload": "{{cover-image-chooser.upload}}",
         "add": "{{common.add}}"
     },
     "restriction-selector": {
@@ -134,8 +132,7 @@
         "series-count": "{{common.series-count}}"
     },
     "all-filters": {
-        "count": "{{count}} {{customize-dashboard-modal.title-smart-filters}}",
-        "create": "{{common.create}}"
+        "count": "{{count}} {{customize-dashboard-modal.title-smart-filters}}"
     },
     "invite-user": {
         "close": "{{common.close}}",
@@ -325,8 +322,7 @@
     "manage-tasks-settings": {
         "reset-to-default": "{{common.reset-to-default}}",
         "reset": "{{common.reset}}",
-        "save": "{{common.save}}",
-        "required": "{{validation.required-field}}"
+        "save": "{{common.save}}"
     },
     "edit-collection-tags": {
         "required-field": "{{validation.required-field}}",

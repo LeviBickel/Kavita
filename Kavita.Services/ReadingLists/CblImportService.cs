@@ -17,11 +17,11 @@ using Kavita.Models.DTOs.ReadingLists.CBL.Internal;
 using Kavita.Models.DTOs.SignalR;
 using Kavita.Models.Entities.Enums;
 using Kavita.Models.Entities.ReadingLists;
-using Kavita.Models.Extensions;
 using Kavita.Services.Helpers;
 using Flurl.Http;
 using Kavita.Common;
 using Kavita.Common.Helpers;
+using Kavita.Models.Entities.Enums.ReadingList;
 using Microsoft.Extensions.Logging;
 
 namespace Kavita.Services.ReadingLists;
@@ -67,12 +67,17 @@ public class CblImportService(IUnitOfWork unitOfWork, ICblGithubService cblGithu
 
         var existingList = await unitOfWork.ReadingListRepository
             .GetReadingListByTitleAsync(cbl.Name, userId);
+
+        // Users may rename the underlying list causing a title lookup to fail, we fall back to lookup with the filename
+        var sourcePathStem = new FileInfo(filePath).Name;
+        existingList ??= await unitOfWork.ReadingListRepository.GetReadingListBySourcePathStemAsync(sourcePathStem, userId);
+
         summary.IsUpdate = existingList != null;
 
         return summary;
     }
 
-    public async Task<CblImportSummaryDto> UpsertReadingList(int userId, string filePath, CblImportDecisions decisions)
+    public async Task<CblImportSummaryDto> UpsertReadingList(int userId, string filePath, CblImportDecisions decisions, bool promote = false)
     {
         ParsedCblReadingList cbl;
         try
@@ -109,28 +114,27 @@ public class CblImportService(IUnitOfWork unitOfWork, ICblGithubService cblGithu
         // Override with user decisions
         foreach (var (order, decision) in decisions.ItemResolutions)
         {
-            if (matchResults.ContainsKey(order))
+            if (!matchResults.ContainsKey(order)) continue;
+
+            var item = cbl.Items.FirstOrDefault(i => i.Order == order);
+            if (item != null)
             {
-                var item = cbl.Items.FirstOrDefault(i => i.Order == order);
-                if (item != null)
-                {
-                    matchResults[order] = (
-                        new MatchedItem(decision.SeriesId, decision.VolumeId, decision.ChapterId, CblMatchTier.UserDecision),
-                        new CblBookResult(item)
-                        {
-                            Reason = CblImportReason.Success,
-                            MatchTier = CblMatchTier.UserDecision,
-                            SeriesId = decision.SeriesId,
-                            ChapterId = decision.ChapterId
-                        }
-                    );
-                }
+                matchResults[order] = (
+                    new MatchedItem(decision.SeriesId, decision.VolumeId, decision.ChapterId, CblMatchTier.UserDecision),
+                    new CblBookResult(item)
+                    {
+                        Reason = CblImportReason.Success,
+                        MatchTier = CblMatchTier.UserDecision,
+                        SeriesId = decision.SeriesId,
+                        ChapterId = decision.ChapterId
+                    }
+                );
             }
         }
 
         // Find or create reading list
         var readingList = await unitOfWork.ReadingListRepository
-            .GetReadingListByTitleAsync(cbl.Name, userId);
+            .GetReadingListByTitleAsync(cbl.Name, userId, ReadingListIncludes.Tags | ReadingListIncludes.Items);
         var isUpdate = readingList != null;
 
         if (readingList == null)
@@ -138,13 +142,16 @@ public class CblImportService(IUnitOfWork unitOfWork, ICblGithubService cblGithu
             readingList = new ReadingListBuilder(cbl.Name)
                 .WithSummary(cbl.Summary ?? string.Empty)
                 .WithAppUserId(userId)
+                .WithPromoted(promote)
                 .Build();
 
             unitOfWork.ReadingListRepository.Add(readingList);
         }
 
+
+
         // Set metadata from CBL
-        SetMetadataFromParsedCbl(cbl, readingList);
+        await SetMetadataFromParsedCblAsync(cbl, readingList);
 
         // Add resolved items
         foreach (var (order, (match, _)) in matchResults.OrderBy(kv => kv.Key))
@@ -188,21 +195,44 @@ public class CblImportService(IUnitOfWork unitOfWork, ICblGithubService cblGithu
 
         var summary = BuildSummary(cbl, filePath, matchResults);
         summary.IsUpdate = isUpdate;
+        summary.ReadingListId = readingList.Id;
+
         return summary;
     }
 
-    private static void SetMetadataFromParsedCbl(ParsedCblReadingList cbl, ReadingList readingList)
+    private async Task SetMetadataFromParsedCblAsync(ParsedCblReadingList cbl, ReadingList readingList)
     {
+        readingList.TotalItemsAtImport = cbl.Items.Count;
+
         if (!string.IsNullOrEmpty(cbl.Summary))
+        {
             readingList.Summary = cbl.Summary;
+        }
+
         if (cbl.StartYear > 0)
+        {
             readingList.StartingYear = cbl.StartYear;
+        }
+
         if (cbl.StartMonth > 0)
+        {
             readingList.StartingMonth = cbl.StartMonth;
+        }
+
         if (cbl.EndYear > 0)
+        {
             readingList.EndingYear = cbl.EndYear;
+        }
+
         if (cbl.EndMonth > 0)
+        {
             readingList.EndingMonth = cbl.EndMonth;
+        }
+
+        if (cbl.Tags.Count > 0)
+        {
+            await TagHelper.UpdateEntityTags(readingList.Tags, cbl.Tags, unitOfWork.DataContext.ReadingListTag, unitOfWork, false);
+        }
     }
 
     /// <summary>
@@ -252,10 +282,10 @@ public class CblImportService(IUnitOfWork unitOfWork, ICblGithubService cblGithu
         await readingListService.GenerateReadingListCoverImage(readingList);
     }
 
-    public async Task SyncReadingListAsync(int userId, int readingListId)
+    public async Task SyncReadingListAsync(int userId, int readingListId, bool force = false)
     {
         var readingList = await unitOfWork.ReadingListRepository
-            .GetReadingListByIdAsync(readingListId, ReadingListIncludes.Items);
+            .GetReadingListByIdAsync(readingListId, ReadingListIncludes.Tags | ReadingListIncludes.Items);
 
         if (readingList is not {CanSync: true} || readingList.AppUserId != userId)
         {
@@ -266,16 +296,13 @@ public class CblImportService(IUnitOfWork unitOfWork, ICblGithubService cblGithu
         string content;
         string? contentHash;
 
-        // Github-based list
-        if (!string.IsNullOrEmpty(readingList.SourcePath))
+        if (!string.IsNullOrEmpty(readingList.SourcePath)) // Github-based list
         {
             try
             {
                 var remoteSha = await cblGithubService.GetFileSha(readingList.SourcePath);
-                if (!readingList.HasRemoteChange(remoteSha))
+                if (await CheckAndMarkIfNoChanges(readingList, remoteSha, force))
                 {
-                    readingList.LastSyncCheckUtc = DateTime.UtcNow;
-                    await unitOfWork.CommitAsync();
                     return;
                 }
 
@@ -290,9 +317,8 @@ public class CblImportService(IUnitOfWork unitOfWork, ICblGithubService cblGithu
                 return;
             }
         }
-        else if (!string.IsNullOrEmpty(readingList.DownloadUrl))
+        else if (!string.IsNullOrEmpty(readingList.DownloadUrl)) // Url-based list
         {
-            // Url-based list
             try
             {
                 await urlValidationService.ValidateUrlAsync(readingList.DownloadUrl);
@@ -307,10 +333,8 @@ public class CblImportService(IUnitOfWork unitOfWork, ICblGithubService cblGithu
             }
 
             contentHash = FileService.ComputeSha256(content);
-            if (!readingList.HasRemoteChange(contentHash))
+            if (await CheckAndMarkIfNoChanges(readingList, contentHash, force))
             {
-                readingList.LastSyncCheckUtc = DateTime.UtcNow;
-                await unitOfWork.CommitAsync();
                 return;
             }
         }
@@ -323,16 +347,29 @@ public class CblImportService(IUnitOfWork unitOfWork, ICblGithubService cblGithu
         // Save to temp file for parsing
         var tempDir = Path.Join(directoryService.TempDirectory, $"{userId}", "cbl-sync");
         directoryService.ExistOrCreate(tempDir);
+
         var sourceRef = readingList.SourcePath ?? readingList.DownloadUrl ?? $"list-{readingListId}";
         var tempFile = Path.Join(tempDir, $"sync-{readingListId}{GetExtension(sourceRef)}");
+
         await directoryService.FileSystem.File.WriteAllTextAsync(tempFile, content);
 
         try
         {
             var cbl = CblParser.Parse(tempFile);
-            if (cbl.Items.Count == 0) return;
+            if (cbl.Items.Count == 0)
+            {
+                logger.LogWarning("Syncing of Reading List {ReadingListTitle} ({ReadingListId}) has 0 items from parsing, aborting", readingList.Title, readingList.Id);
+                return;
+            }
 
             var matchResults = await RunMatchingPipeline(userId, cbl);
+
+            // Validate there are at least results in case a bad file
+            if (matchResults.Count == 0)
+            {
+                logger.LogWarning("Syncing of Reading List {ReadingListTitle} ({ReadingListId}) has 0 matches, aborting", readingList.Title, readingList.Id);
+                return;
+            }
 
             // Clear existing items and re-add
             readingList.Items.Clear();
@@ -344,11 +381,11 @@ public class CblImportService(IUnitOfWork unitOfWork, ICblGithubService cblGithu
             }
 
             // Update metadata
-            SetMetadataFromParsedCbl(cbl, readingList);
+            await SetMetadataFromParsedCblAsync(cbl, readingList);
 
-            if (contentHash != null)
+            if (!string.IsNullOrEmpty(contentHash))
             {
-                readingList.ShaHash = contentHash;
+                readingList.ShaHash = contentHash; // This is either Github Sha hash or the content hash
             }
             readingList.LastSyncedUtc = DateTime.UtcNow;
             readingList.LastSyncCheckUtc = DateTime.UtcNow;
@@ -357,7 +394,13 @@ public class CblImportService(IUnitOfWork unitOfWork, ICblGithubService cblGithu
 
             // Re-run side effects like age ratings, cover generation, etc
             await readingListService.CalculateReadingListAgeRating(readingList);
-            await readingListService.CalculateStartAndEndDates(readingList);
+
+            // Don't calculate from issue-level metadata if already set from json file
+            if (ShouldCalcReleaseDatesFromIssues(readingList))
+            {
+                await readingListService.CalculateStartAndEndDates(readingList);
+            }
+
             await GenerateCoverForReadingList(readingList, cbl.CoverImageUrls);
 
             await unitOfWork.CommitAsync();
@@ -374,6 +417,31 @@ public class CblImportService(IUnitOfWork unitOfWork, ICblGithubService cblGithu
         {
             try { directoryService.FileSystem.File.Delete(tempFile); } catch { /* The file will be cleaned up with nightly, okay to swallow */ }
         }
+    }
+
+    public static bool ShouldCalcReleaseDatesFromIssues(ReadingList readingList)
+    {
+        var url = readingList.SourcePath ??  readingList.DownloadUrl;
+        var isV2 = readingList.Provider == ReadingListProvider.Url && !string.IsNullOrEmpty(url) && url.EndsWith(".json");
+
+        if (!isV2) return true;
+
+        // v2 lists don't have Months for some reason
+        var hasStartDate = readingList is { StartingYear: > 0 };
+        var hasEndDate = readingList is { EndingYear: > 0 };
+
+        return isV2 && !hasStartDate && !hasEndDate;
+    }
+
+    private async Task<bool> CheckAndMarkIfNoChanges(ReadingList readingList, string hash, bool force)
+    {
+        if (force || readingList.HasRemoteChange(hash)) return false;
+
+        logger.LogDebug("Sync of Reading List {ReadingListTitle} ({ReadingListId}) has no remote changes", readingList.Title, readingList.Id);
+        readingList.LastSyncCheckUtc = DateTime.UtcNow;
+        await unitOfWork.CommitAsync();
+        return true;
+
     }
 
     /// <summary>
@@ -436,6 +504,13 @@ public class CblImportService(IUnitOfWork unitOfWork, ICblGithubService cblGithu
         allNormalizedNames.AddRange(directNormalizedNames.Where(n => !allNormalizedNames.Contains(n)));
 
         // Collect external IDs
+        var kavitaIds = cbl.Items
+            .SelectMany(i => i.ExternalIds)
+            .Where(e => e.Provider == CblExternalDbProvider.Kavita && int.TryParse(e.IssueId, out _))
+            .Select(e => int.Parse(e.IssueId))
+            .Distinct()
+            .ToList();
+
         var comicVineIds = cbl.Items
             .SelectMany(i => i.ExternalIds)
             .Where(e => e.Provider == CblExternalDbProvider.ComicVine && !string.IsNullOrEmpty(e.IssueId))
@@ -458,7 +533,7 @@ public class CblImportService(IUnitOfWork unitOfWork, ICblGithubService cblGithu
             .GetRulesForNamesAsync(directNormalizedNames, userId);
 
         var externalIdChapters = await unitOfWork.ChapterRepository
-            .GetChaptersByExternalIdsAsync(comicVineIds, metronIds, userLibraryIds);
+            .GetChaptersByExternalIdsAsync(kavitaIds, comicVineIds, metronIds, userLibraryIds);
 
         var matchedSeries = (await unitOfWork.SeriesRepository
             .GetAllSeriesByNameAsync(allNormalizedNames, userId,

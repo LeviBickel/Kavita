@@ -16,6 +16,7 @@ using Kavita.Common;
 using Kavita.Models.Constants;
 using Kavita.Models.DTOs;
 using Kavita.Models.DTOs.Filtering.v2;
+using Kavita.Models.DTOs.Filtering.v2.Requests;
 using Kavita.Models.DTOs.Progress;
 using Kavita.Models.DTOs.Reader;
 using Kavita.Models.DTOs.SignalR;
@@ -60,7 +61,7 @@ public class ReaderController(ICacheService cacheService,
     {
         if (!UserContext.IsAuthenticated) return Unauthorized();
         var chapter = await cacheService.Ensure(chapterId, extractPdf);
-        if (chapter == null) return NoContent();
+        if (chapter == null) return NotFound();
 
         try
         {
@@ -94,7 +95,7 @@ public class ReaderController(ICacheService cacheService,
         try
         {
             var chapter = await cacheService.Ensure(chapterId, extractPdf);
-            if (chapter == null) return NoContent();
+            if (chapter == null) return NotFound();
 
             var path = cacheService.GetCachedPagePath(chapter.Id, page);
             return CachedFile(path, maxAge: TimeSpan.FromHours(1).Seconds);
@@ -119,7 +120,7 @@ public class ReaderController(ICacheService cacheService,
     public async Task<ActionResult> GetThumbnail(int chapterId, int pageNum, string apiKey)
     {
         var chapter = await cacheService.Ensure(chapterId, true);
-        if (chapter == null) return NoContent();
+        if (chapter == null) return NotFound();
 
         var images = cacheService.GetCachedPages(chapterId);
 
@@ -175,7 +176,7 @@ public class ReaderController(ICacheService cacheService,
     {
         if (chapterId <= 0) return ArraySegment<FileDimensionDto>.Empty;
         var chapter = await cacheService.Ensure(chapterId, extractPdf);
-        if (chapter == null) return NoContent();
+        if (chapter == null) return NotFound();
 
         return Ok(cacheService.GetCachedFileDimensions(cacheService.GetCachePath(chapterId)));
     }
@@ -195,10 +196,10 @@ public class ReaderController(ICacheService cacheService,
     {
         if (chapterId <= 0) return Ok(null); // This can happen occasionally from UI, we should just ignore
         var chapter = await cacheService.Ensure(chapterId, extractPdf);
-        if (chapter == null) return NoContent();
+        if (chapter == null) return NotFound();
 
         var dto = await unitOfWork.ChapterRepository.GetChapterInfoDtoAsync(chapterId);
-        if (dto == null) return BadRequest(await localizationService.Translate(UserId, "perform-scan"));
+        if (dto == null) return BadRequest(await localizationService.TranslateAsync(UserId, "perform-scan"));
         var mangaFile = chapter.Files.First();
 
         var series = await unitOfWork.SeriesRepository.GetSeriesDtoByIdAsync(dto.SeriesId, UserId);
@@ -243,7 +244,7 @@ public class ReaderController(ICacheService cacheService,
         }
         else
         {
-            info.Subtitle = await localizationService.Translate(UserId, "volume-num", info.VolumeNumber);
+            info.Subtitle = await localizationService.TranslateAsync(UserId, "volume-num", info.VolumeNumber);
             if (!Parser.IsDefaultChapter(info.ChapterNumber))
             {
                 info.Subtitle += " " + ReaderService.FormatChapterName(info.LibraryType, true, true) +
@@ -342,13 +343,13 @@ public class ReaderController(ICacheService cacheService,
         }
         catch (KavitaException ex)
         {
-            return BadRequest(await localizationService.Translate(UserId, ex.Message));
+            return BadRequest(await localizationService.TranslateAsync(UserId, ex.Message));
         }
 
-        if (!await unitOfWork.CommitAsync()) return BadRequest(await localizationService.Translate(UserId, "generic-read-progress"));
+        if (!await unitOfWork.CommitAsync()) return BadRequest(await localizationService.TranslateAsync(UserId, "generic-read-progress"));
 
         BackgroundJob.Enqueue(() => scrobblingService.ScrobbleReadingUpdate(user.Id, markReadDto.SeriesId));
-        BackgroundJob.Enqueue(() => unitOfWork.SeriesRepository.ClearOnDeckRemoval(markReadDto.SeriesId, user.Id));
+        BackgroundJob.Enqueue(() => unitOfWork.SeriesRepository.ClearOnDeckRemovalAsync(markReadDto.SeriesId, user.Id));
 
         if (markReadDto.GenerateReadingSession)
         {
@@ -373,7 +374,7 @@ public class ReaderController(ICacheService cacheService,
         if (user == null) return Unauthorized();
         await readerService.MarkSeriesAsUnread(user, markReadDto.SeriesId);
 
-        if (!await unitOfWork.CommitAsync()) return BadRequest(await localizationService.Translate(UserId, "generic-read-progress"));
+        if (!await unitOfWork.CommitAsync()) return BadRequest(await localizationService.TranslateAsync(UserId, "generic-read-progress"));
 
         BackgroundJob.Enqueue(() => scrobblingService.ScrobbleReadingUpdate(user.Id, markReadDto.SeriesId));
         return Ok();
@@ -393,7 +394,7 @@ public class ReaderController(ICacheService cacheService,
         var chapters = await unitOfWork.ChapterRepository.GetChaptersAsync(markVolumeReadDto.VolumeId);
         await readerService.MarkChaptersAsUnread(user, markVolumeReadDto.SeriesId, chapters);
 
-        if (!await unitOfWork.CommitAsync()) return BadRequest(await localizationService.Translate(UserId, "generic-read-progress"));
+        if (!await unitOfWork.CommitAsync()) return BadRequest(await localizationService.TranslateAsync(UserId, "generic-read-progress"));
 
         BackgroundJob.Enqueue(() => scrobblingService.ScrobbleReadingUpdate(user.Id, markVolumeReadDto.SeriesId));
         return Ok();
@@ -422,18 +423,18 @@ public class ReaderController(ICacheService cacheService,
         }
         catch (KavitaException ex)
         {
-            return BadRequest(await localizationService.Translate(UserId, ex.Message));
+            return BadRequest(await localizationService.TranslateAsync(UserId, ex.Message));
         }
 
 
-        if (!await unitOfWork.CommitAsync()) return BadRequest(await localizationService.Translate(UserId, "generic-read-progress"));
+        if (!await unitOfWork.CommitAsync()) return BadRequest(await localizationService.TranslateAsync(UserId, "generic-read-progress"));
 
         await eventHub.SendMessageAsync(MessageFactory.UserProgressUpdate,
-            MessageFactory.UserProgressUpdateEvent(user.Id, user.UserName!, markVolumeReadDto.SeriesId,
+            MessageFactory.UserProgressUpdateEvent(user.Id, markVolumeReadDto.SeriesId,
                 markVolumeReadDto.VolumeId, 0, chapters.Sum(c => c.Pages)));
 
         BackgroundJob.Enqueue(() => scrobblingService.ScrobbleReadingUpdate(user.Id, markVolumeReadDto.SeriesId));
-        BackgroundJob.Enqueue(() => unitOfWork.SeriesRepository.ClearOnDeckRemoval(markVolumeReadDto.SeriesId, user.Id));
+        BackgroundJob.Enqueue(() => unitOfWork.SeriesRepository.ClearOnDeckRemovalAsync(markVolumeReadDto.SeriesId, user.Id));
 
         if (markVolumeReadDto.GenerateReadingSession)
         {
@@ -471,10 +472,10 @@ public class ReaderController(ICacheService cacheService,
         var chapters = await unitOfWork.ChapterRepository.GetChaptersByIdsAsync(chapterIds);
         await readerService.MarkChaptersAsRead(user, dto.SeriesId, chapters.ToList());
 
-        if (!await unitOfWork.CommitAsync()) return BadRequest(await localizationService.Translate(UserId, "generic-read-progress"));
+        if (!await unitOfWork.CommitAsync()) return BadRequest(await localizationService.TranslateAsync(UserId, "generic-read-progress"));
 
         BackgroundJob.Enqueue(() => scrobblingService.ScrobbleReadingUpdate(user.Id, dto.SeriesId));
-        BackgroundJob.Enqueue(() => unitOfWork.SeriesRepository.ClearOnDeckRemoval(dto.SeriesId, user.Id));
+        BackgroundJob.Enqueue(() => unitOfWork.SeriesRepository.ClearOnDeckRemovalAsync(dto.SeriesId, user.Id));
 
         if (dto.GenerateReadingSession)
         {
@@ -511,7 +512,7 @@ public class ReaderController(ICacheService cacheService,
             return Ok();
         }
 
-        return BadRequest(await localizationService.Translate(UserId, "generic-read-progress"));
+        return BadRequest(await localizationService.TranslateAsync(UserId, "generic-read-progress"));
     }
 
     /// <summary>
@@ -526,27 +527,35 @@ public class ReaderController(ICacheService cacheService,
         if (user == null) return Unauthorized();
         user.Progresses ??= new List<AppUserProgress>();
 
+        Dictionary<int, Dictionary<int, int>> progressDictionaries = [];
+
+        if (dto.GenerateReadingSession)
+        {
+            foreach (var sId in dto.SeriesIds)
+            {
+                progressDictionaries[sId] = await unitOfWork.AppUserProgressRepository
+                    .GetUserProgressForChaptersBySeries(UserId, sId, HttpContext.RequestAborted);
+            }
+        }
+
         var volumes = await unitOfWork.VolumeRepository.GetVolumesForSeriesAsync(dto.SeriesIds.ToArray(), true);
         foreach (var volume in volumes)
         {
             await readerService.MarkChaptersAsRead(user, volume.SeriesId, volume.Chapters);
         }
 
-        if (!await unitOfWork.CommitAsync()) return BadRequest(await localizationService.Translate(UserId, "generic-read-progress"));
+        if (!await unitOfWork.CommitAsync()) return BadRequest(await localizationService.TranslateAsync(UserId, "generic-read-progress"));
 
         foreach (var sId in dto.SeriesIds)
         {
             BackgroundJob.Enqueue(() => scrobblingService.ScrobbleReadingUpdate(user.Id, sId));
-            BackgroundJob.Enqueue(() => unitOfWork.SeriesRepository.ClearOnDeckRemoval(sId, user.Id));
+            BackgroundJob.Enqueue(() => unitOfWork.SeriesRepository.ClearOnDeckRemovalAsync(sId, user.Id));
 
-            var progressDictionary = await unitOfWork.AppUserProgressRepository
-                .GetUserProgressForChaptersBySeries(UserId, sId, HttpContext.RequestAborted);
+            if (!dto.GenerateReadingSession) continue;
 
-            if (dto.GenerateReadingSession)
-            {
-                BackgroundJob.Enqueue<IReadingSessionService>(s
-                    => s.GenerateReadingSessionForChapters(UserId, sId, progressDictionary, CancellationToken.None));
-            }
+            var progressDictionary = progressDictionaries[sId];
+            BackgroundJob.Enqueue<IReadingSessionService>(s
+                => s.GenerateReadingSessionForChapters(UserId, sId, progressDictionary, CancellationToken.None));
         }
         return Ok();
     }
@@ -578,7 +587,7 @@ public class ReaderController(ICacheService cacheService,
             return Ok();
         }
 
-        return BadRequest(await localizationService.Translate(UserId, "generic-read-progress"));
+        return BadRequest(await localizationService.TranslateAsync(UserId, "generic-read-progress"));
     }
 
     /// <summary>
@@ -616,7 +625,7 @@ public class ReaderController(ICacheService cacheService,
 
         if (!await readerService.SaveReadingProgress(progressDto, userId))
         {
-            return BadRequest(await localizationService.Translate(userId, "generic-read-progress"));
+            return BadRequest(await localizationService.TranslateAsync(userId, "generic-read-progress"));
         }
 
         return Ok();
@@ -661,12 +670,12 @@ public class ReaderController(ICacheService cacheService,
     /// <summary>
     /// Returns a list of all bookmarked pages for a User
     /// </summary>
-    /// <param name="filterDto">Only supports SeriesNameQuery</param>
+    /// <param name="seriesFilterDto">Only supports SeriesNameQuery</param>
     /// <returns></returns>
     [HttpPost("all-bookmarks")]
-    public async Task<ActionResult<IEnumerable<BookmarkDto>>> GetAllBookmarks(FilterV2Dto filterDto)
+    public async Task<ActionResult<IEnumerable<BookmarkDto>>> GetAllBookmarks(SeriesFilterV2Dto seriesFilterDto)
     {
-        return Ok(await unitOfWork.UserRepository.GetAllBookmarkDtos(UserId, filterDto));
+        return Ok(await unitOfWork.UserRepository.GetAllBookmarkDtos(UserId, seriesFilterDto));
     }
 
     /// <summary>
@@ -679,7 +688,7 @@ public class ReaderController(ICacheService cacheService,
     {
         var user = await unitOfWork.UserRepository.GetUserByUsernameAsync(Username!, AppUserIncludes.Bookmarks);
         if (user == null) return Unauthorized();
-        if (user.Bookmarks == null || user.Bookmarks.Count == 0) return Ok(await localizationService.Translate(UserId, "nothing-to-do"));
+        if (user.Bookmarks == null || user.Bookmarks.Count == 0) return Ok(await localizationService.TranslateAsync(UserId, "nothing-to-do"));
 
         try
         {
@@ -706,7 +715,7 @@ public class ReaderController(ICacheService cacheService,
             await unitOfWork.RollbackAsync();
         }
 
-        return BadRequest(await localizationService.Translate(UserId, "generic-clear-bookmarks"));
+        return BadRequest(await localizationService.TranslateAsync(UserId, "generic-clear-bookmarks"));
     }
 
     /// <summary>
@@ -719,7 +728,7 @@ public class ReaderController(ICacheService cacheService,
     {
         var user = await unitOfWork.UserRepository.GetUserByUsernameAsync(Username!, AppUserIncludes.Bookmarks);
         if (user == null) return Unauthorized();
-        if (user.Bookmarks == null || user.Bookmarks.Count == 0) return Ok(await localizationService.Translate(UserId, "nothing-to-do"));
+        if (user.Bookmarks == null || user.Bookmarks.Count == 0) return Ok(await localizationService.TranslateAsync(UserId, "nothing-to-do"));
 
         try
         {
@@ -743,7 +752,7 @@ public class ReaderController(ICacheService cacheService,
             await unitOfWork.RollbackAsync();
         }
 
-        return BadRequest(await localizationService.Translate(UserId, "generic-clear-bookmarks"));
+        return BadRequest(await localizationService.TranslateAsync(UserId, "generic-clear-bookmarks"));
     }
 
     /// <summary>
@@ -788,7 +797,7 @@ public class ReaderController(ICacheService cacheService,
 
             var chapter = await cacheService.Ensure(bookmarkDto.ChapterId);
             if (chapter == null || chapter.Files.Count == 0)
-                return BadRequest(await localizationService.Translate(UserId, "cache-file-find"));
+                return BadRequest(await localizationService.TranslateAsync(UserId, "cache-file-find"));
 
             bookmarkDto.Page = readerService.CapPageToChapter(chapter, bookmarkDto.Page);
 
@@ -802,7 +811,7 @@ public class ReaderController(ICacheService cacheService,
 
 
                 var chapterEntity =  await unitOfWork.ChapterRepository.GetChapterAsync(bookmarkDto.ChapterId);
-                if (chapterEntity == null) return BadRequest(await localizationService.Translate(UserId, "chapter-doesnt-exist"));
+                if (chapterEntity == null) return BadRequest(await localizationService.TranslateAsync(UserId, "chapter-doesnt-exist"));
                 var toc = await bookService.GenerateTableOfContents(chapterEntity);
                 chapterTitle = BookService.GetChapterTitleFromToC(toc, bookmarkDto.Page);
             }
@@ -818,7 +827,7 @@ public class ReaderController(ICacheService cacheService,
 
             if (string.IsNullOrEmpty(path) || !await bookmarkService.BookmarkPage(user, bookmarkDto, path))
             {
-                return BadRequest(await localizationService.Translate(UserId, "bookmark-save"));
+                return BadRequest(await localizationService.TranslateAsync(UserId, "bookmark-save"));
             }
 
 
@@ -829,7 +838,7 @@ public class ReaderController(ICacheService cacheService,
         catch (KavitaException ex)
         {
             logger.LogError(ex, "There was an exception when trying to create a bookmark");
-            return BadRequest(await localizationService.Translate(UserId, "bookmark-save"));
+            return BadRequest(await localizationService.TranslateAsync(UserId, "bookmark-save"));
         }
     }
 
@@ -850,7 +859,7 @@ public class ReaderController(ICacheService cacheService,
 
         if (!await bookmarkService.RemoveBookmarkPage(user, bookmarkDto))
         {
-            return BadRequest(await localizationService.Translate(UserId, "bookmark-save"));
+            return BadRequest(await localizationService.TranslateAsync(UserId, "bookmark-save"));
         }
 
 
@@ -909,7 +918,7 @@ public class ReaderController(ICacheService cacheService,
     {
         var userId = UserId;
         var series = await unitOfWork.SeriesRepository.GetSeriesDtoByIdAsync(seriesId, userId);
-        if (series == null) return BadRequest(await localizationService.Translate(UserId, "series-doesnt-exist"));
+        if (series == null) return BadRequest(await localizationService.TranslateAsync(UserId, "series-doesnt-exist"));
 
         // Get all sum of all chapters with progress that is complete then subtract from series. Multiply by modifiers
         var progress = await unitOfWork.AppUserProgressRepository.GetUserProgressForSeriesAsync(seriesId, userId);
@@ -971,8 +980,8 @@ public class ReaderController(ICacheService cacheService,
     public async Task<ActionResult> DeletePersonalToc([FromQuery] int chapterId, [FromQuery] int pageNum, [FromQuery] string title)
     {
         var userId = UserId;
-        if (string.IsNullOrWhiteSpace(title)) return BadRequest(await localizationService.Translate(userId, "name-required"));
-        if (pageNum < 0) return BadRequest(await localizationService.Translate(userId, "valid-number"));
+        if (string.IsNullOrWhiteSpace(title)) return BadRequest(await localizationService.TranslateAsync(userId, "name-required"));
+        if (pageNum < 0) return BadRequest(await localizationService.TranslateAsync(userId, "valid-number"));
 
         var toc = await unitOfWork.UserTableOfContentRepository.Get(userId, chapterId, pageNum, title);
         if (toc == null) return Ok();
@@ -994,20 +1003,20 @@ public class ReaderController(ICacheService cacheService,
     {
         // Validate there isn't already an existing page title combo?
         var userId = UserId;
-        if (string.IsNullOrWhiteSpace(dto.Title)) return BadRequest(await localizationService.Translate(userId, "name-required"));
+        if (string.IsNullOrWhiteSpace(dto.Title)) return BadRequest(await localizationService.TranslateAsync(userId, "name-required"));
 
         if (!await unitOfWork.UserRepository.HasAccessToChapter(UserId, dto.ChapterId)) return NotFound();
 
-        if (dto.PageNumber < 0) return BadRequest(await localizationService.Translate(userId, "valid-number"));
+        if (dto.PageNumber < 0) return BadRequest(await localizationService.TranslateAsync(userId, "valid-number"));
         if (await unitOfWork.UserTableOfContentRepository.IsUnique(userId, dto.ChapterId, dto.PageNumber,
                 dto.Title.Trim()))
         {
-            return BadRequest(await localizationService.Translate(userId, "duplicate-bookmark"));
+            return BadRequest(await localizationService.TranslateAsync(userId, "duplicate-bookmark"));
         }
 
         // Look up the chapter this PTOC is associated with to get the chapter title (if there is one)
         var chapter =  await unitOfWork.ChapterRepository.GetChapterAsync(dto.ChapterId);
-        if (chapter == null) return BadRequest(await localizationService.Translate(userId, "chapter-doesnt-exist"));
+        if (chapter == null) return BadRequest(await localizationService.TranslateAsync(userId, "chapter-doesnt-exist"));
         var toc = await bookService.GenerateTableOfContents(chapter);
         var chapterTitle = BookService.GetChapterTitleFromToC(toc, dto.PageNumber);
 

@@ -14,6 +14,7 @@ using Kavita.Models.DTOs;
 using Kavita.Models.DTOs.Account;
 using Kavita.Models.DTOs.Dashboard;
 using Kavita.Models.DTOs.Filtering.v2;
+using Kavita.Models.DTOs.Filtering.v2.Requests;
 using Kavita.Models.DTOs.KavitaPlus.Account;
 using Kavita.Models.DTOs.Reader;
 using Kavita.Models.DTOs.Scrobbling;
@@ -138,15 +139,16 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<AppUser?> GetUserByAuthKey(string authKey, AppUserIncludes includeFlags = AppUserIncludes.None, CancellationToken ct = default)
+    public async Task<AppUser?> GetUserByAuthKey(string authKey, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(authKey)) return null;
 
         return await context.AppUserAuthKey
             .Where(ak => ak.Key == authKey)
             .HasNotExpired()
+            .Include(ak => ak.AppUser)
+            .ThenInclude(u => u.AuthKeys)
             .Select(ak => ak.AppUser)
-            .Includes(includeFlags)
             .FirstOrDefaultAsync(ct);
     }
 
@@ -168,22 +170,6 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
             .Where(b => b.Id == bookmarkId)
             .FirstOrDefaultAsync(ct);
     }
-
-
-    /// <summary>
-    /// This fetches the Id for a user. Use whenever you just need an ID.
-    /// </summary>
-    /// <param name="username"></param>
-    /// <param name="ct"></param>
-    /// <returns></returns>
-    public async Task<int> GetUserIdByUsernameAsync(string username, CancellationToken ct = default)
-    {
-        return await context.Users
-            .Where(x => x.UserName == username)
-            .Select(u => u.Id)
-            .SingleOrDefaultAsync(ct);
-    }
-
 
     /// <summary>
     /// Returns all Bookmarks for a given set of Ids
@@ -239,7 +225,7 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
     /// <returns></returns>
     public async Task<bool> HasAccessToSeries(int userId, int seriesId, CancellationToken ct = default)
     {
-        var userRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var userRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         return await context.Series
             .Include(s => s.Library)
             .Where(s => s.Library.AppUsers.Any(user => user.Id == userId))
@@ -250,7 +236,7 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
 
     public async Task<bool> HasAccessToVolume(int userId, int volumeId, CancellationToken ct = default)
     {
-        var userRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var userRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         return await context.Volume
             .Where(v => v.Id == volumeId)
             .Include(v => v.Series)
@@ -264,7 +250,7 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
 
     public async Task<bool> HasAccessToChapter(int userId, int chapterId, CancellationToken ct = default)
     {
-        var userRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var userRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         return await context.Chapter
             .Include(c => c.Volume)
             .ThenInclude(v => v.Series)
@@ -277,7 +263,7 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
 
     public async Task<bool> HasAccessToPerson(int userId, int personId, CancellationToken ct = default)
     {
-        var userRating = await context.AppUser.GetUserAgeRestriction(userId);
+        var userRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
         return await context.Person
             .RestrictAgainstAgeRestriction(userRating)
             .AnyAsync(p => p.Id == personId, ct);
@@ -379,15 +365,9 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
                 SmartFilterEncoded = d.SmartFilter == null ? null : d.SmartFilter.Filter,
                 StreamType = d.StreamType,
                 Order = d.Order,
-                Visible = d.Visible
+                Visible = d.Visible,
+                EntityType = d.SmartFilter == null ? FilterEntityType.Series : d.SmartFilter.EntityType,
             })
-            .ToListAsync(ct);
-    }
-
-    public async Task<IList<AppUserDashboardStream>> GetAllDashboardStreams(CancellationToken ct = default)
-    {
-        return await context.AppUserDashboardStream
-            .OrderBy(d => d.Order)
             .ToListAsync(ct);
     }
 
@@ -422,6 +402,7 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
                 IsProvided = d.IsProvided,
                 SmartFilterId = d.SmartFilter == null ? 0 : d.SmartFilter.Id,
                 SmartFilterEncoded = d.SmartFilter == null ? null : d.SmartFilter.Filter,
+                EntityType = d.SmartFilter == null ? FilterEntityType.Series : d.SmartFilter.EntityType,
                 LibraryId = d.LibraryId ?? 0,
                 ExternalSourceId = d.ExternalSourceId ?? 0,
                 StreamType = d.StreamType,
@@ -466,14 +447,6 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
     {
         return await context.AppUserSideNavStream
             .Include(d => d.SmartFilter)
-            .FirstOrDefaultAsync(d => d.Id == streamId, ct);
-    }
-
-    public async Task<AppUserSideNavStream?> GetSideNavStreamWithUser(int streamId, CancellationToken ct = default)
-    {
-        return await context.AppUserSideNavStream
-            .Include(d => d.SmartFilter)
-            .Include(d => d.AppUser)
             .FirstOrDefaultAsync(d => d.Id == streamId, ct);
     }
 
@@ -697,30 +670,6 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
         return await userManager.GetRolesAsync(user);
     }
 
-    public async Task<IList<string>> GetRolesByAuthKey(string? apiKey, CancellationToken ct = default)
-    {
-        if (string.IsNullOrEmpty(apiKey)) return ArraySegment<string>.Empty;
-
-        var user = await context.AppUserAuthKey
-            .Where(k => k.Key == apiKey)
-            .HasNotExpired()
-            .Select(k => k.AppUser)
-            .FirstOrDefaultAsync(ct);
-        if (user == null) return ArraySegment<string>.Empty;
-
-        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-        if (userManager == null)
-        {
-            // userManager is null on Unit Tests only
-            return await context.UserRoles
-                .Where(ur => ur.User.AuthKeys.Any(k => k.Key == apiKey && (k.ExpiresAtUtc == null || k.ExpiresAtUtc < DateTime.UtcNow)))
-                .Select(ur => ur.Role.Name)
-                .ToListAsync(ct);
-        }
-
-        return await userManager.GetRolesAsync(user);
-    }
-
     public async Task<AppUserRating?> GetUserRatingAsync(int seriesId, int userId, CancellationToken ct = default)
     {
         return await context.AppUserRating
@@ -808,10 +757,10 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
     /// Get all bookmarks for the user
     /// </summary>
     /// <param name="userId"></param>
-    /// <param name="filter">Only supports SeriesNameQuery</param>
+    /// <param name="seriesFilter">Only supports SeriesNameQuery</param>
     /// <param name="ct"></param>
     /// <returns></returns>
-    public async Task<IEnumerable<BookmarkDto>> GetAllBookmarkDtos(int userId, FilterV2Dto filter, CancellationToken ct = default)
+    public async Task<IEnumerable<BookmarkDto>> GetAllBookmarkDtos(int userId, SeriesFilterV2Dto seriesFilter, CancellationToken ct = default)
     {
         var query = context.AppUserBookmark
             .Where(x => x.AppUserId == userId)
@@ -825,12 +774,12 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
                 Series = series
             });
 
-        var filterStatement = filter.Statements.FirstOrDefault(f => f.Field == FilterField.SeriesName);
+        var filterStatement = seriesFilter.Statements.FirstOrDefault(f => f.Field == SeriesFilterField.SeriesName);
         if (filterStatement == null || string.IsNullOrWhiteSpace(filterStatement.Value))
         {
             return await ApplyLimit(filterSeriesQuery
-                    .Sort(filter.SortOptions)
-                    .AsSplitQuery(), filter.LimitTo)
+                    .Sort(seriesFilter.SortOptions)
+                    .AsSplitQuery(), seriesFilter.LimitTo)
                 .ProjectTo<BookmarkDto>(mapper.ConfigurationProvider)
                 .ToListAsync(ct);
         }
@@ -884,8 +833,8 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
         }
 
         return await ApplyLimit(filterSeriesQuery
-                .Sort(filter.SortOptions)
-                .AsSplitQuery(), filter.LimitTo)
+                .Sort(seriesFilter.SortOptions)
+                .AsSplitQuery(), seriesFilter.LimitTo)
             .ProjectTo<BookmarkDto>(mapper.ConfigurationProvider)
             .ToListAsync(ct);
     }
@@ -920,15 +869,6 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
             .Select(k => k.AppUserId)
             .FirstOrDefaultAsync(ct);
     }
-
-    public async Task<UserDto?> GetUserDtoById(int userId, CancellationToken ct = default)
-    {
-        return await context.AppUser
-            .Where(u => u.Id == userId)
-            .ProjectTo<UserDto>(mapper.ConfigurationProvider)
-            .FirstOrDefaultAsync(ct);
-    }
-
 
     public async Task<IEnumerable<MemberDto>> GetEmailConfirmedMemberDtosAsync(bool emailConfirmed = true, CancellationToken ct = default)
     {
@@ -989,14 +929,6 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
     {
         return await context.AppUserAuthKey
             .Where(k => k.AppUserId == userId)
-            .ProjectTo<AuthKeyDto>(mapper.ConfigurationProvider)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IList<AuthKeyDto>> GetAllAuthKeysDtosWithExpiration(CancellationToken ct = default)
-    {
-        return await context.AppUserAuthKey
-            .Where(k => k.ExpiresAtUtc != null)
             .ProjectTo<AuthKeyDto>(mapper.ConfigurationProvider)
             .ToListAsync(ct);
     }

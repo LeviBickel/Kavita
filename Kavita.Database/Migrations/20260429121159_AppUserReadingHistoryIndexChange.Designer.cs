@@ -6,6 +6,7 @@ using Kavita.Models.Entities.MetadataMatching;
 using Kavita.Models.Entities.Progress;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -13,9 +14,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Kavita.Database.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20260429121159_AppUserReadingHistoryIndexChange")]
+    partial class AppUserReadingHistoryIndexChange
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.6");
@@ -1226,16 +1229,7 @@ namespace Kavita.Database.Migrations
                     b.Property<bool>("EnableGenres")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("EnableGoogleBooks")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("EnableHardcover")
-                        .HasColumnType("INTEGER");
-
                     b.Property<bool>("EnableLocalizedName")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("EnableOpenLibrary")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("EnablePeople")
@@ -1263,12 +1257,6 @@ namespace Kavita.Database.Migrations
 
                     b.Property<bool>("FirstLastPeopleNaming")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("GoogleBooksApiKey")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("HardcoverApiKey")
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("Overrides")
                         .HasColumnType("TEXT");

@@ -226,7 +226,7 @@ public class ScrobblingService : IScrobblingService
 
         try
         {
-            return await _kavitaPlusApiService.HasTokenExpired(license.Value, token, provider);
+            return await _kavitaPlusApiService.HasTokenExpiredAsync(license.Value, token, provider);
         }
         catch (HttpRequestException e)
         {
@@ -466,7 +466,7 @@ public class ScrobblingService : IScrobblingService
 
         try
         {
-            return await _kavitaPlusApiService.GetRateLimit(license, aniListToken);
+            return await _kavitaPlusApiService.GetRateLimitAsync(license, aniListToken);
         }
         catch (Exception e)
         {
@@ -931,7 +931,7 @@ public class ScrobblingService : IScrobblingService
     {
         try
         {
-            var response = await _kavitaPlusApiService.PostScrobbleUpdate(data, license);
+            var response = await _kavitaPlusApiService.PostScrobbleUpdateAsync(data, license);
 
             _logger.LogDebug("K+ API Scrobble response for series {SeriesName}: Successful {Successful}, ErrorMessage {ErrorMessage}, ExtraInformation: {ExtraInformation}, RateLeft: {RateLeft}",
                 data.SeriesName, response.Successful, response.ErrorMessage, response.ExtraInformation, response.RateLeft);

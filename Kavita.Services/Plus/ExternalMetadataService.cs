@@ -9,8 +9,8 @@ using Flurl.Http;
 using Hangfire;
 using Kavita.API.Database;
 using Kavita.API.Repositories;
-using Kavita.API.Services.Helpers;
 using Kavita.API.Services.Metadata;
+using Kavita.API.Services;
 using Kavita.API.Services.Plus;
 using Kavita.API.Services.SignalR;
 using Kavita.Common;
@@ -19,7 +19,9 @@ using Kavita.Common.Helpers;
 using Kavita.Models.Builders;
 using Kavita.Models.DTOs;
 using Kavita.Models.DTOs.Collection;
+using Kavita.Models.DTOs.KavitaPlus;
 using Kavita.Models.DTOs.KavitaPlus.ExternalMetadata;
+using Kavita.Models.DTOs.KavitaPlus.ExternalMetadata.Covers;
 using Kavita.Models.DTOs.KavitaPlus.Metadata;
 using Kavita.Models.DTOs.Metadata.Matching;
 using Kavita.Models.DTOs.Person;
@@ -51,6 +53,7 @@ public class ExternalMetadataService : IExternalMetadataService
     private readonly IEventHub _eventHub;
     private readonly ICoverDbService _coverDbService;
     private readonly IKavitaPlusApiService _kavitaPlusApiService;
+    private readonly IFileCacheService _fileCacheService;
     private readonly TimeSpan _externalSeriesMetadataCache = TimeSpan.FromDays(30);
     public static readonly HashSet<LibraryType> NonEligibleLibraryTypes =
         [LibraryType.Comic, LibraryType.Book, LibraryType.Image];
@@ -67,7 +70,7 @@ public class ExternalMetadataService : IExternalMetadataService
 
     public ExternalMetadataService(IUnitOfWork unitOfWork, ILogger<ExternalMetadataService> logger, IMapper mapper,
         ILicenseService licenseService, IScrobblingService scrobblingService, IEventHub eventHub, ICoverDbService coverDbService,
-        IKavitaPlusApiService kavitaPlusApiService)
+        IKavitaPlusApiService kavitaPlusApiService, IFileCacheService fileCacheService)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -77,6 +80,7 @@ public class ExternalMetadataService : IExternalMetadataService
         _eventHub = eventHub;
         _coverDbService = coverDbService;
         _kavitaPlusApiService = kavitaPlusApiService;
+        _fileCacheService = fileCacheService;
 
         FlurlConfiguration.ConfigureClientForUrl(Configuration.KavitaPlusApiUrl);
     }
@@ -162,7 +166,7 @@ public class ExternalMetadataService : IExternalMetadataService
             _logger.LogDebug("Fetching Kavita+ for MAL Stacks for user {UserName}", user.MalUserName);
 
             var license = (await _unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.LicenseKey, ct)).Value;
-            return await _kavitaPlusApiService.GetMalStacks(user.MalUserName, license, ct);
+            return await _kavitaPlusApiService.GetMalStacksAsync(user.MalUserName, license, ct);
         }
         catch (Exception ex)
         {
@@ -180,6 +184,7 @@ public class ExternalMetadataService : IExternalMetadataService
 
         var potentialAnilistId = WeblinkParser.GetAniListId(dto.Query);
         var potentialMalId = WeblinkParser.GetMalId(dto.Query);
+        var potentialMangabakaId = WeblinkParser.GetMangaBakaId(dto.Query);
 
         var format = series.Library.Type.ConvertToPlusMediaFormat(series.Format);
         var otherNames = ExtractAlternativeNames(series);
@@ -194,6 +199,7 @@ public class ExternalMetadataService : IExternalMetadataService
             }
         }
 
+        // TODO: Match needs to be overhauled
         var matchRequest = new MatchSeriesRequestDto()
         {
             Format = format,
@@ -202,12 +208,13 @@ public class ExternalMetadataService : IExternalMetadataService
             AlternativeNames = otherNames,
             Year = year,
             AniListId = potentialAnilistId ?? ScrobblingHelper.GetAniListId(series),
-            MalId = potentialMalId ?? ScrobblingHelper.GetMalId(series)
+            MalId = potentialMalId ?? ScrobblingHelper.GetMalId(series),
+            MangabakaId = potentialMangabakaId > 0 ? (int) potentialMangabakaId : (int?) series.MangaBakaId
         };
 
         try
         {
-            var results = await _kavitaPlusApiService.MatchSeries(matchRequest, ct);
+            var results = await _kavitaPlusApiService.MatchSeriesAsync(matchRequest, ct);
 
             // Some summaries can contain multiple <br/>s, we need to ensure it's only 1
             foreach (var result in results)
@@ -286,6 +293,7 @@ public class ExternalMetadataService : IExternalMetadataService
         series.IsBlacklisted = false;
         series.DontMatch = false;
         _unitOfWork.SeriesRepository.Update(series);
+        _fileCacheService.InvalidatePrefix(GetCoversCacheKey(seriesId), FileCacheService.KavitaPlusCacheDirectory);
 
         // Refetch metadata with a Direct lookup
         try
@@ -320,6 +328,8 @@ public class ExternalMetadataService : IExternalMetadataService
             // Regenerate all events for the series for all users
             BackgroundJob.Enqueue(() => _scrobblingService.CreateEventsFromExistingHistoryForSeries(seriesId, CancellationToken.None));
 
+            await _eventHub.SendMessageAsync(MessageFactory.SeriesUpdated, MessageFactory.SeriesUpdatedEvent(series.Id), ct: ct);
+
             // Name can be null on Series even with a direct match
             _logger.LogInformation("Matched {SeriesName} with Kavita+ Series {MatchSeriesName}", series.Name,
                 metadata.Series.Name);
@@ -350,6 +360,7 @@ public class ExternalMetadataService : IExternalMetadataService
             _unitOfWork.ExternalSeriesMetadataRepository.Remove(externalSeriesMetadata.ExternalReviews);
             _unitOfWork.ExternalSeriesMetadataRepository.Remove(externalSeriesMetadata.ExternalRatings);
             _unitOfWork.ExternalSeriesMetadataRepository.Remove(externalSeriesMetadata.ExternalRecommendations);
+            _fileCacheService.InvalidatePrefix(GetCoversCacheKey(seriesId), FileCacheService.KavitaPlusCacheDirectory);
         }
 
         _unitOfWork.SeriesRepository.Update(series);
@@ -365,7 +376,8 @@ public class ExternalMetadataService : IExternalMetadataService
     /// <param name="data"></param>
     /// <param name="ct"></param>
     /// <returns></returns>
-    private async Task<SeriesDetailPlusDto> FetchExternalMetadataForSeries(int seriesId, LibraryType libraryType, PlusSeriesRequestDto data, bool fromMatchFlow = false, CancellationToken ct = default)
+    private async Task<SeriesDetailPlusDto> FetchExternalMetadataForSeries(int seriesId, LibraryType libraryType, PlusSeriesRequestDto data,
+        bool fromMatchFlow = false, CancellationToken ct = default)
     {
 
         var series = await _unitOfWork.SeriesRepository.GetSeriesByIdAsync(seriesId, SeriesIncludes.Library, ct);
@@ -382,7 +394,7 @@ public class ExternalMetadataService : IExternalMetadataService
             try
             {
                 // This returns an AniListSeries and Match returns ExternalSeriesDto
-                result = await _kavitaPlusApiService.GetSeriesDetail(data, ct);
+                result = await _kavitaPlusApiService.GetSeriesDetailAsync(data, ct);
             }
             catch (FlurlHttpException ex)
             {
@@ -397,7 +409,7 @@ public class ExternalMetadataService : IExternalMetadataService
                         _logger.LogDebug("Hit rate limit, will retry in 3 seconds");
                         await Task.Delay(3000, ct);
 
-                        result = await _kavitaPlusApiService.GetSeriesDetail(data, ct);
+                        result = await _kavitaPlusApiService.GetSeriesDetailAsync(data, ct);
                     }
                     else if (errorMessage.Contains("Unknown Series"))
                     {
@@ -451,6 +463,7 @@ public class ExternalMetadataService : IExternalMetadataService
             externalSeriesMetadata.MalId = data.MalId ?? result.MalId ?? 0;
             externalSeriesMetadata.AniListId = data.AniListId ?? result.AniListId ?? 0;
             externalSeriesMetadata.CbrId = data.CbrId ?? result.CbrId ?? 0;
+            series.MangaBakaId = data.MangabakaId ?? result.MangabakaId ?? 0;
 
             // If there is metadata and the user has metadata download turned on
             var madeMetadataModification = false;
@@ -570,6 +583,73 @@ public class ExternalMetadataService : IExternalMetadataService
 
 
         return madeModification;
+    }
+
+    public async Task<IList<ExternalCoverResponseDto>> GetExternalCovers(int seriesId, int? volumeId = null, int? chapterId = null, CancellationToken ct = default)
+    {
+        var series = await _unitOfWork.SeriesRepository.GetSeriesByIdAsync(seriesId, SeriesIncludes.Metadata | SeriesIncludes.Chapters, ct: ct);
+        if (series == null) throw new KavitaException("Series not found");
+
+        var libraryType = await _unitOfWork.LibraryRepository.GetLibraryTypeAsync(series.LibraryId, ct);
+
+        var payload = new ExternalCoverRequestDto()
+        {
+            SeriesName = series.Name,
+            AltSeriesName = series.LocalizedName,
+            MediaFormat = libraryType.ConvertToPlusMediaFormat(),
+            AniListId = series.AniListId,
+            ComicVineId = series.ComicVineId,
+            HardcoverId = series.HardcoverId,
+            MangabakaId = (int) series.MangaBakaId,
+            MalId = series.MalId,
+            MetronId = series.MetronId,
+            CbrId = series.CbrId,
+            IsStandAlone = series.Volumes.Sum(v => v.Chapters.Count) == 1, // TODO: Temp code, update to series field
+        };
+
+        if (volumeId.HasValue)
+        {
+            var volume = await _unitOfWork.VolumeRepository.GetVolumeByIdAsync(volumeId.Value, ct: ct);
+            if (volume == null) throw new KavitaException("Volume not found");
+            payload.VolumeNumber = volume.MinNumber;
+            payload.VolumesOnly = true;
+        }
+
+        if (chapterId.HasValue)
+        {
+            var chapter = await _unitOfWork.ChapterRepository.GetChapterDtoAsync(chapterId.Value, 0, ct: ct);
+            if (chapter == null) throw new KavitaException("Chapter not found");
+            payload.ChapterNumber = chapter.MinNumber;
+            payload.ChaptersOnly = true;
+            payload.VolumesOnly = false;
+        }
+
+        var cacheKey = GetCoversCacheKey(seriesId, volumeId, chapterId);
+
+        var result = await _fileCacheService.GetOrFetchAsync<KPlusResult<IList<ExternalCoverResponseDto>>>(
+            cacheKey,
+            FileCacheService.KavitaPlusCacheDirectory,
+            TimeSpan.FromDays(7),
+            async _ => await _kavitaPlusApiService.GetCoverImagesAsync(payload, ct),
+            shouldCache: r => r?.IsSuccess == true,
+            ct: ct);
+
+        if (result is null || !result.IsSuccess)
+        {
+            _logger.LogWarning("[Covers] Failed to retrieve covers for Series {SeriesId}: {Error}",
+                seriesId, result?.ErrorMessage);
+            return [];
+        }
+
+        return result.Data ?? [];
+    }
+
+    private static string GetCoversCacheKey(int seriesId, int? volumeId = null, int? chapterId = null)
+    {
+        var chapterPart = chapterId.HasValue ? $"-chp-{chapterId}" : string.Empty;
+        var volumePart = volumeId.HasValue ? $"-vol-{volumeId}" : string.Empty;
+
+        return $"covers-series-{seriesId}{volumePart}{chapterPart}";
     }
 
     private async Task<List<SeriesStaffDto>> SetNameAndAddAliases(MetadataSettingsDto settings, IList<SeriesStaffDto>? staff)
@@ -1110,6 +1190,20 @@ public class ExternalMetadataService : IExternalMetadataService
             series.MalId = externalMetadata.MALId.Value;
             madeModification = true;
         }
+
+        if (externalMetadata.CbrId is > 0)
+        {
+            series.CbrId = externalMetadata.CbrId.Value;
+            madeModification = true;
+        }
+
+        if (externalMetadata.MangabakaId is > 0)
+        {
+            series.MangaBakaId = externalMetadata.MangabakaId.Value;
+            madeModification = true;
+        }
+
+        // TODO: Add the rest of the Ids when Kavita+ has them
 
         return madeModification;
     }
@@ -1869,6 +1963,8 @@ public class ExternalMetadataService : IExternalMetadataService
     /// <returns></returns>
     private async Task<ExternalSeriesDetailDto?> GetSeriesDetail(int? aniListId, long? malId, int? seriesId, CancellationToken ct = default)
     {
+        // TODO: This is the primary point where we need to integrate ExternalIds since weblink parsing is already handled
+        // TODO: Ensure when we set/update weblinks via API, we reparse and update external ids (if they are empty only)
         var payload = new ExternalMetadataIdsDto()
         {
             AniListId = aniListId,
@@ -1899,7 +1995,7 @@ public class ExternalMetadataService : IExternalMetadataService
         }
         try
         {
-            var ret =  await _kavitaPlusApiService.GetSeriesDetailById(payload, ct);
+            var ret =  await _kavitaPlusApiService.GetSeriesDetailByIdAsync(payload, ct);
 
             ret.Summary = StringHelper.RemoveSourceInDescription(StringHelper.SquashBreaklines(ret.Summary));
 

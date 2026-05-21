@@ -16,6 +16,7 @@ public sealed record ExternalSeriesDetailDto
     public int? AniListId { get; set; }
     public long? MALId { get; set; }
     public int? CbrId { get; set; }
+    public int? MangabakaId { get; set; }
     public IList<string> Synonyms { get; set; } = [];
     public PlusMediaFormat PlusMediaFormat { get; set; }
     public string? SiteUrl { get; set; }

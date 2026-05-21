@@ -163,7 +163,7 @@ public class ScrobblingServiceTests(ITestOutputHelper outputHelper): AbstractDbT
         var (unitOfWork, context, _) = await CreateDatabase();
         var (service, _, kavitaPlusApiService, _, _) = await Setup(unitOfWork, context);
 
-        kavitaPlusApiService.PostScrobbleUpdate(null!, "")
+        kavitaPlusApiService.PostScrobbleUpdateAsync(null!, "")
             .ReturnsForAnyArgs(new ScrobbleResponseDto()
             {
                 ErrorMessage = "Unauthorized"
@@ -184,7 +184,7 @@ public class ScrobblingServiceTests(ITestOutputHelper outputHelper): AbstractDbT
         var (unitOfWork, context, _) = await CreateDatabase();
         var (service, _, kavitaPlusApiService, _, _) = await Setup(unitOfWork, context);
 
-        kavitaPlusApiService.PostScrobbleUpdate(null!, "")
+        kavitaPlusApiService.PostScrobbleUpdateAsync(null!, "")
             .ReturnsForAnyArgs(new ScrobbleResponseDto()
             {
                 ErrorMessage = "Unknown Series"
@@ -212,7 +212,7 @@ public class ScrobblingServiceTests(ITestOutputHelper outputHelper): AbstractDbT
         var (unitOfWork, context, _) = await CreateDatabase();
         var (service, _, kavitaPlusApiService, _, _) = await Setup(unitOfWork, context);
 
-        kavitaPlusApiService.PostScrobbleUpdate(null!, "")
+        kavitaPlusApiService.PostScrobbleUpdateAsync(null!, "")
             .ReturnsForAnyArgs(new ScrobbleResponseDto()
             {
                 ErrorMessage = "Access token is invalid"
@@ -241,7 +241,7 @@ public class ScrobblingServiceTests(ITestOutputHelper outputHelper): AbstractDbT
 
         // Set Returns
         licenseService.HasActiveLicense().Returns(Task.FromResult(true));
-        kavitaPlusApiService.GetRateLimit(Arg.Any<string>(), Arg.Any<string>())
+        kavitaPlusApiService.GetRateLimitAsync(Arg.Any<string>(), Arg.Any<string>())
             .Returns(100);
 
         var user = await unitOfWork.UserRepository.GetUserByIdAsync(1);
@@ -272,7 +272,7 @@ public class ScrobblingServiceTests(ITestOutputHelper outputHelper): AbstractDbT
 
         // Set Returns
         licenseService.HasActiveLicense().Returns(Task.FromResult(true));
-        kavitaPlusApiService.GetRateLimit(Arg.Any<string>(), Arg.Any<string>())
+        kavitaPlusApiService.GetRateLimitAsync(Arg.Any<string>(), Arg.Any<string>())
             .Returns(100);
 
         var user = await unitOfWork.UserRepository.GetUserByIdAsync(1);
@@ -305,7 +305,7 @@ public class ScrobblingServiceTests(ITestOutputHelper outputHelper): AbstractDbT
 
         await service.ProcessUpdatesSinceLastSync();
 
-        await kavitaPlusApiService.Received(1).PostScrobbleUpdate(
+        await kavitaPlusApiService.Received(1).PostScrobbleUpdateAsync(
             Arg.Is<ScrobbleDto>(data =>
                 data.ChapterNumber == (int)chapter.MaxNumber &&
                 data.VolumeNumber == (int)volume.MaxNumber

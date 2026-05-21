@@ -1635,9 +1635,16 @@
         "back": "Back",
         "reset-cover-tooltip": "Reset Cover Image",
         "reset": "{{common.reset}}",
+        "cover-locked": "Cover is locked",
+        "cover-not-locked": "Cover is not locked",
         "image-num": "Image {{num}}",
         "apply": "{{common.apply}}",
-        "applied": "{{theme-manager.applied}}"
+        "applied": "{{theme-manager.applied}}",
+        "reset-tab": "Reset",
+        "no-images": "No images available",
+        "loading": "{{common.loading}}",
+        "select-image-alt": "Select an image",
+        "download-cover": "Download Cover"
     },
 
     "download-indicator": {
@@ -4010,6 +4017,7 @@
         "hardcoverId-label": "Hardcover Id",
         "comicVineId-label": "Comic Vine Id",
         "metronId-label": "Metron Id",
+        "cbrId-label": "Comic Book Roundup Id",
         "not-set-label": "Not set",
         "isbn-label": "{{edit-chapter-modal.isbn-label}}"
     },
@@ -4074,7 +4082,11 @@
         "book-reader-tab": "Book Reader",
         "pdf-reader-tab": "PDF Reader",
         "bookmark-image-tab": "Image",
-        "bookmark-text-tab": "Text"
+        "bookmark-text-tab": "Text",
+        "uploaded-tab": "Uploaded",
+        "current-tab": "Current",
+        "kavita-plus-tab": "Kavita+",
+        "other-tab": "Other"
     },
 
     "common": {

@@ -16,6 +16,7 @@ public sealed record MatchSeriesRequestDto
     public int? AniListId { get; set; }
     public long? MalId { get; set; }
     public string? HardcoverId { get; set; }
+    public int? MangabakaId { get; set; }
     public int? CbrId { get; set; }
     public PlusMediaFormat Format { get; set; }
 }

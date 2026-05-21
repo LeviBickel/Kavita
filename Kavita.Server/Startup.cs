@@ -6,11 +6,13 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Hangfire;
 using HtmlAgilityPack;
 using Kavita.API.Database;
 using Kavita.API.Services;
+using Kavita.API.Services.Plus;
 using Kavita.Common;
 using Kavita.Common.Constants;
 using Kavita.Common.EnvironmentInfo;
@@ -396,9 +398,27 @@ public class Startup
             }
             catch (Exception)
             {
-                /* Swallow Exception */
                 Console.WriteLine($"Kavita - v{BuildInfo.Version}");
             }
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = app.ApplicationServices.CreateScope();
+                    var licenseService = scope.ServiceProvider.GetRequiredService<ILicenseService>();
+                    await licenseService.HasActiveLicense(true);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to warm license cache on startup");
+                }
+                finally
+                {
+                    // Always enqueue even if the license check failed (ScheduleKavitaPlusTasks handles invalid/missing license)
+                    BackgroundJob.Enqueue<ITaskScheduler>(s => s.ScheduleKavitaPlusTasks(CancellationToken.None));
+                }
+            });
         });
 
         logger.LogInformation("Starting with base url as {BaseUrl}", basePath);

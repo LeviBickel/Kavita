@@ -2,6 +2,7 @@
 using Hangfire;
 using Kavita.API.Database;
 using Kavita.API.Repositories;
+using Kavita.API.Services;
 using Kavita.API.Services.Metadata;
 using Kavita.API.Services.Plus;
 using Kavita.API.Services.SignalR;
@@ -98,7 +99,7 @@ public class ExternalMetadataServiceTests: AbstractDbTest
            Substitute.For<ILogger<ExternalMetadataService>>(),
            mapper, Substitute.For<ILicenseService>(), Substitute.For<IScrobblingService>(),
            Substitute.For<IEventHub>(), Substitute.For<ICoverDbService>(),
-           Substitute.For<IKavitaPlusApiService>());
+           Substitute.For<IKavitaPlusApiService>(), Substitute.For<IFileCacheService>());
 
        // Clear tracker so test body starts with a clean slate
        context.ChangeTracker.Clear();

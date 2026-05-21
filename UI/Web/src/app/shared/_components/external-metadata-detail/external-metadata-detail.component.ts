@@ -12,6 +12,7 @@ const URLS = {
   hardcoverId: null,
   comicVineId: null,
   metronId: null,
+  cbrId: null,
 }
 
 @Component({

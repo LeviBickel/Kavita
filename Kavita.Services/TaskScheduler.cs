@@ -243,7 +243,6 @@ public class TaskScheduler : ITaskScheduler
             service => service.FlushAsync(CancellationToken.None),
             "*/5 * * * *", RecurringJobOptions);
 
-        BackgroundJob.Enqueue(() => ScheduleKavitaPlusTasks(CancellationToken.None));
     }
 
     private static bool IsInvalidCronSetting(string setting)
@@ -253,9 +252,7 @@ public class TaskScheduler : ITaskScheduler
 
     public async Task ScheduleKavitaPlusTasks(CancellationToken cancellationToken = default)
     {
-        // KavitaPlus based (needs license check)
-        var license = (await _unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.LicenseKey, cancellationToken)).Value;
-        if (string.IsNullOrEmpty(license) || !await _licenseService.HasActiveSubscription(license, cancellationToken))
+        if (!await _licenseService.HasActiveLicense(false, cancellationToken))
         {
             return;
         }
@@ -273,6 +270,7 @@ public class TaskScheduler : ITaskScheduler
 
         // KavitaPlus Scrobbling (every hour) - randomise minutes to spread requests out for K+
         var randomMinute = Rnd.Next(0, 60);
+        _logger.LogDebug("Scheduling KavitaPlus Scrobbling Task every hour @ {Minute}m", randomMinute);
         RecurringJob.AddOrUpdate(ProcessScrobblingEventsId,
             () => _scrobblingService.ProcessUpdatesSinceLastSync(CancellationToken.None),
             Cron.Hourly(randomMinute), RecurringJobOptions);

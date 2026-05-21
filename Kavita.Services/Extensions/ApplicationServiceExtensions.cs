@@ -105,6 +105,7 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IDeviceTrackingService, DeviceTrackingService>();
 
 
+        services.AddScoped<IFileCacheService, FileCacheService>();
         services.AddSingleton<IReadingSessionService, ReadingSessionService>();
         services.AddSingleton<IEntityNamingService, EntityNamingService>();
         services.AddSingleton<ActiveUserTrackerService>(); // This is required for the below lines. It allows IHostedService.StopAsync() to be called on shutdown

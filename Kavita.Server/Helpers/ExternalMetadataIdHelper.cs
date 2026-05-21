@@ -33,6 +33,11 @@ public static class ExternalMetadataIdHelper
             entity.MetronId = dto.MetronId.Value;
         }
 
+        if (dto.CbrId is > 0)
+        {
+            entity.CbrId = dto.CbrId.Value;
+        }
+
         if (!string.IsNullOrWhiteSpace(dto.ComicVineId))
         {
             entity.ComicVineId = dto.ComicVineId;

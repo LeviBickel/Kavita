@@ -151,6 +151,9 @@ export class EntityTitleService {
           renderText = this.translocoService.translate('entity-title.chapter-num', {num: number});
         } else {
           renderText = volumeTitle;
+          if (fallbackToVolume) {
+            renderText = this.translocoService.translate('entity-title.volume-num', {num: volumeTitle});
+          }
         }
       } else if (fallbackToVolume && isChapter && volumeTitle) {
         renderText = this.translocoService.translate('entity-title.volume-num', {num: volumeTitle});

@@ -245,8 +245,16 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
                 (EF.Functions.Like(s.Name, $"%{searchQuery}%")
                  || (s.OriginalName != null && EF.Functions.Like(s.OriginalName, $"%{searchQuery}%"))
                  || (s.LocalizedName != null && EF.Functions.Like(s.LocalizedName, $"%{searchQuery}%"))
-                 || EF.Functions.Like(s.NormalizedName, $"%{searchQueryNormalized}%"))
-                && (!hasYearInQuery || s.Metadata.ReleaseYear == yearComparison))
+                 || EF.Functions.Like(s.NormalizedName, $"%{searchQueryNormalized}%")))
+            .WhereIf(hasYearInQuery, s =>
+                s.Metadata.ReleaseYear == yearComparison
+                || s.Name.Contains(justYear)
+                || (s.OriginalName != null &&
+                    s.OriginalName.Contains(justYear))
+                || (s.LocalizedName != null &&
+                    s.LocalizedName.Contains(justYear))
+                || (s.NormalizedName != null &&
+                    s.NormalizedName.Contains(justYear)))
             .OrderBy(s => s.SortName!.Length)
             .ThenBy(s => s.SortName!.ToLower())
             .Take(maxRecords)
@@ -603,6 +611,7 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
                 MediaFormat = series.Library.Type.ConvertToPlusMediaFormat(series.Format),
                 SeriesName = series.Name,
                 AltSeriesName = series.LocalizedName,
+                // TODO: Refactor this to check from ExternalMetadataIds first then ExternalSeriesMetadata. Weblink parsing is pointless as it updates in externalMetadata
                 AniListId = series.ExternalSeriesMetadata.AniListId != 0
                     ? series.ExternalSeriesMetadata.AniListId
                     : WeblinkParser.GetAniListId(series.Metadata.WebLinks),
@@ -613,6 +622,7 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
                 GoogleBooksId = !string.IsNullOrEmpty(series.ExternalSeriesMetadata.GoogleBooksId)
                     ? series.ExternalSeriesMetadata.GoogleBooksId
                     : WeblinkParser.GetGoogleBooksId(series.Metadata.WebLinks),
+                MangabakaId = (int?) series.MangaBakaId,
                 MangaDexId = WeblinkParser.GetMangaDexId(series.Metadata.WebLinks),
                 VolumeCount = series.Volumes.Count,
                 ChapterCount = series.Volumes.SelectMany(v => v.Chapters).Count(c => !c.IsSpecial),
@@ -1643,17 +1653,16 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
     /// <param name="ct"></param>
     public async Task<int> GetAverageUserRatingAsync(int seriesId, int userId, CancellationToken ct = default)
     {
-        // If there is 0 or 1 rating and that rating is you, return 0 back
-        var countOfRatingsThatAreUser = await context.AppUserRating
+        var ratings = await context.AppUserRating
             .Where(r => r.SeriesId == seriesId && r.HasBeenRated)
-            .CountAsync(u => u.AppUserId == userId, cancellationToken: ct);
-        if (countOfRatingsThatAreUser == 1)
+            .ToListAsync(ct);
+
+        if (ratings.Count == 0 || (ratings.Count == 1 && ratings[0].AppUserId == userId))
         {
             return 0;
         }
-        var avg = (await context.AppUserRating
-            .Where(r => r.SeriesId == seriesId && r.HasBeenRated)
-            .AverageAsync(r => (int?) r.Rating, cancellationToken: ct));
+
+        var avg = ratings.Average(r => (int?) r.Rating);
         return avg.HasValue ? (int) (avg.Value * 20) : 0;
     }
 

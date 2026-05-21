@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kavita.Common;
 using Kavita.Models.DTOs.Collection;
+using Kavita.Models.DTOs.KavitaPlus.ExternalMetadata.Covers;
 using Kavita.Models.DTOs.KavitaPlus.Metadata;
 using Kavita.Models.DTOs.Metadata.Matching;
 using Kavita.Models.DTOs.SeriesDetail;
@@ -90,4 +91,14 @@ public interface IExternalMetadataService
     /// <param name="ct"></param>
     /// <returns></returns>
     Task<bool> WriteExternalMetadataToSeries(ExternalSeriesDetailDto externalMetadata, int seriesId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Get cover images for a Series/Volume/Chapter
+    /// </summary>
+    /// <param name="seriesId"></param>
+    /// <param name="volumeId">If set, will get a volume</param>
+    /// <param name="chapterId">If set, will filter to chapters (overrides volume)</param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    Task<IList<ExternalCoverResponseDto>> GetExternalCovers(int seriesId, int? volumeId = null, int? chapterId = null, CancellationToken ct = default);
 }

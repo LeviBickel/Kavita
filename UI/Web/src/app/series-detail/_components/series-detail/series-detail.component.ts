@@ -123,6 +123,7 @@ import {ReadingHistoryItem} from "src/app/_models/stats/reading-history-item";
 import {StatisticsService} from "src/app/_services/statistics.service";
 import {Pagination} from "src/app/_models/pagination";
 import {ReadingHistoryViewerComponent} from "src/app/shared/reading-history-viewer/reading-history-viewer.component";
+import {SeriesUpdateEvent} from "../../../_models/events/series-update-event";
 
 interface StoryLineItem {
   chapter?: ChapterCardEntity;
@@ -528,6 +529,10 @@ class SeriesDetailComponent implements OnInit, AfterViewInit {
       } else if (event.event === EVENTS.VolumeRemoved) {
         const volumeRemoveEvent = event.payload as VolumeRemovedEvent;
         if (volumeRemoveEvent.seriesId === this.seriesId()) {
+          this.loadPageSource.next(false);
+        }
+      } else if (event.event === EVENTS.SeriesUpdated) {
+        if ((event.payload as SeriesUpdateEvent).id === this.seriesId()) {
           this.loadPageSource.next(false);
         }
       }

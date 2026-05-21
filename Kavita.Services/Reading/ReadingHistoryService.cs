@@ -39,7 +39,7 @@ public class ReadingHistoryService(IDataContext context, ILogger<ReadingHistoryS
     private async Task<List<int>> GetUsersPendingAggregation(DateTime start, DateTime end, DateTime reportDate, CancellationToken ct = default)
     {
         var needAggregationUserIds = await context.AppUserReadingSession
-            .Where(s => s.StartTime >= start && s.StartTime <= end)
+            .Where(s => s.StartTimeUtc >= start && s.StartTimeUtc <= end)
             .Where(s => !s.IsActive && s.EndTime != null)
             .Select(s => s.AppUserId)
             .Distinct()
@@ -58,7 +58,7 @@ public class ReadingHistoryService(IDataContext context, ILogger<ReadingHistoryS
         var sessions = await context.AppUserReadingSession
             .Include(s => s.ActivityData)
             .Where(s => s.AppUserId == userId &&
-                        s.StartTime >= start && s.StartTime <= end &&
+                        s.StartTimeUtc >= start && s.StartTimeUtc <= end &&
                         !s.IsActive && s.EndTime != null)
             .ToListAsync(ct);
 

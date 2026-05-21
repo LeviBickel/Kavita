@@ -81,15 +81,14 @@ public class ReadingHistoryServiceTests(ITestOutputHelper testOutputHelper) : Ab
 
         await  dataContext.SaveChangesAsync();
 
-        // Create an active session dated for yesterday
-        var yesterday= DateTime.Now.Date.AddDays(-1);
-        var yesterdayUtc = yesterday.ToUniversalTime();
+        // Create an inactive session dated for yesterday (UTC midnight, so it falls within the service's UTC range)
+        var yesterdayUtc = DateTime.UtcNow.Date.AddDays(-1);
         var activityData = new AppUserReadingSessionActivityData(new ProgressDto()
         {
             ChapterId = 1, VolumeId = 1, LibraryId = 1, PageNum = 1, SeriesId = 1
         }, 1, MangaFormat.Archive);
 
-        activityData.StartTime = yesterday;
+        activityData.StartTime = yesterdayUtc;
         activityData.StartTimeUtc = yesterdayUtc;
 
         await dataContext.AppUserReadingSession.AddAsync(new AppUserReadingSession()
@@ -99,9 +98,9 @@ public class ReadingHistoryServiceTests(ITestOutputHelper testOutputHelper) : Ab
                 activityData
             ],
             AppUserId = 1,
-            StartTime = yesterday,
+            StartTime = yesterdayUtc,
             StartTimeUtc = yesterdayUtc,
-            EndTime = yesterday.AddHours(1),
+            EndTime = yesterdayUtc.AddHours(1),
             EndTimeUtc = yesterdayUtc.AddHours(1),
             IsActive = false,
         });

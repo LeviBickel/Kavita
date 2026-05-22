@@ -277,7 +277,7 @@ public class MetadataService(
         if (!metadataSettings.EnableOpenLibrary && !metadataSettings.EnableGoogleBooks && !metadataSettings.EnableHardcover) return;
 
         var author = series.Metadata?.People
-            ?.FirstOrDefault(p => p.Role == PersonRole.Writer)?.Person.Name;
+            ?.FirstOrDefault(p => p.Role == PersonRole.Writer)?.Person?.Name;
 
         // Strip "Author - " prefix from series name if present (common audiobook naming pattern)
         var title = series.Name;
@@ -401,9 +401,10 @@ public class MetadataService(
     /// </summary>
     private static bool IsSeriesNameDerivedFromTitle(Series series)
     {
-        if (series.Volumes.Count != 1) return false;
+        if (series.Volumes is not { Count: 1 }) return false;
         var vol = series.Volumes[0];
         if (vol.MinNumber != 0f) return false;
+        if (vol.Chapters == null) return false;
         return vol.Chapters.Any(c => string.Equals(c.Title.ToNormalized(), series.NormalizedName, StringComparison.Ordinal));
     }
 

@@ -96,6 +96,7 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IExternalMetadataService, ExternalMetadataService>();
         services.AddScoped<ISmartCollectionSyncService, SmartCollectionSyncService>();
         services.AddScoped<IWantToReadSyncService, WantToReadSyncService>();
+        services.AddScoped<IKavitaPlusAuditService, KavitaPlusAuditService>();
 
         services.AddScoped<IOidcService, OidcService>();
 

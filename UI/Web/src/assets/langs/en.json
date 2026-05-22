@@ -1256,7 +1256,178 @@
         "on": "{{reader-settings.on}}",
         "off": "{{reader-settings.off}}",
         "loading": "{{common.loading}}",
-        "read-count-tooltip": "Total Reads"
+        "read-count-tooltip": "Total Reads",
+        "kavitaplus-audit-alt": "Kavita+ Activity"
+    },
+
+    "kavitaplus-audit": {
+        "panel-title": "Kavita+: Audit Log",
+        "matched": "Matched",
+        "unmatched": "Unmatched",
+        "filter-all": "All",
+        "filter-match": "Match",
+        "filter-metadata": "Metadata",
+        "filter-scrobble": "Scrobble",
+        "filter-sync": "Sync",
+        "no-events": "No recent events",
+        "no-data": "No data available",
+        "loading": "{{common.loading}}",
+        "close": "{{common.close}}",
+        "refreshed": "Refreshed",
+        "next-refresh": "Next Refresh",
+        "showing-latest": "Showing latest {{count}} events",
+        "my-activity": "My Activity",
+        "admin-feed": "Admin feed",
+        "read-progress-sent-label": "Read progress - {{chapter}}",
+        "fields-updated": "{{count}} fields updated",
+        "rating-updated": "Rating updated",
+        "add-want-to-read": "Added to want to read",
+        "remove-want-to-read": "Removed from want to read",
+        "review-submitted": "Review submitted"
+    },
+
+    "kavitaplus-activity": {
+        "description": "Reading activity Kavita has synced to external services on your behalf - progress, ratings, and reading status."
+    },
+
+    "manage-kavitaplus-activity": {
+        "description": "90 days of metadata, match, scrobble and sync events. Triage failures and trigger a manual match from here.",
+        "stats-events-label": "Events (24h)",
+        "stats-failures-label": "Failures",
+        "stats-match-label": "Matched",
+        "stats-matched-label": "Matched {{percent}}%",
+        "stats-coverage-subtitle": "{{percent}}% coverage",
+        "stats-queue-label": "Queue",
+        "stats-unresolved": "{{count}} unresolved",
+        "stats-stale-subtitle": "{{count}} stale",
+        "stats-blacklisted-subtitle": "{{count}} failed to match",
+        "filter-all": "All",
+        "filter-match": "Match",
+        "filter-metadata": "Metadata",
+        "filter-scrobble": "Scrobble",
+        "filter-sync": "Sync",
+        "filter-status-label": "Status filter",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "events-count": "{{count}} events",
+        "subject-label": "Subject: {{subject}}",
+        "search-alt": "Search events",
+        "filter-subject-label": "Subject",
+        "filter-user-label": "User",
+        "filter-timeframe-label": "Time Frame",
+        "filter-timeframe-24h": "Last 24 Hours",
+        "filter-timeframe-7d": "Last 7 Days",
+        "filter-timeframe-30d": "Last 30 Days",
+        "system": "System"
+    },
+
+    "kavitaplus-diff": {
+        "field-label": "Field",
+        "before-label": "Before",
+        "after-label": "After",
+        "null-value": "—",
+        "object-expanded": "expanded below"
+    },
+
+    "scrobble-account-card": {
+        "provider-connected": "Connected",
+        "provider-not-connected": "Not connected",
+        "provider-expired": "Token expired",
+        "provider-connect": "Connect",
+        "provider-settings": "Settings",
+        "provider-description": "Link to send progress",
+        "disabled": "{{cron-frequency-pipe.disabled}}"
+    },
+
+    "kavitaplus-timeline": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "events-count": "{{count}} events",
+        "no-events": "No events to display",
+        "retry": "Retry",
+        "load-more-label": "Load more"
+    },
+
+    "audit-status-title-pipe": {
+        "success": "Success",
+        "failure": "Failure",
+        "info": "Info"
+    },
+
+    "audit-subject-title-pipe": {
+        "series": "Series",
+        "person": "Person",
+        "collection": "Collection",
+        "chapter": "Chapter",
+        "global": "Global"
+    },
+
+    "metadata-field-change-kind-title-pipe": {
+        "relationships": "Relationships",
+        "characters": "Characters",
+        "artists": "Artists",
+        "writers": "Writers",
+        "tags": "Tags",
+        "genres": "Genres",
+        "publication-status": "Publication Status",
+        "age-rating": "Age Rating",
+        "external-ids": "External IDs",
+        "summary": "Summary",
+        "title": "Title",
+        "release-date": "Release Date",
+        "release-year": "Release Year",
+        "localized-name": "Localized Name"
+    },
+
+
+    "kavita-plus-event-description-pipe": {
+        "read-progress-sent": "{{chapter}}",
+        "rating-updated": "Rating updated: {{rating}}/5",
+        "add-want-to-read": "Added to want to read",
+        "remove-want-to-read": "Removed from want to read",
+        "review-submitted": "Review submitted",
+        "fields-updated": "{{count}} fields updated",
+        "chapter-cover-updated": "Cover updated: {{chapter}}",
+        "series-cover-updated": "Series cover updated",
+        "series-match-fixed": "Series matched with {{matchName}}"
+    },
+
+    "kavita-plus-event-type-pipe": {
+        "series-matched": "Series Matched",
+        "series-match-failed": "Match Failed",
+        "series-blacklisted": "Blacklisted",
+        "series-match-fixed": "Match Fixed",
+        "series-dont-match-set": "Don't Match Set",
+        "metadata-fetched": "Metadata Fetched",
+        "metadata-updated": "Metadata Updated",
+        "cover-updated": "Cover Updated",
+        "chapter-metadata-updated": "Chapter Metadata Updated",
+        "chapter-cover-updated": "Chapter Cover Updated",
+        "person-cover-updated": "Person Cover Updated",
+        "person-alias-added": "Person Alias Added",
+        "collection-synced": "Collection Synced",
+        "collection-item-added": "Collection Item Added",
+        "scrobble-created": "Scrobble Created",
+        "scrobble-updated": "Scrobble Updated",
+        "scrobble-sent": "Scrobble Sent",
+        "scrobble-failed": "Scrobble Failed",
+        "scrobble-rate-limit": "Rate Limit Hit",
+        "scrobble-skipped": "Scrobble Skipped",
+        "scrobble-hold-added": "Scrobble Hold Added",
+        "scrobble-hold-removed": "Scrobble Hold Removed",
+        "sync-started": "Sync Started",
+        "sync-completed": "Sync Completed",
+        "sync-failed": "Sync Failed"
+    },
+
+    "audit-log-messages": {
+        "rate-limit-hit": "Rate Limit Hit",
+        "invalid-token": "Invalid AniList Token",
+        "unknown-series": "Unknown Series",
+        "series-dont-match": "Series Marked as Do Not Match",
+        "scrobble-hold-active": "Series Is on Hold",
+        "library-scrobbling-disabled": "Library Scrobbling Disabled",
+        "token-expired": "AniList Token Has Expired"
     },
 
     "reading-progress-status-pipe": {
@@ -2087,6 +2258,7 @@
         "admin-metadata": "Manage Metadata",
         "admin-mappings-import": "Metadata Settings",
         "scrobble-holds": "Scrobble Holds",
+        "my-activity": "My Activity",
         "account": "Account",
         "preferences": "Preferences",
         "custom-key-binds": "Key Binds",
@@ -2100,7 +2272,8 @@
         "cbl-import": "Reading List Manager",
         "remap-rules": "Remap Rules",
         "mal-stack-import": "MAL Stack",
-        "admin-public-metadata": "Manage Metadata"
+        "admin-public-metadata": "Manage Metadata",
+        "admin-manage-kavitaplus-activity": "Manage Kavita+ Activity"
     },
 
     "manage-custom-key-binds": {
@@ -4086,7 +4259,12 @@
         "uploaded-tab": "Uploaded",
         "current-tab": "Current",
         "kavita-plus-tab": "Kavita+",
-        "other-tab": "Other"
+        "other-tab": "Other",
+        "all-tab": "All",
+        "scrobbles-tab": "Scrobbles",
+        "failed-tab": "Failed",
+        "my-changes-tab": "My Changes",
+        "scrobble-holds-tab": "Scrobble Holds"
     },
 
     "common": {

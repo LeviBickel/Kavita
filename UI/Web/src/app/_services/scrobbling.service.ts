@@ -9,12 +9,27 @@ import {ScrobbleHold} from "../_models/scrobbling/scrobble-hold";
 import {PaginatedResult} from "../_models/pagination";
 import {ScrobbleEventFilter} from "../_models/scrobbling/scrobble-event-filter";
 import {UtilityService} from "../shared/_services/utility.service";
+import {forkJoin} from "rxjs";
+import {KavitaPlusAuditEntry} from "../_models/kavitaplus/kavita-plus-audit-entry";
 
 export enum ScrobbleProvider {
   Kavita = 0,
   AniList = 1,
   Mal = 2,
-  Cbr = 4
+  Cbr = 4,
+  Hardcover = 5,
+  MangaBaka = 6,
+}
+
+/**
+ * TODO: This is a temp wrapper until I merge Amelia's Scrobble Provider Rework branch
+ */
+export interface UserScrobbleProvider {
+  userName: string | null;
+  authenticationToken: string | null;
+  validUntilUtc: string;
+  lastSyncedUtc: string;
+  provider: ScrobbleProvider;
 }
 
 @Injectable({
@@ -56,6 +71,42 @@ export class ScrobblingService {
     return this.httpClient.get<{username: string, accessToken: string}>(this.baseUrl + 'scrobbling/mal-token');
   }
 
+  /**
+   * Returns all providers with user's information filled out
+   */
+  getScrobbleProviders() {
+    // TODO: Port this to the backend
+
+    const defaultProviders = [
+      {provider: ScrobbleProvider.AniList},
+      {provider: ScrobbleProvider.Mal},
+      {provider: ScrobbleProvider.MangaBaka},
+      {provider: ScrobbleProvider.Hardcover},
+    ] as UserScrobbleProvider[];
+
+    return forkJoin({
+      aniList: this.getAniListToken(),
+      mal: this.getMalToken(),
+    }).pipe(map(res => {
+
+      const data = [...defaultProviders];
+      data[0].authenticationToken = res.aniList;
+
+      data[1].authenticationToken = res.mal.accessToken;
+      data[1].userName = res.mal.username;
+
+
+      return data;
+    }));
+  }
+
+  /**
+   * Re-queues the underlying event to process. Only applicable if the event is in failed/rate limit state
+   * @param event
+   */
+  retryScrobbleEvent(event: KavitaPlusAuditEntry) {
+    return this.httpClient.post(this.baseUrl + 'scrobbling/retry-scrobble', event, TextResonse).pipe(map(r => r === 'true'));
+  }
 
   hasRunScrobbleGen() {
     return this.httpClient.get(this.baseUrl + 'scrobbling/has-ran-scrobble-gen ', TextResonse).pipe(map(r => r === 'true'));

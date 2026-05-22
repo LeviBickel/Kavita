@@ -10,9 +10,11 @@ using Kavita.API.Services.Plus;
 using Kavita.Common.Helpers;
 using Kavita.Models.Builders;
 using Kavita.Models.Constants;
+using Kavita.Models.DTOs.KavitaPlus;
 using Kavita.Models.DTOs.KavitaPlus.Account;
 using Kavita.Models.DTOs.Scrobbling;
 using Kavita.Models.Entities.Enums;
+using Kavita.Models.Entities.Enums.Audit;
 using Kavita.Models.Entities.Scrobble;
 using Kavita.Server.Attributes;
 using Kavita.Server.Extensions;
@@ -28,7 +30,8 @@ public class ScrobblingController(
     IUnitOfWork unitOfWork,
     IScrobblingService scrobblingService,
     ILogger<ScrobblingController> logger,
-    ILocalizationService localizationService)
+    ILocalizationService localizationService,
+    IKavitaPlusAuditService kavitaPlusAuditService)
     : BaseApiController
 {
     /// <summary>
@@ -224,6 +227,8 @@ public class ScrobblingController(
 
             // When a hold is placed on a series, clear any pre-existing Scrobble Events
             await scrobblingService.ClearEventsForSeries(user.Id, seriesId);
+            await kavitaPlusAuditService.LogScrobbleAsync(KavitaPlusEventType.ScrobbleHoldAdded, seriesId,
+                new AuditLogScrobbleParamsDto(), AuditStatus.Success, null, UserId, HttpContext.RequestAborted);
             return Ok();
         }
         catch (DbUpdateConcurrencyException ex)
@@ -237,6 +242,8 @@ public class ScrobblingController(
             // Retry the update
             unitOfWork.UserRepository.Update(user);
             await unitOfWork.CommitAsync();
+            await kavitaPlusAuditService.LogScrobbleAsync(KavitaPlusEventType.ScrobbleHoldAdded, seriesId,
+                new AuditLogScrobbleParamsDto(), AuditStatus.Success, null, UserId, HttpContext.RequestAborted);
             return Ok();
         }
         catch (Exception ex)
@@ -257,18 +264,22 @@ public class ScrobblingController(
     [DisallowRole(PolicyConstants.ReadOnlyRole)]
     public async Task<ActionResult> RemoveHold(int seriesId)
     {
-        var user = await unitOfWork.UserRepository.GetUserByIdAsync(UserId, AppUserIncludes.ScrobbleHolds);
+        var user = await unitOfWork.UserRepository.GetUserByIdAsync(UserId, AppUserIncludes.ScrobbleHolds, HttpContext.RequestAborted);
         if (user == null) return Unauthorized();
 
         user.ScrobbleHolds = user.ScrobbleHolds.Where(h => h.SeriesId != seriesId).ToList();
 
         unitOfWork.UserRepository.Update(user);
-        await unitOfWork.CommitAsync();
+        await unitOfWork.CommitAsync(HttpContext.RequestAborted);
+
+        await kavitaPlusAuditService.LogScrobbleAsync(KavitaPlusEventType.ScrobbleHoldRemoved, seriesId,
+            new AuditLogScrobbleParamsDto(), AuditStatus.Success, null, UserId, HttpContext.RequestAborted);
+
         return Ok();
     }
 
     /// <summary>
-    /// Has the logged in user ran scrobble generation
+    /// Has the logged-in user ran scrobble generation
     /// </summary>
     /// <returns></returns>
     [HttpGet("has-ran-scrobble-gen")]
@@ -291,5 +302,22 @@ public class ScrobblingController(
         unitOfWork.ScrobbleRepository.Remove(events);
         await unitOfWork.CommitAsync();
         return Ok();
+    }
+
+
+    /// <summary>
+    /// Attempts to retry Scrobble Events for the current authenticated user (or admin-allowed).
+    /// </summary>
+    /// <param name="dto"></param>
+    /// <returns>true if successful, false in all other cases (validation)</returns>
+    [HttpPost("retry-scrobble")]
+    [DisallowRole(PolicyConstants.ReadOnlyRole)]
+    public async Task<ActionResult<bool>> RetryScrobble(KavitaPlusAuditEntryDto dto)
+    {
+        if (!dto.UserId.HasValue) return Ok(false);
+        if (dto.UserId != UserId && !User.IsInRole(PolicyConstants.AdminRole)) return Ok(false);
+
+        // Locate the Scrobble event or replay the event
+        return Ok(await scrobblingService.RetryScrobbleAsync(UserId, dto, HttpContext.RequestAborted));
     }
 }

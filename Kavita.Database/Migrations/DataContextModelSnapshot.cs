@@ -572,6 +572,65 @@ namespace Kavita.Database.Migrations
                     b.ToTable("Genre");
                 });
 
+            modelBuilder.Entity("Kavita.Models.Entities.History.KavitaPlusAuditLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("HasRetried")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Payload")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SeriesId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("SubjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SubjectType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedUtc")
+                        .HasDatabaseName("IX_KavitaPlusAuditLog_CreatedUtc");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_KavitaPlusAuditLog_UserId");
+
+                    b.HasIndex("Category", "CreatedUtc")
+                        .HasDatabaseName("IX_KavitaPlusAuditLog_Category_CreatedUtc");
+
+                    b.HasIndex("SeriesId", "CreatedUtc")
+                        .HasDatabaseName("IX_KavitaPlusAuditLog_SeriesId_CreatedUtc");
+
+                    b.HasIndex("SubjectType", "SubjectId")
+                        .HasDatabaseName("IX_KavitaPlusAuditLog_SubjectType_SubjectId");
+
+                    b.ToTable("KavitaPlusAuditLogs");
+                });
+
             modelBuilder.Entity("Kavita.Models.Entities.History.ManualMigrationHistory", b =>
                 {
                     b.Property<int>("Id")
@@ -946,7 +1005,19 @@ namespace Kavita.Database.Migrations
                     b.Property<int>("CbrId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("GoogleBooksId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastModified")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastModifiedUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<long>("MalId")
@@ -3765,6 +3836,16 @@ namespace Kavita.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("Library");
+                });
+
+            modelBuilder.Entity("Kavita.Models.Entities.History.KavitaPlusAuditLog", b =>
+                {
+                    b.HasOne("Kavita.Models.Entities.User.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Kavita.Models.Entities.LibraryExcludePattern", b =>

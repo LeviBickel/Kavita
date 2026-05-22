@@ -123,6 +123,11 @@ public class CblController(IReadingListService readingListService, IDirectorySer
 
     private async Task<(bool IsInvalid, ActionResult<CblSavedFileDto>? ActionResult)> HasInvalidExtensionAsync(string filename, string fullPath)
     {
+        if (!ValidateFilename(Path.Join(fullPath, filename)))
+        {
+            return (true, BadRequest(await localizationService.TranslateAsync("cbl-import-validation-types")));
+        }
+
         var ext = Path.GetExtension(filename);
         if (!ext.Equals(".cbl", StringComparison.OrdinalIgnoreCase) && !ext.Equals(".json", StringComparison.OrdinalIgnoreCase))
         {

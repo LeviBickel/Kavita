@@ -15,4 +15,11 @@ public interface IExternalCoverProviderService
     /// Returns null if no provider is enabled or none find a match.
     /// </summary>
     Task<ExternalBookMetadata?> FetchMetadataAsync(string title, string? author, MetadataSettingsDto settings, CancellationToken ct = default);
+
+    /// <summary>
+    /// Queries Google Books specifically for series membership information (seriesInfo).
+    /// Only runs when Google Books is enabled; does not require a cover to be present.
+    /// Returns null if Google Books is disabled, the book is not found, or the book has no series info.
+    /// </summary>
+    Task<ExternalBookMetadata?> FetchSeriesInfoAsync(string title, string? author, MetadataSettingsDto settings, CancellationToken ct = default);
 }

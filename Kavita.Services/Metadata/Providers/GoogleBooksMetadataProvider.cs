@@ -65,7 +65,9 @@ public class GoogleBooksMetadataProvider : IBookMetadataProvider
                 Description = info.Description,
                 Author = info.Authors?.Length > 0 ? info.Authors[0] : null,
                 AgeRating = ageRating,
-                ProviderName = ProviderName
+                ProviderName = ProviderName,
+                SeriesName = string.IsNullOrWhiteSpace(info.SeriesInfo?.DisplayName) ? null : info.SeriesInfo.DisplayName,
+                SeriesIndex = string.IsNullOrWhiteSpace(info.SeriesInfo?.BookDisplayNumber) ? null : info.SeriesInfo.BookDisplayNumber
             };
         }
         catch (FlurlHttpException ex) when (ex.StatusCode == 429)
@@ -132,11 +134,25 @@ public class GoogleBooksMetadataProvider : IBookMetadataProvider
 
         [JsonPropertyName("categories")]
         public string[]? Categories { get; set; }
+
+        [JsonPropertyName("seriesInfo")]
+        public GoogleBooksSeriesInfo? SeriesInfo { get; set; }
     }
 
     private sealed class GoogleBooksImageLinks
     {
         [JsonPropertyName("thumbnail")]
         public string? Thumbnail { get; set; }
+    }
+
+    private sealed class GoogleBooksSeriesInfo
+    {
+        /// <summary>Display name of the series (e.g. "The Eagle &amp; The Dragon")</summary>
+        [JsonPropertyName("displayName")]
+        public string? DisplayName { get; set; }
+
+        /// <summary>The book's position within the series as a string (e.g. "1", "2", "1.5")</summary>
+        [JsonPropertyName("bookDisplayNumber")]
+        public string? BookDisplayNumber { get; set; }
     }
 }

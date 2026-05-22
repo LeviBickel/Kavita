@@ -13,6 +13,7 @@ using Kavita.API.Services.Metadata;
 using Kavita.API.Services.SignalR;
 using Kavita.Common.Extensions;
 using Kavita.Common.Helpers;
+using Kavita.Models.DTOs.Metadata;
 using Kavita.Models.DTOs.Settings;
 using Kavita.Models.DTOs.SignalR;
 using Kavita.Models.Entities;
@@ -260,24 +261,17 @@ public class MetadataService(
 
 
     /// <summary>
-    /// Attempts to fetch a cover image from enabled external providers when local extraction produced nothing.
-    /// Only runs for Book and Audiobook libraries, and only when the series still has no cover.
+    /// Attempts to enrich series metadata and fetch a cover image from enabled external providers.
+    /// Series name enrichment: when a book's series name was derived from its file title (no EPUB series tag),
+    /// Google Books is queried for the real series name and the Series entity is updated in-place.
+    /// Cover fetch: only runs when the series has no cover. The Google Books result from the series
+    /// enrichment step is reused when available, avoiding a second API call.
+    /// Only runs for Book and Audiobook libraries.
     /// </summary>
     private async Task TryFetchExternalCoverAsync(Series series, EncodeFormat encodeFormat, CoverImageSize coverImageSize, CancellationToken ct = default)
     {
         var library = series.Library;
         if (library is not { Type: LibraryType.Book or LibraryType.Audiobook }) return;
-
-        // If series already has a cover, propagate it to any volumes/chapters missing one
-        if (!string.IsNullOrEmpty(series.CoverImage))
-        {
-            logger.LogDebug("[MetadataService] Series '{SeriesName}' has cover '{Cover}', propagating to missing volumes/chapters",
-                series.Name, series.CoverImage);
-            await PropagateCoverToMissingVolumesAsync(series);
-            return;
-        }
-
-        logger.LogDebug("[MetadataService] Series '{SeriesName}' has no cover, attempting external fetch", series.Name);
 
         var metadataSettings = await unitOfWork.SettingsRepository.GetMetadataSettingDto(ct);
         if (!metadataSettings.EnableOpenLibrary && !metadataSettings.EnableGoogleBooks && !metadataSettings.EnableHardcover) return;
@@ -302,7 +296,33 @@ public class MetadataService(
         // Strip trailing volume/chapter number (e.g. "Snowbound Mystery 06" -> "Snowbound Mystery")
         title = System.Text.RegularExpressions.Regex.Replace(title.TrimEnd(), @"\s+\d+$", string.Empty);
 
-        var result = await externalCoverProviderService.FetchMetadataAsync(title, author, metadataSettings, ct);
+        // --- Series name enrichment ---
+        // When no calibre:series / belongs-to-collection tag was set in the EPUB, the series name
+        // is the book's own title. Detect that case and ask Google Books for the real series name.
+        ExternalBookMetadata? googleResult = null;
+        if (IsSeriesNameDerivedFromTitle(series))
+        {
+            googleResult = await externalCoverProviderService.FetchSeriesInfoAsync(title, author, metadataSettings, ct);
+            if (googleResult?.SeriesName != null)
+                TryEnrichSeriesName(series, googleResult.SeriesName);
+        }
+
+        // --- Cover fetching ---
+        // If the series already has a cover, just propagate it to any volumes/chapters missing one.
+        if (!string.IsNullOrEmpty(series.CoverImage))
+        {
+            logger.LogDebug("[MetadataService] Series '{SeriesName}' has cover '{Cover}', propagating to missing volumes/chapters",
+                series.Name, series.CoverImage);
+            await PropagateCoverToMissingVolumesAsync(series);
+            return;
+        }
+
+        logger.LogDebug("[MetadataService] Series '{SeriesName}' has no cover, attempting external fetch", series.Name);
+
+        // Reuse the Google Books result when it already has a cover (avoids a second API call);
+        // otherwise fall through to the full provider chain.
+        var result = (googleResult?.CoverUrl != null ? googleResult : null)
+            ?? await externalCoverProviderService.FetchMetadataAsync(title, author, metadataSettings, ct);
         if (result?.CoverUrl == null) return;
 
         try
@@ -371,6 +391,40 @@ public class MetadataService(
         {
             logger.LogWarning(ex, "[MetadataService] Failed to download external cover for '{SeriesName}' from {Url}", series.Name, result.CoverUrl);
         }
+    }
+
+    /// <summary>
+    /// Returns true when a book's series name was auto-derived from its file title rather than from
+    /// explicit EPUB metadata (calibre:series / belongs-to-collection). The heuristic is:
+    /// the series has exactly one Special volume (MinNumber == 0) and at least one chapter whose
+    /// title normalizes to the same value as the series' own NormalizedName.
+    /// </summary>
+    private static bool IsSeriesNameDerivedFromTitle(Series series)
+    {
+        if (series.Volumes.Count != 1) return false;
+        var vol = series.Volumes[0];
+        if (vol.MinNumber != 0f) return false;
+        return vol.Chapters.Any(c => string.Equals(c.Title.ToNormalized(), series.NormalizedName, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Updates the series name (and sort name when not locked) to the value returned by Google Books.
+    /// Only updates when the new name is non-empty and actually different from the current name.
+    /// </summary>
+    private void TryEnrichSeriesName(Series series, string googleSeriesName)
+    {
+        var normalized = googleSeriesName.ToNormalized();
+        if (string.IsNullOrEmpty(normalized) || normalized == series.NormalizedName) return;
+
+        logger.LogInformation("[MetadataService] Enriching '{OldName}' → '{NewName}' based on Google Books series info",
+            series.Name, googleSeriesName);
+
+        series.Name = googleSeriesName;
+        series.NormalizedName = normalized;
+        if (!series.SortNameLocked)
+            series.SortName = googleSeriesName;
+
+        unitOfWork.SeriesRepository.Update(series);
     }
 
     private async Task PropagateCoverToMissingVolumesAsync(Series series)

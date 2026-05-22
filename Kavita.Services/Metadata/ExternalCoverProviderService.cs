@@ -48,6 +48,22 @@ public class ExternalCoverProviderService : IExternalCoverProviderService
         return null;
     }
 
+    public async Task<ExternalBookMetadata?> FetchSeriesInfoAsync(string title, string? author, MetadataSettingsDto settings, CancellationToken ct = default)
+    {
+        if (!settings.EnableGoogleBooks) return null;
+
+        var apiKey = string.IsNullOrWhiteSpace(settings.GoogleBooksApiKey) || settings.GoogleBooksApiKey == "***"
+            ? null
+            : settings.GoogleBooksApiKey;
+
+        var result = await _googleBooks.FetchAsync(title, author, apiKey, ct);
+        if (result?.SeriesName == null) return null;
+
+        _logger.LogDebug("[ExternalCoverProvider] Found series info for '{Title}': series '{SeriesName}' #{SeriesIndex} via Google Books",
+            title, result.SeriesName, result.SeriesIndex);
+        return result;
+    }
+
     private List<(IBookMetadataProvider Provider, string? ApiKey)> BuildProviderList(MetadataSettingsDto settings)
     {
         var list = new List<(IBookMetadataProvider, string?)>();

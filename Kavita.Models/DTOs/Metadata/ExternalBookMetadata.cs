@@ -31,4 +31,16 @@ public record ExternalBookMetadata
     /// Name of the provider that returned this result
     /// </summary>
     public string ProviderName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Series name from the provider (e.g. Google Books seriesInfo.displayName).
+    /// Null when the provider did not return series membership data.
+    /// </summary>
+    public string? SeriesName { get; init; }
+
+    /// <summary>
+    /// The book's position within the series as a raw string (e.g. "1", "2", "1.5").
+    /// Null when the provider did not return a position.
+    /// </summary>
+    public string? SeriesIndex { get; init; }
 }

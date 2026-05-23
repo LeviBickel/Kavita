@@ -297,14 +297,30 @@ public class MetadataService(
         title = System.Text.RegularExpressions.Regex.Replace(title.TrimEnd(), @"\s+\d+$", string.Empty);
 
         // --- Series name enrichment ---
-        // When no calibre:series / belongs-to-collection tag was set in the EPUB, the series name
+        // When no calibre:series / belongs-to-collection tag was set in the EPUB the series name
         // is the book's own title. Detect that case and ask Google Books for the real series name.
         ExternalBookMetadata? googleResult = null;
         if (IsSeriesNameDerivedFromTitle(series))
         {
+            logger.LogInformation("[MetadataService] '{SeriesName}' looks title-derived (single Special volume). Querying Google Books for series info",
+                series.Name);
             googleResult = await externalCoverProviderService.FetchSeriesInfoAsync(title, author, metadataSettings, ct);
             if (googleResult?.SeriesName != null)
+            {
                 TryEnrichSeriesName(series, googleResult.SeriesName);
+            }
+            else
+            {
+                logger.LogInformation("[MetadataService] Google Books returned no series info for '{Title}' (author: '{Author}')",
+                    title, author ?? "unknown");
+            }
+        }
+        else
+        {
+            logger.LogDebug("[MetadataService] '{SeriesName}' skipped series enrichment: volumes={VolumeCount}, firstVolMinNumber={MinNumber}",
+                series.Name,
+                series.Volumes?.Count ?? -1,
+                series.Volumes?.Count > 0 ? series.Volumes[0].MinNumber.ToString("F1") : "n/a");
         }
 
         // --- Cover fetching ---
@@ -395,17 +411,15 @@ public class MetadataService(
 
     /// <summary>
     /// Returns true when a book's series name was auto-derived from its file title rather than from
-    /// explicit EPUB metadata (calibre:series / belongs-to-collection). The heuristic is:
-    /// the series has exactly one Special volume (MinNumber == 0) and at least one chapter whose
-    /// title normalizes to the same value as the series' own NormalizedName.
+    /// explicit EPUB metadata (calibre:series / belongs-to-collection).
+    /// A reliable indicator: the series has exactly one volume and that volume is a Special (MinNumber == 0),
+    /// meaning no series index was parsed from the file. This is true for every standalone book that
+    /// lacks calibre series tags.
     /// </summary>
     private static bool IsSeriesNameDerivedFromTitle(Series series)
     {
         if (series.Volumes is not { Count: 1 }) return false;
-        var vol = series.Volumes[0];
-        if (vol.MinNumber != 0f) return false;
-        if (vol.Chapters == null) return false;
-        return vol.Chapters.Any(c => string.Equals(c.Title.ToNormalized(), series.NormalizedName, StringComparison.Ordinal));
+        return series.Volumes[0].MinNumber == 0f;
     }
 
     /// <summary>

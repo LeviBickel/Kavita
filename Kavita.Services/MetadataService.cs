@@ -13,6 +13,7 @@ using Kavita.API.Services.Metadata;
 using Kavita.API.Services.SignalR;
 using Kavita.Common.Extensions;
 using Kavita.Common.Helpers;
+using Kavita.Models.Constants;
 using Kavita.Models.DTOs.Metadata;
 using Kavita.Models.DTOs.Settings;
 using Kavita.Models.DTOs.SignalR;
@@ -419,7 +420,8 @@ public class MetadataService(
     private static bool IsSeriesNameDerivedFromTitle(Series series)
     {
         if (series.Volumes is not { Count: 1 }) return false;
-        return series.Volumes[0].MinNumber == 0f;
+        // LooseLeafVolumeNumber (-100000) is Kavita's sentinel for a book with no calibre:series_index
+        return series.Volumes[0].MinNumber == ParserConstants.LooseLeafVolumeNumber;
     }
 
     /// <summary>

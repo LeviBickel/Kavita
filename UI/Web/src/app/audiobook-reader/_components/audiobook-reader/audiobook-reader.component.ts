@@ -74,6 +74,7 @@ export class AudiobookReaderComponent implements OnInit, OnDestroy {
   nextChapterId = signal(CHAPTER_ID_NOT_FETCHED);
 
   private progressSaveSubscription?: Subscription;
+  private autoplayOnLoad = false;
 
   ngOnInit() {
     this.navService.hideNavBar();
@@ -147,6 +148,14 @@ export class AudiobookReaderComponent implements OnInit, OnDestroy {
       audio.volume = this.volume();
       audio.playbackRate = PLAYBACK_SPEEDS[this.playbackSpeedIndex()];
     }
+    if (this.autoplayOnLoad && audio) {
+      this.autoplayOnLoad = false;
+      audio.play().then(() => {
+        this.isPlaying.set(true);
+        this.startProgressSaving();
+        this.cdRef.markForCheck();
+      }).catch(() => {});
+    }
     this.cdRef.markForCheck();
   }
 
@@ -162,8 +171,8 @@ export class AudiobookReaderComponent implements OnInit, OnDestroy {
     this.isPlaying.set(false);
     this.stopProgressSaving();
     this.saveProgress();
-    // Auto-advance to next chapter
     if (this.nextChapterId() !== CHAPTER_ID_DOESNT_EXIST && this.nextChapterId() !== CHAPTER_ID_NOT_FETCHED) {
+      this.autoplayOnLoad = true;
       this.navigateToChapter(this.nextChapterId());
     }
     this.cdRef.markForCheck();

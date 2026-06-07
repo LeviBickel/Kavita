@@ -154,7 +154,9 @@ export class AudiobookReaderComponent implements OnInit, OnDestroy {
         this.isPlaying.set(true);
         this.startProgressSaving();
         this.cdRef.markForCheck();
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn('[AudiobookReader] autoplay blocked:', err);
+      });
     }
     this.cdRef.markForCheck();
   }

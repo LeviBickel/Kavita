@@ -44,7 +44,6 @@ public class TaskScheduler : ITaskScheduler
     private readonly IStatsService _statsService;
     private readonly IVersionUpdaterService _versionUpdaterService;
     private readonly IWordCountAnalyzerService _wordCountAnalyzerService;
-    private readonly IStatisticService _statisticService;
     private readonly IMediaConversionService _mediaConversionService;
     private readonly IScrobblingService _scrobblingService;
     private readonly ILicenseService _licenseService;
@@ -102,7 +101,7 @@ public class TaskScheduler : ITaskScheduler
     public TaskScheduler(ICacheService cacheService, ILogger<TaskScheduler> logger, IScannerService scannerService,
         IUnitOfWork unitOfWork, IMetadataService metadataService, IBackupService backupService,
         ICleanupService cleanupService, IStatsService statsService, IVersionUpdaterService versionUpdaterService,
-        IWordCountAnalyzerService wordCountAnalyzerService, IStatisticService statisticService,
+        IWordCountAnalyzerService wordCountAnalyzerService,
         IMediaConversionService mediaConversionService, IScrobblingService scrobblingService, ILicenseService licenseService,
         IExternalMetadataService externalMetadataService, ISmartCollectionSyncService smartCollectionSyncService,
         IWantToReadSyncService wantToReadSyncService, IEventHub eventHub, IEmailService emailService,
@@ -118,7 +117,6 @@ public class TaskScheduler : ITaskScheduler
         _statsService = statsService;
         _versionUpdaterService = versionUpdaterService;
         _wordCountAnalyzerService = wordCountAnalyzerService;
-        _statisticService = statisticService;
         _mediaConversionService = mediaConversionService;
         _scrobblingService = scrobblingService;
         _licenseService = licenseService;
@@ -246,7 +244,7 @@ public class TaskScheduler : ITaskScheduler
 
     }
 
-    private static bool IsInvalidCronSetting(string setting)
+    private static bool IsInvalidCronSetting(string? setting)
     {
         return setting == null || (!NonCronOptions.Contains(setting) && !CronHelper.IsValidCron(setting));
     }
@@ -298,6 +296,10 @@ public class TaskScheduler : ITaskScheduler
         RecurringJob.AddOrUpdate<IKavitaPlusAuditService>(PurgeKavitaPlusAuditLogsId,
             service => service.PurgeOldLogsAsync(CancellationToken.None),
             Cron.Daily, RecurringJobOptions);
+
+        RecurringJob.AddOrUpdate<IScrobblingService>(TaskSchedulerConstants.CreateReadStatusTransitionRuleEventsId,
+            service => service.RunReadStatusTransitionRules(CancellationToken.None),
+            Cron.Daily, RecurringJobOptions);
     }
 
 
@@ -314,6 +316,7 @@ public class TaskScheduler : ITaskScheduler
         RecurringJob.RemoveIfExists(KavitaPlusStackSyncId);
         RecurringJob.RemoveIfExists(KavitaPlusWantToReadSyncId);
         RecurringJob.RemoveIfExists(PurgeKavitaPlusAuditLogsId);
+        RecurringJob.RemoveIfExists(TaskSchedulerConstants.CreateReadStatusTransitionRuleEventsId);
     }
 
     #region StatsTasks
@@ -470,11 +473,6 @@ public class TaskScheduler : ITaskScheduler
         var jobId = BackgroundJob.Enqueue(() => _scannerService.ScanLibrary(libraryId, force, true));
         // When we do a scan, force cache to re-unpack in case page numbers change
         BackgroundJob.ContinueJobWith(jobId, () => _cleanupService.CleanupCacheDirectory());
-    }
-
-    public void TurnOnScrobbling(int userId = 0)
-    {
-        BackgroundJob.Enqueue(() => _scrobblingService.CreateEventsFromExistingHistory(userId));
     }
 
     public void CleanupChapters(int[] chapterIds)

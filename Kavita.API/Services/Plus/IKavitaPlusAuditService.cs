@@ -38,5 +38,8 @@ public interface IKavitaPlusAuditService
     Task LogScrobbleAsync(KavitaPlusEventType type, int seriesId, AuditLogScrobbleParamsDto details,
         AuditStatus status, string? error = null, int? userId = null, CancellationToken ct = default);
 
+    Task LogChapterScrobbleAsync(KavitaPlusEventType type, int seriesId, int chapterId, AuditLogScrobbleParamsDto details,
+        AuditStatus status, string? error = null, int? userId = null, CancellationToken ct = default);
+
     Task PurgeOldLogsAsync(CancellationToken ct = default);
 }

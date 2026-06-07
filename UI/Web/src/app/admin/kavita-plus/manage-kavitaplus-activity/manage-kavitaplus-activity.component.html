@@ -112,16 +112,12 @@
       </select>
     </div>
 
-    <label class="visually-hidden" for="auditSearch">{{t('search-alt')}}</label>
-    <input id="auditSearch" class="form-control form-control-sm search-input"
-           [placeholder]="t('search-alt')"
-           [value]="searchQuery()"
-           (input)="onSearchChange($any($event.target).value)" />
+    <app-search-input [value]="searchQuery()" (search)="onSearchChange($event)" [label]="t('search-alt')" />
   </div>
 
   <!-- Timeline with custom entry card -->
   <ng-template #entryTpl let-entry>
-    <app-kavitaplus-audit-accordion-item [entry]="entry" />
+    <app-kavitaplus-audit-entry [entry]="entry" [showStatus]="true" [showUser]="true" [showDiff]="true" />
   </ng-template>
 
   <app-kavitaplus-timeline
@@ -129,7 +125,6 @@
     [isLoading]="isLoading()"
     [hasMore]="hasMore()"
     [isLoadingMore]="isLoadingMore()"
-    [showRetry]="false"
     [entryTemplate]="entryTpl"
     (loadMore)="loadMore()" />
 

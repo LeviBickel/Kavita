@@ -70,7 +70,7 @@ export class SideNavComponent {
   totalSize = 0;
   isReadOnly = this.accountService.hasReadOnlyRole;
 
-  readonly hasValidLicense$ = toObservable(this.licenseService.hasValidLicense);
+  readonly hasValidLicense$ = toObservable(this.licenseService.hasActiveLicense);
 
   private showAllSubject = new BehaviorSubject<boolean>(false);
   showAll$ = this.showAllSubject.asObservable();
@@ -153,7 +153,7 @@ export class SideNavComponent {
 
     this.keyBindService.registerListener(
       this.destroyRef,
-      (e) => this.router.navigate(['/settings'], { fragment: SettingsTabId.Scrobbling}),
+      (e) => this.router.navigate(['/settings'], { fragment: SettingsTabId.MyActivity}),
       [KeyBindTarget.NavigateToScrobbling],
       {condition$: this.hasValidLicense$},
     );

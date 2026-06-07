@@ -62,6 +62,9 @@ import {
   ManageMatchedMetadataComponent
 } from "../../../admin/kavita-plus/manage-matched-metadata/manage-matched-metadata.component";
 import {LicenseComponent} from "../../../admin/kavita-plus/license/license.component";
+import {
+  ManageScrobbleProvidersComponent
+} from "../../../user-settings/manage-scrobble-providers/manage-scrobble-providers.component";
 
 @Component({
   selector: 'app-settings',
@@ -104,6 +107,7 @@ import {LicenseComponent} from "../../../admin/kavita-plus/license/license.compo
     ManageRemapRulesComponent,
     KavitaplusActivityComponent,
     ManageKavitaplusActivityComponent,
+    ManageScrobbleProvidersComponent
   ],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss',
@@ -119,7 +123,7 @@ export class SettingsComponent {
   protected readonly accountService = inject(AccountService);
 
   fragment: SettingsTabId = SettingsTabId.Account;
-  hasActiveLicense = computed(() => this.licenseService.hasValidLicense());
+  hasActiveLicense = computed(() => this.licenseService.hasActiveLicense());
 
   constructor() {
     this.route.fragment.pipe(tap(frag => {

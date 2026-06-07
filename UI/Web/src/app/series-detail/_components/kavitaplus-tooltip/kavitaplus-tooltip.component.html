@@ -41,7 +41,7 @@
 
 
           @if (info.lastRefreshedUtc != NULL_DATE) {
-            <span>{{t('refreshed')}} {{info.lastRefreshedUtc | utcToLocalTime | timeAgo}}</span>
+            <span>{{t('refreshed')}} {{info.lastRefreshedUtc | utcToLocalDate | timeAgo}}</span>
             <span class="dot-separator mx-1"></span>
             <span>{{t('next-refresh')}} {{info.nextRefreshUtc | utcToLocalTime:'shortDate'}}</span>
           }
@@ -90,7 +90,7 @@
               }
 
             </div>
-            <span class="kplus-event-time flex-shrink-0 text-muted text-nowrap">{{event.createdUtc | utcToLocalTime | timeAgo}}</span>
+            <span class="kplus-event-time flex-shrink-0 text-muted text-nowrap">{{event.createdUtc | utcToLocalDate | timeAgo}}</span>
           </div>
         } @empty {
           <div class="text-center text-muted py-3 small">{{t('no-events')}}</div>

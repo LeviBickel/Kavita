@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Flurl;
 using Flurl.Http;
 using Kavita.API.Database;
 using Kavita.API.Services.Plus;
@@ -12,10 +13,13 @@ using Kavita.Models.DTOs.Collection;
 using Kavita.Models.DTOs.KavitaPlus;
 using Kavita.Models.DTOs.KavitaPlus.ExternalMetadata;
 using Kavita.Models.DTOs.KavitaPlus.ExternalMetadata.Covers;
+using Kavita.Models.DTOs.KavitaPlus.License;
 using Kavita.Models.DTOs.KavitaPlus.Metadata;
+using Kavita.Models.DTOs.KavitaPlus.Scrobble;
 using Kavita.Models.DTOs.Metadata.Matching;
 using Kavita.Models.DTOs.Scrobbling;
 using Kavita.Models.Entities.Enums;
+using Kavita.Models.Entities.User;
 using Microsoft.Extensions.Logging;
 
 namespace Kavita.Services.Plus;
@@ -56,7 +60,9 @@ public class KavitaPlusApiService(ILogger<KavitaPlusApiService> logger, IUnitOfW
         CancellationToken ct = default)
     {
         var license = (await unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.LicenseKey, ct)).Value;
-        var token = (await unitOfWork.UserRepository.GetDefaultAdminUser(ct: ct)).AniListAccessToken;
+        var token = (await unitOfWork.UserRepository.GetDefaultAdminUser(ct: ct))
+            .ScrobbleProviders[ScrobbleProvider.AniList]
+            .AuthenticationToken;
 
         return await (Configuration.KavitaPlusApiUrl + "/api/metadata/v2/match-series")
             .WithKavitaPlusHeaders(license, token)
@@ -67,7 +73,9 @@ public class KavitaPlusApiService(ILogger<KavitaPlusApiService> logger, IUnitOfW
     public async Task<SeriesDetailPlusApiDto> GetSeriesDetailAsync(PlusSeriesRequestDto request, CancellationToken ct = default)
     {
         var license = (await unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.LicenseKey, ct)).Value;
-        var token = (await unitOfWork.UserRepository.GetDefaultAdminUser(ct: ct)).AniListAccessToken;
+        var token = (await unitOfWork.UserRepository.GetDefaultAdminUser(ct: ct))
+            .ScrobbleProviders[ScrobbleProvider.AniList]
+            .AuthenticationToken;
 
         return await (Configuration.KavitaPlusApiUrl + "/api/metadata/v2/series-detail")
             .WithKavitaPlusHeaders(license, token)
@@ -79,12 +87,104 @@ public class KavitaPlusApiService(ILogger<KavitaPlusApiService> logger, IUnitOfW
         CancellationToken ct = default)
     {
         var license = (await unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.LicenseKey, ct)).Value;
-        var token = (await unitOfWork.UserRepository.GetDefaultAdminUser(ct: ct)).AniListAccessToken;
+        var token = (await unitOfWork.UserRepository.GetDefaultAdminUser(ct: ct))
+            .ScrobbleProviders[ScrobbleProvider.AniList]
+            .AuthenticationToken;
 
         return await (Configuration.KavitaPlusApiUrl + "/api/metadata/v2/series-by-ids")
             .WithKavitaPlusHeaders(license, token)
             .PostJsonAsync(request, cancellationToken: ct)
             .ReceiveJson<ExternalSeriesDetailDto>();
+    }
+
+    public async Task<KPlusResult<SeriesDetailPlusApiDto?>> GetSeriesDetailV3Async(SeriesDetailRequestV3Dto request, CancellationToken ct = default)
+    {
+        try
+        {
+            var license = (await unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.LicenseKey, ct)).Value;
+
+            return await (Configuration.KavitaPlusApiUrl + "/api/v3/Metadata/series-detail")
+                .WithKavitaPlusHeaders(license)
+                .PostJsonAsync(request, cancellationToken: ct)
+                .ReceiveJson<KPlusResult<SeriesDetailPlusApiDto?>>();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "There was an issue getting series detail from Kavita+ for Series ({SeriesName})", request.SeriesName);
+            return KPlusResult<SeriesDetailPlusApiDto?>.Failure(ex.Message);
+        }
+    }
+
+    public async Task<KPlusResult<List<ExternalSeriesMatchDto>>> MatchSeriesV3Async(MatchRequestV3Dto request, CancellationToken ct = default)
+    {
+        try
+        {
+            var license = (await unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.LicenseKey, ct)).Value;
+
+            return await (Configuration.KavitaPlusApiUrl + "/api/v3/Metadata/match")
+                .WithKavitaPlusHeaders(license)
+                .PostJsonAsync(request, cancellationToken: ct)
+                .ReceiveJson<KPlusResult<List<ExternalSeriesMatchDto>>>();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "There was an issue matching series from Kavita+ for Series ({SeriesName})", request.SeriesName);
+            return KPlusResult<List<ExternalSeriesMatchDto>>.Failure(ex.Message);
+        }
+    }
+
+    public async Task<ScrobbleResponseDto> PostScrobbleV3UpdateAsync(ScrobbleV3Dto data, string license, CancellationToken ct = default)
+    {
+        try
+        {
+            return await (Configuration.KavitaPlusApiUrl + "/api/v3/Scrobble")
+                .WithKavitaPlusHeaders(license)
+                .PostJsonAsync(data, cancellationToken: ct)
+                .ReceiveJson<ScrobbleResponseDto>();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "There was an issue posting scrobble to Kavita+ for provider {Provider}", data.Provider);
+            return new ScrobbleResponseDto
+            {
+                ErrorMessage = ex.Message,
+                Successful = false
+            };
+        }
+    }
+
+    public async Task<KPlusResult<bool>> HasTokenExpiredForProviderAsync(ScrobbleProvider provider, string token, string license, CancellationToken ct = default)
+    {
+        try
+        {
+            return await (Configuration.KavitaPlusApiUrl + "/api/v3/Scrobble/valid-access-token")
+                .WithKavitaPlusHeaders(license)
+                .SetQueryParam("provider", provider)
+                .SetQueryParam("accessToken", token)
+                .GetJsonAsync<KPlusResult<bool>>(cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "There was an issue getting token validity from Kavita+ for provider {Provider}", provider);
+            return KPlusResult<bool>.Failure(ex.Message);
+        }
+    }
+
+    public async Task<KPlusResult<int>> GetRateLimitForProviderAsync(ScrobbleProvider provider, string token, string license, CancellationToken ct = default)
+    {
+        try
+        {
+            return await (Configuration.KavitaPlusApiUrl + "/api/v3/Scrobble/rate-limit")
+                .WithKavitaPlusHeaders(license)
+                .SetQueryParam("provider", provider)
+                .SetQueryParam("accessToken", token)
+                .GetJsonAsync<KPlusResult<int>>(cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "There was an issue getting rate limit from Kavita+ for provider {Provider}", provider);
+            return KPlusResult<int>.Failure(ex.Message);
+        }
     }
 
     public async Task<KPlusResult<IList<ExternalCoverResponseDto>>> GetCoverImagesAsync(ExternalCoverRequestDto request,
@@ -93,7 +193,9 @@ public class KavitaPlusApiService(ILogger<KavitaPlusApiService> logger, IUnitOfW
         try
         {
             var license = (await unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.LicenseKey, ct)).Value;
-            var token = (await unitOfWork.UserRepository.GetDefaultAdminUser(ct: ct)).AniListAccessToken;
+            var token = (await unitOfWork.UserRepository.GetDefaultAdminUser(ct: ct))
+                .ScrobbleProviders[ScrobbleProvider.AniList]
+                .AuthenticationToken;
 
             return await (Configuration.KavitaPlusApiUrl + "/api/v3/metadata/covers")
                 .WithKavitaPlusHeaders(license, token)
@@ -106,6 +208,112 @@ public class KavitaPlusApiService(ILogger<KavitaPlusApiService> logger, IUnitOfW
             logger.LogError(ex, "There was an issue getting cover images from Kavita+ for Series ({SeriesName})", request.SeriesName);
             return KPlusResult<IList<ExternalCoverResponseDto>>.Failure(ex.Message);
         }
+    }
+
+    public async Task<KPlusResult<List<ExternalSeriesDetailDto>>> GetWantToRead(ScrobbleProvider provider, string token,
+        string license, CancellationToken ct = default)
+    {
+        try
+        {
+            return await (Configuration.KavitaPlusApiUrl + "/api/v3/Scrobble/want-to-read")
+                .WithKavitaPlusHeaders(license)
+                .WithTimeout(TimeSpan.FromSeconds(120))
+                .SetQueryParam("provider", provider)
+                .SetQueryParam("accessToken", token)
+                .GetJsonAsync<KPlusResult<List<ExternalSeriesDetailDto>>>(cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "There was an issue getting want to read from Kavita+ for provider {Provider}", provider);
+            return KPlusResult<List<ExternalSeriesDetailDto>>.Failure(ex.Message);
+        }
+    }
+
+    public async Task<KPlusResult<KavitaPlusUserInfo>> GetUserInfo(ScrobbleProvider provider, string token, string license, CancellationToken ct = default)
+    {
+        try
+        {
+            return await (Configuration.KavitaPlusApiUrl + "/api/v3/Scrobble/user-info")
+                .WithKavitaPlusHeaders(license)
+                .SetQueryParam("provider", provider)
+                .SetQueryParam("accessToken", token)
+                .GetJsonAsync<KPlusResult<KavitaPlusUserInfo>>(cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "There was an issue getting user info from Kavita+ for provider {Provider}", provider);
+            return KPlusResult<KavitaPlusUserInfo>.Failure(ex.Message);
+        }
+    }
+
+    public async Task<LicenseInfoDto?> GetLicenseInfo(CancellationToken ct = default)
+    {
+        try
+        {
+            var license = (await unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.LicenseKey, ct)).Value;
+            var response = await (Configuration.KavitaPlusApiUrl + "/api/license/info")
+                .WithKavitaPlusHeaders(license)
+                .GetJsonAsync<LicenseInfoDto>(cancellationToken: ct);
+
+            return response;
+        } catch (FlurlHttpException e)
+        {
+            logger.LogError(e, "An error happened during the request to Kavita+ API");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Gets a snapshot of the Metadata providers operational health (average response time, last incident, overall status)
+    /// </summary>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    public async Task<IList<KavitaPlusProviderHealthSnapshotDto>> GetProviderHealthSnapshot(CancellationToken ct = default)
+    {
+        try
+        {
+            var license = (await unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.LicenseKey, ct)).Value;
+            var response = await (Configuration.KavitaPlusApiUrl + "/api/providerhealth/snapshot")
+                .WithKavitaPlusHeaders(license)
+                .GetJsonAsync<IList<KavitaPlusProviderHealthSnapshotDto>>(cancellationToken: ct);
+
+            return response;
+        } catch (FlurlHttpException e)
+        {
+            logger.LogError(e, "An error happened during the request to Kavita+ API");
+        }
+
+        return [];
+    }
+
+
+    /// <summary>
+    /// Gets a snapshot of the amount of usage this server has with Kavita+
+    /// </summary>
+    /// <param name="ct"></param>
+    /// <returns>Returns an empty object on errors</returns>
+    public async Task<KavitaPlusLicenseUsageDto> GetLicenseUsage(CancellationToken ct = default)
+    {
+        try
+        {
+            var license = (await unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.LicenseKey, ct)).Value;
+            var response = await (Configuration.KavitaPlusApiUrl + "/api/stats/")
+                .WithKavitaPlusHeaders(license)
+                .GetJsonAsync<KPlusResult<KavitaPlusLicenseUsageDto>>(cancellationToken: ct);
+
+            if (response.IsSuccess) return response.Data!;
+            logger.LogError(response.ErrorMessage, "Unable to pull license usage data from Kavita+ API");
+        } catch (FlurlHttpException e)
+        {
+            logger.LogError(e, "An error happened during the request to Kavita+ API");
+        }
+
+        return new KavitaPlusLicenseUsageDto()
+        {
+            GeneratedAtUtc =  DateTime.UtcNow,
+            Stats = []
+        };
     }
 
     /// <summary>

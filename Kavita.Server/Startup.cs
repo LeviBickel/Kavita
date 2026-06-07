@@ -36,6 +36,7 @@ using Kavita.Server.ManualMigrations.v0._8._7;
 using Kavita.Server.ManualMigrations.v0._8._8;
 using Kavita.Server.ManualMigrations.v0._8._9;
 using Kavita.Server.ManualMigrations.v0._9._0;
+using Kavita.Server.ManualMigrations.v0._9._1;
 using Kavita.Server.Middleware;
 using Kavita.Server.Swagger;
 using Kavita.Services.SignalR;
@@ -521,6 +522,13 @@ public class Startup
                     await new ManualMigrateEnsureNoReadOnlyAdmins().RunAsync(dataContext, logger);
                     await new ManualMigrationRemoveMoreInGenreStream().RunAsync(dataContext, logger);
                     await new ManualMigrateSmartFilterEntityTypeBackfill().RunAsync(dataContext, logger);
+                    #endregion
+
+                    #region v0.9.1
+
+                    await new ManualMigrationScrobbleRework().RunAsync(dataContext, logger);
+                    await new ManualMigrationKavitaScrobbleProviders().RunAsync(dataContext, logger);
+
                     #endregion
 
                     #endregion

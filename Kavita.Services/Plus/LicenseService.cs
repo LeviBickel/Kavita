@@ -22,13 +22,16 @@ internal class RegisterLicenseResponseDto
     public string EncryptedLicense { get; set; }
     public bool Successful { get; set; }
     public string ErrorMessage { get; set; }
+    public bool IsSubscriptionActive { get; set; }
+    public KavitaPlusRegistrationErrorCode ErrorCode { get; set; }
 }
 
 public class LicenseService(
     IEasyCachingProviderFactory cachingProviderFactory,
     IUnitOfWork unitOfWork,
     ILogger<LicenseService> logger,
-    IVersionUpdaterService versionUpdaterService)
+    IVersionUpdaterService versionUpdaterService, IKavitaPlusApiService kavitaPlusApiService,
+    IFileCacheService fileCacheService)
     : ILicenseService
 {
     private readonly TimeSpan _licenseCacheTimeout = TimeSpan.FromHours(8);
@@ -38,6 +41,7 @@ public class LicenseService(
     /// </summary>
     public const string CacheKey = "license";
     private const string LicenseInfoCacheKey = "license-info";
+    private const string LicenseUsageCacheKey = "license-usage";
 
 
     /// <summary>
@@ -67,15 +71,18 @@ public class LicenseService(
         }
     }
 
-    /// <summary>
-    /// Register the license with KavitaPlus
-    /// </summary>
-    /// <param name="license"></param>
-    /// <param name="email"></param>
-    /// <returns></returns>
-    private async Task<string> RegisterLicense(string license, string email, string? discordId)
+    private async Task<RegisterLicenseResponseDto> RegisterLicense(string license, string email, string? discordId)
     {
-        if (string.IsNullOrWhiteSpace(license) || string.IsNullOrWhiteSpace(email)) return string.Empty;
+        if (string.IsNullOrWhiteSpace(license) || string.IsNullOrWhiteSpace(email))
+        {
+            return new RegisterLicenseResponseDto()
+            {
+                EncryptedLicense = string.Empty,
+                ErrorCode = KavitaPlusRegistrationErrorCode.RegistrationFailed,
+                Successful = false
+            };
+        }
+
         try
         {
             var response = await (Configuration.KavitaPlusApiUrl + "/api/license/register")
@@ -91,16 +98,21 @@ public class LicenseService(
 
             if (response.Successful)
             {
-                return response.EncryptedLicense;
+                return response;
             }
 
-            logger.LogError("An error happened during the request to Kavita+ API: {ErrorMessage}", response.ErrorMessage);
-            throw new KavitaException(response.ErrorMessage);
+            logger.LogError("Kavita+ registration failed. Code: {Code}, Message: {Message}", response.ErrorCode, response.ErrorMessage);
+            return response;
         }
         catch (FlurlHttpException e)
         {
-            logger.LogError(e, "An error happened during the request to Kavita+ API");
-            return string.Empty;
+            logger.LogError(e, "Network error reaching Kavita+ API");
+            return new RegisterLicenseResponseDto()
+            {
+                EncryptedLicense = string.Empty,
+                ErrorCode = KavitaPlusRegistrationErrorCode.InternalError,
+                Successful = false
+            };
         }
     }
 
@@ -187,15 +199,25 @@ public class LicenseService(
 
     }
 
-    public async Task AddLicense(string license, string email, string? discordId, CancellationToken ct = default)
+    public async Task<KavitaPlusRegisterResultDto> AddLicense(string license, string email, string? discordId, CancellationToken ct = default)
     {
+        var response = await RegisterLicense(license, email, discordId);
+        if (string.IsNullOrWhiteSpace(response.EncryptedLicense) || !response.Successful)
+            return new KavitaPlusRegisterResultDto { Success = false, ErrorCode = response.ErrorCode };
+
         var serverSetting = await unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.LicenseKey, ct);
-        var lic = await RegisterLicense(license, email, discordId);
-        if (string.IsNullOrWhiteSpace(lic))
-            throw new KavitaException("unable-to-register-k+");
-        serverSetting.Value = lic;
+        serverSetting.Value = response.EncryptedLicense;
         unitOfWork.SettingsRepository.Update(serverSetting);
         await unitOfWork.CommitAsync(ct);
+
+        if (response is {Successful: true})
+        {
+            var provider = cachingProviderFactory.GetCachingProvider(EasyCacheProfiles.License);
+            await provider.FlushAsync(ct);
+            await provider.SetAsync(CacheKey, response.IsSubscriptionActive, _licenseCacheTimeout, ct);
+        }
+
+        return new KavitaPlusRegisterResultDto { Success = true, IsSubscriptionActive = response.IsSubscriptionActive};
     }
 
 
@@ -263,12 +285,11 @@ public class LicenseService(
             if (cacheValue.HasValue) return cacheValue.Value;
         }
 
+
+
         try
         {
-            var encryptedLicense = await unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.LicenseKey, ct);
-            var response = await (Configuration.KavitaPlusApiUrl + "/api/license/info")
-                .WithKavitaPlusHeaders(encryptedLicense.Value)
-                .GetJsonAsync<LicenseInfoDto>(cancellationToken: ct);
+            var response = await kavitaPlusApiService.GetLicenseInfo(ct);
 
             // This indicates a mismatch on installId or no active subscription
             if (response == null) return null;
@@ -288,18 +309,8 @@ public class LicenseService(
             var licenseProvider = cachingProviderFactory.GetCachingProvider(EasyCacheProfiles.License);
             await licenseProvider.SetAsync(CacheKey, response.IsActive, _licenseCacheTimeout, ct);
 
-            // default: If info.IsCancelled && notActive, let's remove the license so we aren't constantly checking
-            if (response is {IsCancelled: true, IsActive: false})
-            {
-                //logger.LogWarning("Kavita+ License is no longer active, removing Server registration");
-            }
-
-            // Cache the license info if IsActive and ExpirationDate > DateTime.UtcNow + 2
-            if (response.IsActive && response.ExpirationDate > DateTime.UtcNow.AddDays(2))
-            {
-                await licenseInfoProvider.SetAsync(LicenseInfoCacheKey, response, _licenseCacheTimeout, ct);
-            }
-
+            // Always cache the response as we provide this on expired licenses
+            await licenseInfoProvider.SetAsync(LicenseInfoCacheKey, response, _licenseCacheTimeout, ct);
 
             return response;
         }
@@ -340,5 +351,28 @@ public class LicenseService(
         }
 
         return false;
+    }
+
+    public async Task<KavitaPlusLicenseUsageDto> GetLicenseUsage(CancellationToken ct = default)
+    {
+        // Expired licenses won't generate new usage, so cache them long term (1 month)
+        // active licenses refresh every 4 hours.
+        var ttl = await HasActiveLicense(ct: ct)
+            ? TimeSpan.FromHours(4)
+            : TimeSpan.FromDays(30);
+
+        var result = await fileCacheService.GetOrFetchAsync<KavitaPlusLicenseUsageDto>(
+            LicenseUsageCacheKey,
+            FileCacheService.KavitaPlusCacheDirectory,
+            ttl,
+            async _ => await kavitaPlusApiService.GetLicenseUsage(ct),
+            shouldCache: r => r?.Stats?.Count > 0,
+            ct: ct);
+
+        return result ?? new KavitaPlusLicenseUsageDto
+        {
+            GeneratedAtUtc = DateTime.UtcNow,
+            Stats = []
+        };
     }
 }

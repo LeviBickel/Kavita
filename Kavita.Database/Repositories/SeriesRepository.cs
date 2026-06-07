@@ -23,6 +23,7 @@ using Kavita.Models.DTOs.Filtering.v2.Requests;
 using Kavita.Models.DTOs.Filtering.v2.SortFields;
 using Kavita.Models.DTOs.Filtering.v2.SortOptions;
 using Kavita.Models.DTOs.KavitaPlus.Metadata;
+using Kavita.Models.DTOs.KavitaPlus.Scrobble;
 using Kavita.Models.DTOs.Metadata;
 using Kavita.Models.DTOs.Person;
 using Kavita.Models.DTOs.Reader;
@@ -614,16 +615,16 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
                 // TODO: Refactor this to check from ExternalMetadataIds first then ExternalSeriesMetadata. Weblink parsing is pointless as it updates in externalMetadata
                 AniListId = series.ExternalSeriesMetadata.AniListId != 0
                     ? series.ExternalSeriesMetadata.AniListId
-                    : WeblinkParser.GetAniListId(series.Metadata.WebLinks),
+                    : ExternalIdParser.GetAniListId(series.Metadata.WebLinks),
                 MalId = series.ExternalSeriesMetadata.MalId != 0
                     ? series.ExternalSeriesMetadata.MalId
-                    : WeblinkParser.GetMalId(series.Metadata.WebLinks),
+                    : ExternalIdParser.GetMalId(series.Metadata.WebLinks),
                 CbrId = series.ExternalSeriesMetadata.CbrId,
                 GoogleBooksId = !string.IsNullOrEmpty(series.ExternalSeriesMetadata.GoogleBooksId)
                     ? series.ExternalSeriesMetadata.GoogleBooksId
-                    : WeblinkParser.GetGoogleBooksId(series.Metadata.WebLinks),
+                    : ExternalIdParser.GetGoogleBooksId(series.Metadata.WebLinks),
                 MangabakaId = (int?) series.MangaBakaId,
-                MangaDexId = WeblinkParser.GetMangaDexId(series.Metadata.WebLinks),
+                MangaDexId = ExternalIdParser.GetMangaDexId(series.Metadata.WebLinks),
                 VolumeCount = series.Volumes.Count,
                 ChapterCount = series.Volumes.SelectMany(v => v.Chapters).Count(c => !c.IsSpecial),
                 Year = series.Metadata.ReleaseYear
@@ -1770,5 +1771,77 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
 
         if (ret == null) return AgeRating.Unknown;
         return ret;
+    }
+
+    public Task<List<Series>> GetSeriesForReadStatusTransitionRuleAsync(int userId, ReadStatusTransitionRule rule, bool requireUnReadChapters, CancellationToken ct)
+    {
+        if (!rule.Enabled || rule.Days <= 0) return Task.FromResult(new List<Series>());
+
+        var cutoffDate = DateTime.UtcNow.AddDays(-rule.Days);
+        var excludedStatuses = rule.ExcludedPublicationStatus;
+
+        var seriesProgressStats = context.AppUserProgresses
+            .Where(p => p.AppUserId == userId && p.PagesRead > 0)
+            .GroupBy(p => p.SeriesId)
+            .Select(g => new
+            {
+                SeriesId = g.Key,
+                LastProgressUtc = g.Max(p => p.LastModifiedUtc)
+            });
+
+        var seriesChapterCounts = context.Chapter
+            .GroupBy(c => c.Volume.SeriesId)
+            .Select(g => new
+            {
+                SeriesId = g.Key,
+                TotalChapters = g.Count(),
+                LatestChapterAddedUtc = g.Max(c => c.CreatedUtc)
+            });
+
+        var seriesReadCounts = context.AppUserProgresses
+            .Where(p => p.AppUserId == userId)
+            .Join(context.Chapter,
+                p => p.ChapterId,
+                c => c.Id,
+                (p, c) => new { p.SeriesId, IsRead = p.PagesRead >= c.Pages })
+            .GroupBy(x => x.SeriesId)
+            .Select(g => new
+            {
+                SeriesId = g.Key,
+                ReadChapters = g.Count(x => x.IsRead)
+            });
+
+        return context.Series
+            .Where(s => !excludedStatuses.Contains(s.Metadata.PublicationStatus))
+            .Join(seriesProgressStats,
+                s => s.Id,
+                sp => sp.SeriesId,
+                (s, sp) => new { Series = s, sp.LastProgressUtc })
+            .Join(seriesChapterCounts,
+                x => x.Series.Id,
+                cc => cc.SeriesId,
+                (x, cc) => new { x.Series, x.LastProgressUtc, cc.TotalChapters, cc.LatestChapterAddedUtc })
+            .Join(seriesReadCounts,
+                x => x.Series.Id,
+                rc => rc.SeriesId,
+                (x, rc) => new
+                {
+                    x.Series,
+                    x.LastProgressUtc,
+                    x.TotalChapters,
+                    x.LatestChapterAddedUtc,
+                    rc.ReadChapters,
+                    IsCompletelyRead = x.TotalChapters > 0 && x.TotalChapters == rc.ReadChapters
+                })
+            .Where(x =>
+                x.IsCompletelyRead
+                    // Completely read: last progress is >N days before the newest chapter was added
+                    ? x.LastProgressUtc < x.LatestChapterAddedUtc.AddDays(-rule.Days)
+                    // Not completely read: last progress is >N days ago from today
+                    : x.LastProgressUtc < cutoffDate)
+            .WhereIf(requireUnReadChapters, x => x.ReadChapters < x.TotalChapters)
+            .Select(x => x.Series)
+            .Includes(SeriesIncludes.Chapters | SeriesIncludes.ExternalMetadata | SeriesIncludes.Metadata | SeriesIncludes.Library)
+            .ToListAsync(ct);
     }
 }

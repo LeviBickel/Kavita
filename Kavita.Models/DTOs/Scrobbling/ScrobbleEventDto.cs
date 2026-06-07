@@ -1,4 +1,6 @@
 ﻿using System;
+using Kavita.Models.Entities.Enums;
+using Kavita.Models.Entities.Enums.UserPreferences;
 
 namespace Kavita.Models.DTOs.Scrobbling;
 #nullable enable
@@ -15,7 +17,9 @@ public sealed record ScrobbleEventDto
     public DateTime LastModifiedUtc { get; set; }
     public DateTime CreatedUtc { get; set; }
     public float? Rating { get; set; }
+    public ScrobbleReadStatus? ReadStatus { get; set; }
     public ScrobbleEventType ScrobbleEventType { get; set; }
+    public ScrobbleProvider ScrobbleProvider { get; set; }
     public bool IsErrored { get; set; }
     public string? ErrorDetails { get; set; }
 

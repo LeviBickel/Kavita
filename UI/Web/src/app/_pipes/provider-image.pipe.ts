@@ -19,7 +19,7 @@ export class ProviderImagePipe implements PipeTransform {
         return `assets/images/ExternalServices/MAL${large ? '-lg' : ''}.png`;
       case ScrobbleProvider.Kavita:
         return `assets/images/logo-${large ? '64' : '32'}.png`;
-        case ScrobbleProvider.Cbr:
+      case ScrobbleProvider.Cbr:
         return `assets/images/ExternalServices/ComicBookRoundup.png`;
     }
   }

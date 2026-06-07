@@ -1,6 +1,7 @@
 ﻿using System;
 using Kavita.Common.Extensions;
 using Kavita.Models.DTOs.Account;
+using Kavita.Models.DTOs.KavitaPlus.Scrobble;
 using Kavita.Models.DTOs.Reader;
 using Kavita.Models.DTOs.Update;
 using Kavita.Models.Entities.Enums;
@@ -191,6 +192,10 @@ public static class MessageFactory
     /// A series was updated (E.x. K+ match)
     /// </summary>
     public const string SeriesUpdated = nameof(SeriesUpdated);
+    /// <summary>
+    /// A scrobble provider has had their (authentication) details updated
+    /// </summary>
+    public const string ScrobbleProviderUpdated = nameof(ScrobbleProviderUpdated);
 
 
     public static SignalRMessage DashboardUpdateEvent(int userId)
@@ -834,6 +839,18 @@ public static class MessageFactory
             Body = new
             {
                 Id = seriesId
+            }
+        };
+    }
+
+    public static SignalRMessage ScrobbleProviderUpdatedEvent(ScrobbleProvider provider)
+    {
+        return new SignalRMessage
+        {
+            Name = ScrobbleProviderUpdated,
+            Body = new
+            {
+                Provider = provider
             }
         };
     }

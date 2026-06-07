@@ -21,13 +21,14 @@ import {
 } from "../../../shared/_components/scrobble-provider-image/scrobble-provider-image.component";
 import {ScrobbleProvider} from "../../../_services/scrobbling.service";
 import {ScrobbleProviderNamePipe} from "../../../_pipes/scrobble-provider-name.pipe";
+import {UtcToLocalDatePipe} from "../../../_pipes/utc-to-locale-date.pipe";
 
 @Component({
   selector: 'app-kavitaplus-tooltip',
   templateUrl: './kavitaplus-tooltip.component.html',
   styleUrls: ['./kavitaplus-tooltip.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslocoDirective, TimeAgoPipe, KavitaPlusEventTypePipe, KavitaPlusEventDescriptionPipe, UtcToLocalTimePipe, KavitaPlusAuditEventTypeIconComponent, AuditLogErrorPipe, ScrobbleProviderImageComponent, ScrobbleProviderNamePipe],
+  imports: [TranslocoDirective, TimeAgoPipe, KavitaPlusEventTypePipe, KavitaPlusEventDescriptionPipe, UtcToLocalTimePipe, KavitaPlusAuditEventTypeIconComponent, AuditLogErrorPipe, ScrobbleProviderImageComponent, ScrobbleProviderNamePipe, UtcToLocalDatePipe],
 })
 export class KavitaplusTooltipComponent implements OnInit {
   private readonly auditService = inject(KavitaPlusAuditService);

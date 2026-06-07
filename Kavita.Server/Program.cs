@@ -159,6 +159,7 @@ public class Program
                 await Seed.SeedDefaultSideNavStreams(unitOfWork);
                 await Seed.SeedMetadataSettings(context);
                 await Seed.SeedDefaultHighlightSlots(unitOfWork);
+                await Seed.SeedScrobbleProviders(context);
             }
             catch (Exception ex)
             {

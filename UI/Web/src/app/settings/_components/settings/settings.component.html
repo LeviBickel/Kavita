@@ -1,7 +1,7 @@
 <div class="main-container container-fluid">
   <ng-container *transloco="let t; prefix:'settings'">
     <app-side-nav-companion-bar>
-      <h2 class="container-fluid" title>
+      <h2 class="container-fluid kv-section-header" title>
         {{fragment | settingFragment}}
       </h2>
     </app-side-nav-companion-bar>
@@ -181,7 +181,7 @@
           }
 
           @case (SettingsTabId.MatchedMetadata) {
-            @if (accountService.hasAdminRole() && licenseService.hasValidLicense()) {
+            @if (accountService.hasAdminRole() && licenseService.hasActiveLicense()) {
               @defer (prefetch on idle) {
                 <div class="scale col-md-12">
                   <app-manage-matched-metadata />
@@ -274,6 +274,13 @@
             @defer (prefetch on idle) {
               <div class="col-xxl-6 col-12">
                 <app-manga-user-preferences />
+              </div>
+            }
+          }
+          @case (SettingsTabId.ScrobbleSettings) {
+            @defer (prefetch on idle) {
+              <div>
+                <app-manage-scrobble-providers />
               </div>
             }
           }

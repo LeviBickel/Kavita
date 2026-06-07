@@ -14,9 +14,12 @@ import {LicenseService} from "./license.service";
 import {ReadingListService} from "./reading-list.service";
 
 export interface CoverImageOption {
+  /** Image URL used to render the preview (remote URL, cover-upload URL, or data URL). */
   url: string;
   title: string;
   subtitle?: string;
+  /** Filename of the image once staged in the temp directory. Populated lazily on selection. */
+  fileName?: string;
 }
 
 export interface CoverImageChooserConfig {
@@ -66,7 +69,7 @@ export class CoverChooserConfigFactoryService {
           title: this.entityTitleService.computeTitle(v, libraryType, { prioritizeTitleName: false, includeVolume: true }) } as CoverImageOption)))
         : undefined,
       chapterFunc: looseLeafChapters,
-      kavitaplusFunc: this.licenseService.hasValidLicense() ?
+      kavitaplusFunc: this.licenseService.hasActiveLicense() ?
         this.imageService.getKavitaPlusSeriesCoverImages(series.id) : undefined
       ,
     };
@@ -80,7 +83,7 @@ export class CoverChooserConfigFactoryService {
         url: this.imageService.getVolumeCoverImage(volume.id),
         title: this.entityTitleService.computeTitle(volume, libraryType, { prioritizeTitleName: false, includeVolume: true, fallbackToVolume: true })
       },
-      kavitaplusFunc: this.licenseService.hasValidLicense() ?
+      kavitaplusFunc: this.licenseService.hasActiveLicense() ?
         this.imageService.getKavitaPlusSeriesCoverImages(volume.seriesId, volume.id) : undefined
     };
   }
@@ -90,7 +93,7 @@ export class CoverChooserConfigFactoryService {
       isLocked: chapter.coverImageLocked,
       resetFunc: () => this.uploadService.updateChapterCoverImage(chapter.id, '', false),
       selected: { url: this.imageService.getChapterCoverImage(chapter.id), title: this.entityTitleService.computeTitle(chapter, libraryType) },
-      kavitaplusFunc: this.licenseService.hasValidLicense() ?
+      kavitaplusFunc: this.licenseService.hasActiveLicense() ?
         this.imageService.getKavitaPlusSeriesCoverImages(seriesId, null, chapter.id) : undefined
     };
   }

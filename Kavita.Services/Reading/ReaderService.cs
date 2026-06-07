@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Hangfire;
 using Kavita.API.Database;
@@ -223,9 +224,11 @@ public class ReaderService(IUnitOfWork unitOfWork, ILogger<ReaderService> logger
         try
         {
             var userProgress = await unitOfWork.AppUserProgressRepository.GetUserProgressAsync(progressDto.ChapterId, userId);
+            var oldProgress = userProgress?.PagesRead ?? 0;
+
             // Don't create an empty progress record if there isn't any progress. This prevents Last Read date from being updated when opening a chapter
             if (userProgress == null && progressDto.PageNum == 0) return true;
-            if (userProgress?.PagesRead == progressDto.PageNum && userProgress?.BookScrollId == progressDto.BookScrollId) return true;
+            if (oldProgress == progressDto.PageNum && userProgress?.BookScrollId == progressDto.BookScrollId) return true;
 
             logger.LogDebug("Saving Progress on Series {SeriesId}, Chapter {ChapterId} to Page {PageNum}", progressDto.SeriesId, progressDto.ChapterId, progressDto.PageNum);
             if (userProgress == null)
@@ -269,13 +272,16 @@ public class ReaderService(IUnitOfWork unitOfWork, ILogger<ReaderService> logger
                     MessageFactory.UserProgressUpdateEvent(userId, progressDto.SeriesId,
                         progressDto.VolumeId, progressDto.ChapterId, progressDto.PageNum));
 
-                if (progressDto.PageNum >= totalPages)
+                // Chapter-based tracking want per chapter updates, if the page has changed; Create one
+                if (oldProgress != progressDto.PageNum || progressDto.PageNum >= totalPages)
                 {
                     // Inform Scrobble service that a chapter is read
-                    BackgroundJob.Enqueue(() => scrobblingService.ScrobbleReadingUpdate(userId, progressDto.SeriesId));
+                    BackgroundJob.Enqueue(() => scrobblingService.ScrobbleReadingUpdate(userId,
+                        progressDto.SeriesId, progressDto.ChapterId,  CancellationToken.None));
                 }
 
-                BackgroundJob.Enqueue(() => unitOfWork.SeriesRepository.ClearOnDeckRemovalAsync(progressDto.SeriesId, userId));
+                BackgroundJob.Enqueue(() =>
+                    unitOfWork.SeriesRepository.ClearOnDeckRemovalAsync(progressDto.SeriesId, userId));
 
                 return true;
             }

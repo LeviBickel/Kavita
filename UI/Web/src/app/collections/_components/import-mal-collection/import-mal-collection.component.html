@@ -25,7 +25,9 @@
       @if (isLoading) {
         <app-loading [loading]="isLoading" />
       } @else {
-        <p>{{t('nothing-found')}}</p>
+        <app-empty-state titleKey="no-data" descriptionKey="no-data-description" i18nPrefix="import-mal-collection-modal">
+          <i icon class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+        </app-empty-state>
       }
     }
   </ul>

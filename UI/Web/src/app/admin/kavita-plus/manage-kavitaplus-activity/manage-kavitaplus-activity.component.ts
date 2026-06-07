@@ -3,8 +3,8 @@ import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {TranslocoDirective} from '@jsverse/transloco';
 import {KavitaplusTimelineComponent} from "../../../_single-module/kavitaplus-timeline/kavitaplus-timeline.component";
 import {
-  KavitaplusAuditAccordionItemComponent
-} from "../kavitaplus-audit-accordion-item/kavitaplus-audit-accordion-item.component";
+  KavitaPlusAuditEntryComponent
+} from "../kavitaplus-audit-entry/kavita-plus-audit-entry.component";
 import {DefaultValuePipe} from "../../../_pipes/default-value.pipe";
 import {AuditStatusTitlePipe} from "../../../_pipes/audit-status-title.pipe";
 import {AuditSubjectTitlePipe} from "../../../_pipes/audit-subject-title.pipe";
@@ -18,16 +18,18 @@ import {Member} from "../../../_models/auth/member";
 import {Pagination} from "../../../_models/pagination";
 import {KavitaPlusAuditCategory} from "../../../_models/kavitaplus/kavita-plus-audit-category.enum";
 import {KavitaPlusAuditFilter} from "../../../_models/kavitaplus/kavita-plus-audit-filter";
+import {SearchInputComponent} from "../../../shared/_components/search-input/search-input.component";
 
 @Component({
   selector: 'app-manage-kavitaplus-activity',
   imports: [
     TranslocoDirective,
     KavitaplusTimelineComponent,
-    KavitaplusAuditAccordionItemComponent,
+    KavitaPlusAuditEntryComponent,
     DefaultValuePipe,
     AuditStatusTitlePipe,
     AuditSubjectTitlePipe,
+    SearchInputComponent,
   ],
   templateUrl: './manage-kavitaplus-activity.component.html',
   styleUrl: './manage-kavitaplus-activity.component.scss',
@@ -134,13 +136,15 @@ export class ManageKavitaplusActivityComponent implements OnInit {
     this.loadEntries();
   }
 
-  onStatusFilterChange(value: AuditStatus | null) {
-    this.statusFilter.set(value === null ? null : Number(value) as AuditStatus);
+  onStatusFilterChange(value: string) {
+    const num = Number(value);
+    this.statusFilter.set(isNaN(num) ? null : num as AuditStatus);
     this.loadEntries();
   }
 
-  onSubjectFilterChange(value: AuditSubjectType | null) {
-    this.subjectFilter.set(value === null ? null : Number(value) as AuditSubjectType);
+  onSubjectFilterChange(value: string) {
+    const num = Number(value);
+    this.subjectFilter.set(isNaN(num) ? null : num as AuditSubjectType);
     this.loadEntries();
   }
 

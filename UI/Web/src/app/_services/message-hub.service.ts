@@ -16,6 +16,7 @@ import {toSignal} from "@angular/core/rxjs-interop";
 import {ReadingSessionCloseEvent, ReadingSessionUpdateEvent} from "../_models/events/reading-session-close-event";
 import {ReadingListUpdatedEvent} from "../_models/events/reading-list-updated-event";
 import {SeriesUpdateEvent} from "../_models/events/series-update-event";
+import {ScrobbleProviderUpdatedEvent} from "../_models/events/scrobble-provider-updated-event";
 
 export enum EVENTS {
   UpdateAvailable = 'UpdateAvailable',
@@ -151,7 +152,11 @@ export enum EVENTS {
   /**
    * A series was updated (E.x. K+ match)
    */
-  SeriesUpdated = 'SeriesUpdated'
+  SeriesUpdated = 'SeriesUpdated',
+  /**
+   * A scrobble provider has had their (authentication) details updated
+   */
+  ScrobbleProviderUpdated = 'ScrobbleProviderUpdated',
 }
 
 export interface Message<T> {
@@ -448,6 +453,13 @@ export class MessageHubService {
       this.messagesSource.next({
         event: EVENTS.SeriesUpdated,
         payload: resp.body as SeriesUpdateEvent
+      });
+    });
+
+    this.hubConnection.on(EVENTS.ScrobbleProviderUpdated, (resp) => {
+      this.messagesSource.next({
+        event: EVENTS.ScrobbleProviderUpdated,
+        payload: resp.body as ScrobbleProviderUpdatedEvent
       });
     });
   }

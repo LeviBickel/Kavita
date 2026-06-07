@@ -1,7 +1,7 @@
 import {inject, Injectable} from '@angular/core';
 import {TranslocoService} from '@jsverse/transloco';
 import {UtilityService} from '../shared/_services/utility.service';
-import {Chapter, LooseLeafOrDefaultNumber} from '../_models/chapter';
+import {Chapter, LooseLeafOrDefaultNumber, SpecialVolumeNumber} from '../_models/chapter';
 import {LibraryType} from '../_models/library/library';
 import {Volume} from '../_models/volume';
 import {ScrobbleEventType} from '../_models/scrobbling/scrobble-event';
@@ -22,12 +22,16 @@ export class EntityTitleService {
   scrobbleDetailLabel(details: KavitaPlusScrobbleDetails): string {
     if (details.scrobbleEventType === ScrobbleEventType.ChapterRead) {
       const parts: string[] = [];
-      if (details.volumeNumber != null) {
+      if (details.volumeNumber != null && details.volumeNumber !== LooseLeafOrDefaultNumber && details.volumeNumber !== SpecialVolumeNumber) {
         parts.push(this.translocoService.translate('common.volume-num-shorthand', {num: details.volumeNumber}));
       }
-      if (details.chapterNumber != null) {
+      if (details.chapterNumber != null && details.chapterNumber !== LooseLeafOrDefaultNumber && details.chapterNumber !== SpecialVolumeNumber) {
         parts.push(this.translocoService.translate(this.chapterKey(details.libraryType), {num: details.chapterNumber}));
       }
+      if (details.percentRead != null) {
+        parts.push((parts.length > 0 ? ' - ' : '') + `${details.percentRead}%`);
+      }
+
       return parts.join(' ');
     }
     if (details.scrobbleEventType === ScrobbleEventType.ScoreUpdated && details.rating != null) {

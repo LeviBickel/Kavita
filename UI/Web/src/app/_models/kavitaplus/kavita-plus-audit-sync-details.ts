@@ -1,3 +1,5 @@
+import {ScrobbleProvider} from "../../_services/scrobbling.service";
+
 export interface KavitaPlusAuditSyncDetails {
   // CollectionSynced
   collectionName: string | null;
@@ -11,7 +13,6 @@ export interface KavitaPlusAuditSyncDetails {
 
   // SyncCompleted (WantToRead)
   userName: string | null;
-  hasMal: boolean | null;
-  hasAniList: boolean | null;
+  providers: ScrobbleProvider[] | null;
   seriesMatched: number | null;
 }

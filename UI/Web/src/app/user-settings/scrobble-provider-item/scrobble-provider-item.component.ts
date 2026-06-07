@@ -45,13 +45,12 @@ export class ScrobbleProviderItemComponent {
   hasExpired = signal<boolean>(false);
 
   constructor() {
-
     effect(() => {
       this.scrobblingService.hasTokenExpired(this.provider())
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe(hasExpired => {
-        this.hasExpired.set(hasExpired);
-      });
+          this.hasExpired.set(hasExpired);
+        });
     });
   }
 

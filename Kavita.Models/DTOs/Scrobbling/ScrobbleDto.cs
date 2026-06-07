@@ -15,7 +15,9 @@ public enum ScrobbleEventType
     [Description("Score Updated")]
     ScoreUpdated = 3,
     [Description("Review Added/Updated")]
-    Review = 4
+    Review = 4,
+    [Description("Read status Updated")]
+    ReadStatusUpdate = 5,
 }
 
 /// <summary>

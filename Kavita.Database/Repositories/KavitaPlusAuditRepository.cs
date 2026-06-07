@@ -212,8 +212,11 @@ public class KavitaPlusAuditRepository(DataContext context) : IKavitaPlusAuditRe
                         ScrobbleEventType = p.ScrobbleEventType,
                         ChapterNumber = p.ChapterNumber,
                         VolumeNumber = p.VolumeNumber,
+                        PercentRead = p.PercentRead,
                         Rating = p.Rating,
-                        Provider = ScrobbleProvider.AniList, // TODO: This needs to allow provider to be passed from ScrobbleService (Amelia)
+                        ReviewBody = p.ReviewBody,
+                        ReadStatus = p.ReadStatus,
+                        Provider = p.Provider,
                         LibraryType = p.LibraryType,
                     };
                 }
@@ -253,16 +256,29 @@ public class KavitaPlusAuditRepository(DataContext context) : IKavitaPlusAuditRe
         {
             try
             {
-                syncDetails = e.EventType switch
+                switch (e.EventType)
                 {
-                    KavitaPlusEventType.CollectionSynced =>
-                        KavitaPlusAuditSyncDetailsDto.From(JsonSerializer.Deserialize<AuditLogCollectionSyncedParamsDto>(e.Payload, JsonOptions)),
-                    KavitaPlusEventType.CollectionItemAdded =>
-                        KavitaPlusAuditSyncDetailsDto.From(JsonSerializer.Deserialize<AuditLogCollectionItemParamsDto>(e.Payload, JsonOptions)),
-                    KavitaPlusEventType.SyncCompleted =>
-                        KavitaPlusAuditSyncDetailsDto.From(JsonSerializer.Deserialize<AuditLogWantToReadSyncCompletedParamsDto>(e.Payload, JsonOptions)),
-                    _ => null
-                };
+                    case KavitaPlusEventType.CollectionSynced:
+                        syncDetails = KavitaPlusAuditSyncDetailsDto.From(JsonSerializer.Deserialize<AuditLogCollectionSyncedParamsDto>(e.Payload, JsonOptions));
+                        break;
+                    case KavitaPlusEventType.CollectionItemAdded:
+                        syncDetails = KavitaPlusAuditSyncDetailsDto.From(JsonSerializer.Deserialize<AuditLogCollectionItemParamsDto>(e.Payload, JsonOptions));
+                        break;
+                    case KavitaPlusEventType.SyncCompleted:
+                        syncDetails = KavitaPlusAuditSyncDetailsDto.From(JsonSerializer.Deserialize<AuditLogWantToReadSyncCompletedParamsDto>(e.Payload, JsonOptions));
+                        break;
+                    case KavitaPlusEventType.SyncStarted:
+                    {
+                        var started = JsonSerializer.Deserialize<AuditLogCollectionStartedParamsDto>(e.Payload, JsonOptions);
+                        syncDetails = !string.IsNullOrEmpty(started?.CollectionName)
+                            ? KavitaPlusAuditSyncDetailsDto.From(started)
+                            : KavitaPlusAuditSyncDetailsDto.From(JsonSerializer.Deserialize<AuditLogWantToReadSyncParamsDto>(e.Payload, JsonOptions));
+                        break;
+                    }
+                    case KavitaPlusEventType.SyncFailed:
+                        syncDetails = KavitaPlusAuditSyncDetailsDto.From(JsonSerializer.Deserialize<AuditLogCollectionFailedParamsDto>(e.Payload, JsonOptions));
+                        break;
+                }
             }
             catch
             {
@@ -285,6 +301,8 @@ public class KavitaPlusAuditRepository(DataContext context) : IKavitaPlusAuditRe
                         KavitaPlusAuditMetadataExtrasDto.From(JsonSerializer.Deserialize<AuditLogPersonAliasParamsDto>(e.Payload, JsonOptions)),
                     KavitaPlusEventType.PersonCoverUpdated =>
                         KavitaPlusAuditMetadataExtrasDto.From(JsonSerializer.Deserialize<AuditLogPersonCoverParamsDto>(e.Payload, JsonOptions)),
+                    KavitaPlusEventType.MetadataFetched =>
+                        KavitaPlusAuditMetadataExtrasDto.From(JsonSerializer.Deserialize<AuditLogMetadataFetchParamsDto>(e.Payload, JsonOptions)),
                     _ => null
                 };
             }
@@ -314,9 +332,7 @@ public class KavitaPlusAuditRepository(DataContext context) : IKavitaPlusAuditRe
             MatchDetails = matchDetails,
             SyncDetails = syncDetails,
             MetadataExtras = metadataExtras,
-            CanRetry = e.Status == AuditStatus.Failure
-                       && e.Category == KavitaPlusAuditCategory.Scrobble
-                       && !e.HasRetried,
+            CanRetry = e is { Status: AuditStatus.Failure, Category: KavitaPlusAuditCategory.Scrobble, HasRetried: false },
         };
     }
 

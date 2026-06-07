@@ -53,6 +53,8 @@ public class FontController(
 
         if (font.Provider == FontProvider.System) return BadRequest("System provided fonts are not loaded by API");
 
+        if (!IsPathWithinDirectory(directoryService.EpubFontDirectory, font.FileName)) return NotFound();
+
         var path = Path.Join(directoryService.EpubFontDirectory, font.FileName);
 
         return CachedFile(path);
@@ -100,10 +102,10 @@ public class FontController(
     {
         if (!_fontFileExtensionRegex.IsMatch(Path.GetExtension(formFile.FileName))) return BadRequest("Invalid file");
 
-        if (formFile.FileName.Contains("..")) return BadRequest("Invalid file");
+        if (!IsPathWithinDirectory(directoryService.TempDirectory, formFile.FileName)) return BadRequest("Invalid file");
 
 
-        var tempFile = await UploadToTemp(formFile);
+        var tempFile = await UploadToTempAsync(formFile);
         var font = await fontService.CreateFontFromFileAsync(tempFile);
         return Ok(mapper.Map<EpubFontDto>(font));
     }
@@ -124,14 +126,4 @@ public class FontController(
         }
     }
 
-    private async Task<string> UploadToTemp(IFormFile file)
-    {
-        var outputFile = Path.Join(directoryService.TempDirectory, file.FileName);
-
-        await using var stream = System.IO.File.Create(outputFile);
-        await file.CopyToAsync(stream);
-        stream.Close();
-
-        return outputFile;
-    }
 }

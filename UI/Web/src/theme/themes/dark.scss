@@ -29,7 +29,7 @@
   --elevation-layer11-dark: rgba(0, 0, 0, 0.6);
 
   --elevation-layer0-dark-solid: #121212;
-  --elevation-layer1-dark-solid: #1D1D1D;
+  --elevation-layer1-dark-solid: #1D1D1D; // This is a good base for cards
   --elevation-layer2-dark-solid: #212121;
   --elevation-layer3-dark-solid: #242424;
   --elevation-layer4-dark-solid: #272727;
@@ -95,7 +95,9 @@
 
   /* Global Common Colors */
   --success-color: #22c55e; // Success, Online, Connected
-  // --text-muted-color (we can alias this)
+
+  /** Override bs styles **/
+  --bs-success-rgb: 34, 197, 94;
 
 
   /* Should we render the series cover as background on mobile */
@@ -185,6 +187,12 @@
   --btn-actions-border-radius: 0.375rem;
   --btn-actions-hover-bg: rgb(255 255 255 / 18%);
 
+  /* Discord (brand colors) */
+  --discord-bg-color: #5865F2;
+  --discord-text-color: #fff;
+  --discord-hover-bg-color: #4752C4;
+  --discord-active-bg-color: #3C45A5;
+
 
   /* Nav (Tabs) */
   --nav-item-min-width: 9.375rem;
@@ -215,7 +223,7 @@
   --modal-bg-color: #202122;
   --modal-footer-bg-color: #292929;
   --modal-footer-border-top-color: rgba(255, 255, 255, 0.05);
-  --modal-body-bg-color: var(--elevation-solid-1);
+  --modal-body-bg-color: var(--elevation-layer1-dark-solid);
 
   /* Header */
   --nav-header-text-color: white;
@@ -333,17 +341,26 @@
   --dropdown-overlay-color: var(--elevation-layer1);
 
   /* Accordion */
-  --accordion-header-text-color: rgba(74, 198, 148, 0.9);
-  --accordion-header-bg-color: rgba(52, 60, 70, 0.5);
-  --accordion-body-bg-color: #292929;
+  --accordion-surface-bg-color: var(--elevation-layer1-dark-solid);
+  --accordion-header-text-color: var(--body-text-color);
+  --accordion-header-bg-color: transparent;
+  --accordion-body-bg-color: var(--accordion-surface-bg-color);
   --accordion-body-border-color: rgba(239, 239, 239, 0.125);
   --accordion-body-text-color: var(--body-text-color);
-  --accordion-header-collapsed-text-color: rgba(74, 198, 148, 0.9);
-  --accordion-header-collapsed-bg-color: #292929;
+  --accordion-header-collapsed-text-color: var(--body-text-color);
+  --accordion-header-collapsed-bg-color: transparent;
   --accordion-button-focus-border-color: unset;
   --accordion-button-focus-box-shadow: unset;
-  --accordion-active-body-bg-color: #292929;
+  --accordion-active-body-bg-color: var(--accordion-surface-bg-color);
   --accordion-body-box-shadow: none;
+  --accordion-hairline-color: var(--elevation-layer3);
+  --accordion-subtitle-text-color: var(--offwhite-text-color);
+  --accordion-meta-text-color: var(--text-muted-color);
+  --accordion-chevron-color: var(--offwhite-text-color);
+  --accordion-chevron-hover-color: var(--body-text-color);
+  --accordion-border-hover-color: color-mix(in srgb, #fff 20%, transparent);
+  --accordion-radius: var(--card-border-radius);
+  --accordion-gap: 0.75rem;
 
   /* Breadcrumb */
   --breadcrumb-bg-color: #292d32;
@@ -517,9 +534,20 @@
   --activity-card-client-device-badge-bg-color: #3b82f6;
 
   /** KavitaPlus Audit Log **/
-  --audit-log-metadata-color:       #4AC694;
-  --audit-log-scrobble-color:       #FAC858;
-  --audit-log-match-color:          #5470C6;
-  --audit-log-sync-color:           #73C0DE;
+  --audit-log-metadata-color: #4AC694;
+  --audit-log-scrobble-color: #FAC858;
+  --audit-log-match-color: #5470C6; // Maybe #a5bbff is a better color (color contrast)
+  --audit-log-sync-color: #73C0DE;
 
+  /** Match confidence chip */
+  --match-confidence-chip-strong-color: var(--primary-color);
+  --match-confidence-chip-likely-color: #7ec99e;
+  --match-confidence-chip-weak-color: var(--warning-color);
+  --match-confidence-chip-doubt-color: var(--error-color);
+
+  /** Media format pill */
+  --media-format-pill-manga-color: var(--primary-color);
+  --media-format-pill-light-novel-color: #a5bbff;
+  --media-format-pill-comic-color: #fc8452;
+  --media-format-pill-book-color: #fac858;
 }

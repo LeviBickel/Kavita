@@ -22,6 +22,7 @@ using Kavita.Models.DTOs.KavitaPlus.Metadata;
 using Kavita.Models.DTOs.SignalR;
 using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
+using Kavita.Models.Entities.Enums.Audit;
 using Kavita.Models.Entities.Person;
 using Kavita.Models.Metadata;
 using Kavita.Models.Parser;
@@ -231,7 +232,7 @@ public class ProcessSeries(
 
         if (seriesAdded)
         {
-            await externalMetadataService.FetchSeriesMetadata(series.Id, series.Library.Type);
+            await externalMetadataService.FetchSeriesMetadata(series.Id, series.Library.Type, MetadataFetchTrigger.SeriesAdded);
         }
 
         await eventHub.SendMessageAsync(MessageFactory.ScanSeries,
@@ -343,10 +344,11 @@ public class ProcessSeries(
         {
             // TODO: Come back and clean this up, we call this code in DefaultParser AND ProcessSeries
             series.Metadata.WebLinks = firstChapter.WebLinks;
-            series.AniListId = WeblinkParser.GetAniListId(series.Metadata.WebLinks) ?? 0;
-            series.MalId = WeblinkParser.GetMalId(series.Metadata.WebLinks) ?? 0;
-            series.ComicVineId = WeblinkParser.GetComicVineId(series.Metadata.WebLinks).Item1;
-            series.MangaBakaId = WeblinkParser.GetMangaBakaId(series.Metadata.WebLinks);
+            series.AniListId = ExternalIdParser.GetAniListId(series.Metadata.WebLinks) ?? 0;
+            series.MalId = ExternalIdParser.GetMalId(series.Metadata.WebLinks) ?? 0;
+            series.ComicVineId = ExternalIdParser.GetComicVineId(series.Metadata.WebLinks).Item1;
+            series.MangaBakaId = ExternalIdParser.GetMangaBakaId(series.Metadata.WebLinks);
+            series.HardcoverId = ExternalIdParser.GetHardcoverSeriesId(series.Metadata.WebLinks);
         }
 
         if (!string.IsNullOrEmpty(firstChapter?.SeriesGroup) && library.ManageCollections)

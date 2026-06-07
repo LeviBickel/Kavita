@@ -75,9 +75,26 @@ export class AudiobookReaderComponent implements OnInit, OnDestroy {
 
   private progressSaveSubscription?: Subscription;
   private autoplayOnLoad = false;
+  private pendingAutoplay = false;
 
   ngOnInit() {
     this.navService.hideNavBar();
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && this.pendingAutoplay) {
+        this.pendingAutoplay = false;
+        const audio = this.audioEl()?.nativeElement;
+        audio?.play().then(() => {
+          this.isPlaying.set(true);
+          this.startProgressSaving();
+          this.cdRef.markForCheck();
+        }).catch((err) => {
+          console.warn('[AudiobookReader] autoplay still blocked on tab focus:', err);
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    this.destroyRef.onDestroy(() => document.removeEventListener('visibilitychange', onVisibilityChange));
 
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       this.libraryId = parseInt(params.get('libraryId') ?? '0', 10);
@@ -155,7 +172,8 @@ export class AudiobookReaderComponent implements OnInit, OnDestroy {
         this.startProgressSaving();
         this.cdRef.markForCheck();
       }).catch((err) => {
-        console.warn('[AudiobookReader] autoplay blocked:', err);
+        console.warn('[AudiobookReader] autoplay blocked (tab in background), will resume on focus:', err);
+        this.pendingAutoplay = true;
       });
     }
     this.cdRef.markForCheck();

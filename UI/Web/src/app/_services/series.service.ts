@@ -21,6 +21,7 @@ import {NextExpectedChapter} from "../_models/series-detail/next-expected-chapte
 import {QueryContext} from "../_models/metadata/v2/query-context";
 import {ExternalSeriesMatch} from "../_models/series-detail/external-series-match";
 import {SeriesFilterField} from "../_models/metadata/v2/series-filter-field";
+import {MatchSeriesInfo} from "../_models/kavitaplus/match-series-info";
 
 @Injectable({
   providedIn: 'root'
@@ -219,10 +220,11 @@ export class SeriesService {
     contains: Array<number>, others: Array<number>, prequels: Array<number>,
     sequels: Array<number>, sideStories: Array<number>, spinOffs: Array<number>,
     alternativeSettings: Array<number>, alternativeVersions: Array<number>,
-    doujinshis: Array<number>, editions: Array<number>, annuals: Array<number>) {
+    doujinshis: Array<number>, editions: Array<number>, annuals: Array<number>,
+    cameos: Array<number>) {
     return this.httpClient.post(this.baseUrl + 'series/update-related?seriesId=' + seriesId,
     {seriesId, adaptations, characters, sequels, prequels, contains, others, sideStories, spinOffs,
-     alternativeSettings, alternativeVersions, doujinshis, editions, annuals});
+     alternativeSettings, alternativeVersions, doujinshis, editions, annuals, cameos});
   }
 
   getSeriesDetail(seriesId: number) {
@@ -237,8 +239,8 @@ export class SeriesService {
     return this.httpClient.post(this.baseUrl + 'series/remove-from-on-deck?seriesId=' + seriesId, {});
   }
 
-  getExternalSeriesDetails(aniListId?: number, malId?: number, seriesId?: number) {
-    return this.httpClient.get<ExternalSeriesDetail>(this.baseUrl + 'series/external-series-detail?aniListId=' + (aniListId || 0) + '&malId=' + (malId || 0) + '&seriesId=' + (seriesId || 0));
+  getExternalSeriesDetails(aniListId?: number, malId?: number, mangaBakaId?: number, seriesId?: number) {
+    return this.httpClient.get<ExternalSeriesDetail>(this.baseUrl + 'series/external-series-detail?aniListId=' + (aniListId || 0) + '&malId=' + (malId || 0) + '&mangaBakaId=' + (mangaBakaId || 0) + '&seriesId=' + (seriesId || 0));
   }
 
   getNextExpectedChapterDate(seriesId: number) {
@@ -256,6 +258,7 @@ export class SeriesService {
       cbrId: series.cbrId ?? null,
       mangabakaId: series.mangabakaId ?? null,
       hardcoverId: series.hardcoverId ?? null,
+      isStandAlone: series.isStandAlone,
     };
     return this.httpClient.post<string>(this.baseUrl + `series/update-match?seriesId=${seriesId}`, ids, TextResonse);
   }
@@ -266,5 +269,9 @@ export class SeriesService {
 
   getSeriesWithAnnotations() {
     return this.httpClient.get<Series[]>(this.baseUrl + 'series/series-with-annotations');
+  }
+
+  getMatchInfo(seriesId: number) {
+    return this.httpClient.get<MatchSeriesInfo>(this.baseUrl + 'series/match-info?seriesId=' + seriesId);
   }
 }

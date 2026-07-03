@@ -522,12 +522,17 @@ public class Startup
                     await new ManualMigrateEnsureNoReadOnlyAdmins().RunAsync(dataContext, logger);
                     await new ManualMigrationRemoveMoreInGenreStream().RunAsync(dataContext, logger);
                     await new ManualMigrateSmartFilterEntityTypeBackfill().RunAsync(dataContext, logger);
+                    await new ManualMigrateEpubFontFamilyDetailsBackfill().RunAsync(dataContext, logger);
                     #endregion
 
                     #region v0.9.1
 
                     await new ManualMigrationScrobbleRework().RunAsync(dataContext, logger);
                     await new ManualMigrationKavitaScrobbleProviders().RunAsync(dataContext, logger);
+                    await new ManualMigrationMetadataProvider().RunAsync(dataContext, logger);
+                    await new ManualMigrationOAuthMigration().RunAsync(dataContext, logger);
+                    await new ManualMigrateRelationshipAuditHistory().RunAsync(dataContext, logger);
+                    await new ManualMigrationSetDefaultMetadataProvidersForLibrary().RunAsync(dataContext, logger);
 
                     #endregion
 

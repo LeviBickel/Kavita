@@ -18,7 +18,7 @@ namespace Kavita.Database.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.6");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.9");
 
             modelBuilder.Entity("AppUserCollectionSeries", b =>
                 {
@@ -507,6 +507,9 @@ namespace Kavita.Database.Migrations
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Family")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("FileName")
                         .HasColumnType("TEXT");
 
@@ -524,6 +527,12 @@ namespace Kavita.Database.Migrations
 
                     b.Property<int>("Provider")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Style")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Weight")
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -765,6 +774,9 @@ namespace Kavita.Database.Migrations
                     b.Property<bool>("ManageReadingLists")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("MetadataProvider")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .HasColumnType("TEXT");
 
@@ -956,19 +968,34 @@ namespace Kavita.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("AgeRating")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("AniListId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("CoverUrl")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("HardCoverId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<long?>("MalId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MangaBakaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MetadataProvider")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Provider")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("RecommendationSource")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("SeriesId")
@@ -1076,6 +1103,9 @@ namespace Kavita.Database.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<long>("MangabakaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Provider")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("SeriesId")
@@ -2214,6 +2244,9 @@ namespace Kavita.Database.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsBlacklisted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsStandAlone")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("LastChapterAdded")

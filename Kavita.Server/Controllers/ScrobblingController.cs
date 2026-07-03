@@ -26,6 +26,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using TaskScheduler = Kavita.Services.TaskScheduler;
 
 namespace Kavita.Server.Controllers;
 
@@ -73,7 +74,11 @@ public class ScrobblingController(
         var scrobbleProvider = user.ScrobbleProviders[provider];
         scrobbleProvider.Settings = scrobbleSettings;
 
-        if (scrobbleProvider.Settings.Libraries.Count > 0)
+        if (scrobbleProvider.Settings.AllLibraries)
+        {
+            scrobbleProvider.Settings.Libraries = [];
+        }
+        else if (scrobbleProvider.Settings.Libraries.Count > 0)
         {
             scrobbleProvider.Settings.Libraries = await scrobblingService
                 .FilterLibrariesForProvider(provider, UserId, scrobbleProvider.Settings.Libraries);
@@ -103,12 +108,7 @@ public class ScrobblingController(
         var scrobbleProvider = user.ScrobbleProviders[dto.Provider];
 
         scrobbleProvider.AuthenticationToken = dto.AuthenticationToken.TrimPrefix("Bearer").Trim();
-
-        // Mal uses UserName & ClientId or something
-        if (dto.Provider is ScrobbleProvider.Mal)
-        {
-            scrobbleProvider.UserName = dto.UserName;
-        }
+        scrobbleProvider.RefreshToken = dto.RefreshToken.TrimPrefix("Bearer").Trim();
 
         unitOfWork.UserRepository.Update(user);
         await unitOfWork.CommitAsync(HttpContext.RequestAborted);
@@ -185,8 +185,9 @@ public class ScrobblingController(
         var user = await unitOfWork.UserRepository.GetUserByIdAsync(UserId);
         if (user == null) return Unauthorized();
 
+        // MAL doesn't have a validUntil, thus the date will be 1/1/0001. Just filter that out so it doesn't always proc
         return Ok(user.ScrobbleProviders
-            .Where(kv => kv.Value.ValidUntilUtc < DateTime.UtcNow && !string.IsNullOrEmpty(kv.Value.AuthenticationToken))
+            .Where(kv => kv.Value.ValidUntilUtc.Year != 1 && kv.Value.ValidUntilUtc < DateTime.UtcNow && !string.IsNullOrEmpty(kv.Value.AuthenticationToken))
             .Select(kv => kv.Key)
             .ToList()
         );
@@ -370,5 +371,16 @@ public class ScrobblingController(
 
         // Locate the Scrobble event or replay the event
         return Ok(await scrobblingService.RetryScrobbleAsync(UserId, dto, HttpContext.RequestAborted));
+    }
+
+    /// <summary>
+    /// Returns when Scrobbling upload will next execute
+    /// </summary>
+    /// <returns></returns>
+    [HttpGet("next-scrobble-time")]
+    [Authorize(Policy = PolicyGroups.AdminPolicy)]
+    public ActionResult<DateTime?> GetNextScrobbleTime()
+    {
+        return Ok(TaskScheduler.GetNextRun(TaskSchedulerConstants.ProcessScrobblingEventsId));
     }
 }

@@ -1,10 +1,17 @@
-import {ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal} from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  linkedSignal,
+  OnInit,
+  signal
+} from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {TranslocoDirective} from '@jsverse/transloco';
 import {KavitaplusTimelineComponent} from "../../../_single-module/kavitaplus-timeline/kavitaplus-timeline.component";
-import {
-  KavitaPlusAuditEntryComponent
-} from "../kavitaplus-audit-entry/kavita-plus-audit-entry.component";
+import {KavitaPlusAuditEntryComponent} from "../kavitaplus-audit-entry/kavita-plus-audit-entry.component";
 import {DefaultValuePipe} from "../../../_pipes/default-value.pipe";
 import {AuditStatusTitlePipe} from "../../../_pipes/audit-status-title.pipe";
 import {AuditSubjectTitlePipe} from "../../../_pipes/audit-subject-title.pipe";
@@ -19,6 +26,10 @@ import {Pagination} from "../../../_models/pagination";
 import {KavitaPlusAuditCategory} from "../../../_models/kavitaplus/kavita-plus-audit-category.enum";
 import {KavitaPlusAuditFilter} from "../../../_models/kavitaplus/kavita-plus-audit-filter";
 import {SearchInputComponent} from "../../../shared/_components/search-input/search-input.component";
+import {TimeDifferencePipe} from "../../../_pipes/time-difference.pipe";
+import {ScrobbleProvider, ScrobblingService} from "../../../_services/scrobbling.service";
+import {ScrobbleProviderNamePipe} from "../../../_pipes/scrobble-provider-name.pipe";
+import {UtcToLocalDatePipe} from "../../../_pipes/utc-to-locale-date.pipe";
 
 @Component({
   selector: 'app-manage-kavitaplus-activity',
@@ -30,12 +41,17 @@ import {SearchInputComponent} from "../../../shared/_components/search-input/sea
     AuditStatusTitlePipe,
     AuditSubjectTitlePipe,
     SearchInputComponent,
+    ScrobbleProviderNamePipe,
+    TimeDifferencePipe,
+    UtcToLocalDatePipe,
   ],
   templateUrl: './manage-kavitaplus-activity.component.html',
   styleUrl: './manage-kavitaplus-activity.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ManageKavitaplusActivityComponent implements OnInit {
+
+  protected readonly scrobblingService = inject(ScrobblingService);
   private readonly auditService = inject(KavitaPlusAuditService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly memberService = inject(MemberService);
@@ -47,6 +63,10 @@ export class ManageKavitaplusActivityComponent implements OnInit {
   isLoadingMore = signal(false);
   categoryFilter = signal<KavitaPlusAuditCategory | null>(null);
   statusFilter = signal<AuditStatus | null>(null);
+  providerFilter = linkedSignal<ScrobbleProvider | null>(() => {
+    this.categoryFilter(); // Reset signal when category changes
+    return null;
+  });
   searchQuery = signal('');
 
   subjectFilter = signal<AuditSubjectType | null>(null);
@@ -56,6 +76,8 @@ export class ManageKavitaplusActivityComponent implements OnInit {
   members = signal<Member[]>([]);
   currentPage = signal(0);
   pagination = signal<Pagination | null>(null);
+
+  nextScrobble = signal<string | null>(null);
 
   matchedPercent = computed(() => {
     const s = this.stats();
@@ -71,6 +93,10 @@ export class ManageKavitaplusActivityComponent implements OnInit {
   ngOnInit() {
     this.loadStats();
     this.loadEntries();
+
+    this.scrobblingService.getNextScrobble().subscribe(res => {
+      this.nextScrobble.set(res)
+    });
 
     this.memberService.getMembers(false).subscribe(members => {
       this.members.set(members);
@@ -102,6 +128,7 @@ export class ManageKavitaplusActivityComponent implements OnInit {
     const filter: KavitaPlusAuditFilter = {
       category: this.categoryFilter(),
       status: this.statusFilter(),
+      provider: this.providerFilter(),
       search: this.searchQuery() || null,
       subjectType: this.subjectFilter() || null,
       fromUtc: this.timeFrameToFromUtc(),
@@ -133,6 +160,12 @@ export class ManageKavitaplusActivityComponent implements OnInit {
 
   setCategoryFilter(cat: KavitaPlusAuditCategory | null) {
     this.categoryFilter.set(cat);
+    this.loadEntries();
+  }
+
+  onProviderFilterChange(value: string) {
+    const num = Number(value);
+    this.providerFilter.set(isNaN(num) ? null : num as ScrobbleProvider);
     this.loadEntries();
   }
 

@@ -1,4 +1,6 @@
 ﻿using Kavita.Models.DTOs.Scrobbling;
+using Kavita.Models.Entities.Enums;
+using Kavita.Models.Entities.Enums.KavitaPlus;
 using Kavita.Models.Entities.Interfaces;
 
 namespace Kavita.Models.DTOs.KavitaPlus.ExternalMetadata.Covers;
@@ -22,6 +24,7 @@ public sealed record ExternalCoverRequestDto
     public bool IsStandAlone { get; set; }
 
     public PlusMediaFormat MediaFormat { get; set; }
+    public MetadataProvider MetadataProvider { get; set; }
 
     /// <summary>When true, only volume/volume_back type images are returned.</summary>
     public bool VolumesOnly { get; set; }

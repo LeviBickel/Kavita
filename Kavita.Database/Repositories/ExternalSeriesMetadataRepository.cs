@@ -16,6 +16,7 @@ using Kavita.Models.DTOs.Recommendation;
 using Kavita.Models.DTOs.SeriesDetail;
 using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
+using Kavita.Models.Entities.Enums.KavitaPlus;
 using Kavita.Models.Entities.Metadata;
 using Microsoft.EntityFrameworkCore;
 
@@ -81,11 +82,13 @@ public class ExternalSeriesMetadataRepository(DataContext context, IMapper mappe
 
     public async Task<bool> NeedsDataRefresh(int seriesId, CancellationToken ct = default)
     {
-        return await context.ExternalSeriesMetadata
+        // A series with no external metadata row has never been fetched and needs a refresh.
+        // Otherwise, only refresh once the cached data has expired.
+        var hasFreshData = await context.ExternalSeriesMetadata
             .Where(s => s.SeriesId == seriesId)
-            .Select(s => s.ValidUntilUtc)
-            .Where(date => date < DateTime.UtcNow)
-            .AnyAsync(ct);
+            .AnyAsync(s => s.ValidUntilUtc >= DateTime.UtcNow, ct);
+
+        return !hasFreshData;
     }
 
     public async Task<SeriesDetailPlusDto?> GetSeriesDetailPlusDto(int seriesId, CancellationToken ct = default)
@@ -107,19 +110,29 @@ public class ExternalSeriesMetadataRepository(DataContext context, IMapper mappe
             .Select(mapper.Map<ExternalSeriesDto>)
             .ToList();
 
-        var ownedIds = seriesDetailDto.ExternalRecommendations
+        // When the same series surfaced from more than one source, UserBased wins
+        var sourceBySeriesId = seriesDetailDto.ExternalRecommendations
             .Where(r => r.SeriesId != null)
-            .Select(r => r.SeriesId)
-            .ToList();
+            .GroupBy(r => r.SeriesId!.Value)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderBy(r => r.RecommendationSource == RecommendationSource.UserBased ? 0 : 1)
+                    .First().RecommendationSource);
 
-        var ownedSeriesRecommendations = await context.Series
+        var ownedIds = sourceBySeriesId.Keys.ToList();
+
+        var ownedSeries = await context.Series
             .Where(s => ownedIds.Contains(s.Id))
             .OrderBy(s => s.SortName.ToLower())
             .ProjectTo<SeriesDto>(mapper.ConfigurationProvider)
             .ToListAsync(ct);
 
+        var ownedSeriesRecommendations = ownedSeries
+            .Select(s => new RecommendedSeriesDto { Series = s, Source = sourceBySeriesId[s.Id] })
+            .ToList();
+
         IEnumerable<UserReviewDto> reviews = [];
-        if (seriesDetailDto.ExternalReviews != null && seriesDetailDto.ExternalReviews.Any())
+        if (seriesDetailDto.ExternalReviews != null && seriesDetailDto.ExternalReviews.Count != 0)
         {
             reviews = seriesDetailDto.ExternalReviews
                 .Select(r =>
@@ -175,14 +188,14 @@ public class ExternalSeriesMetadataRepository(DataContext context, IMapper mappe
         await context.SaveChangesAsync(ct);
     }
 
-    public async Task<IList<int>> GetSeriesThatNeedExternalMetadata(int limit, bool includeStaleData = false,
+    public async Task<List<int>> GetSeriesThatNeedExternalMetadata(int limit, bool includeStaleData = false,
         CancellationToken ct = default)
     {
         return await context.Series
             .Where(s => !IExternalMetadataService.NonEligibleLibraryTypes.Contains(s.Library.Type))
             .Where(s => s.Library.AllowMetadataMatching)
             .WhereIf(includeStaleData, s => s.ExternalSeriesMetadata == null || s.ExternalSeriesMetadata.ValidUntilUtc < DateTime.UtcNow)
-            .Where(s => s.ExternalSeriesMetadata == null || s.ExternalSeriesMetadata.AniListId == 0)
+            .WhereIf(!includeStaleData, s => s.ExternalSeriesMetadata == null || s.ExternalSeriesMetadata.AniListId == 0)
             .Where(s => !s.IsBlacklisted && !s.DontMatch)
             .OrderByDescending(s => s.Library.Type)
             .ThenBy(s => s.NormalizedName)

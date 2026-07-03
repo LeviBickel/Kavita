@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -197,8 +197,9 @@ public class CoverDbService : ICoverDbService
             var res = await provider.GetAsync<string>(publisherName, ct);
             if (res.HasValue)
             {
-                _logger.LogInformation("Kavita has already tried to fetch Publisher: {PublisherName} and failed. Skipping duplicate check", publisherName);
-                throw new KavitaException($"Kavita has already tried to fetch Publisher: {publisherName} and failed. Skipping duplicate check");
+                _logger.LogDebug("Kavita has already tried to fetch Publisher: {PublisherName} and failed. Skipping duplicate check", publisherName);
+                // Do not throw to prevent duplicate log spam when visiting series
+                return string.Empty;
             }
 
             await provider.SetAsync(publisherName, string.Empty, _cacheTime, ct);
@@ -516,19 +517,29 @@ public class CoverDbService : ICoverDbService
                     if (!string.IsNullOrEmpty(person.CoverImage) && chooseBetterImage)
                     {
                         var existingPath = Path.Combine(_directoryService.CoverImageDirectory, person.CoverImage);
-                        var betterImage = existingPath.GetBetterImage(tempFullPath)!;
 
-                        var choseNewImage = string.Equals(betterImage, tempFullPath, StringComparison.OrdinalIgnoreCase);
-                        if (choseNewImage)
+                        if (!File.Exists(existingPath))
                         {
-                            _directoryService.DeleteFiles([existingPath]);
+                            _logger.LogWarning("Existing cover for Person {PersonId} is missing on disk ({Path}); accepting new cover from source", person.Id, existingPath);
                             _directoryService.CopyFile(tempFullPath, finalFullPath);
                             person.CoverImage = finalFileName;
                         }
                         else
                         {
-                            _directoryService.DeleteFiles([tempFullPath]);
-                            return;
+                            var betterImage = existingPath.GetBetterImage(tempFullPath)!;
+
+                            var choseNewImage = string.Equals(betterImage, tempFullPath, StringComparison.OrdinalIgnoreCase);
+                            if (choseNewImage)
+                            {
+                                _directoryService.DeleteFiles([existingPath]);
+                                _directoryService.CopyFile(tempFullPath, finalFullPath);
+                                person.CoverImage = finalFileName;
+                            }
+                            else
+                            {
+                                _directoryService.DeleteFiles([tempFullPath]);
+                                return;
+                            }
                         }
                     }
                     else
@@ -539,7 +550,7 @@ public class CoverDbService : ICoverDbService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error choosing better image for Person: {PersonId}", person.Id);
+                    _logger.LogWarning(ex, "Error choosing better image for Person: {PersonId}; accepting new cover from source", person.Id);
                     _directoryService.CopyFile(tempFullPath, finalFullPath);
                     person.CoverImage = finalFileName;
                 }
@@ -593,34 +604,45 @@ public class CoverDbService : ICoverDbService
 
                 if (chooseBetterImage && !string.IsNullOrEmpty(series.CoverImage))
                 {
-                    try
+                    var existingPath = Path.Combine(_directoryService.CoverImageDirectory, series.CoverImage);
+
+                    if (!File.Exists(existingPath))
                     {
-                        var existingPath = Path.Combine(_directoryService.CoverImageDirectory, series.CoverImage);
-                        var betterImage = existingPath.GetBetterImage(tempFullPath)!;
-
-                        var choseNewImage = string.Equals(betterImage, tempFullPath, StringComparison.OrdinalIgnoreCase);
-                        if (choseNewImage)
+                        // Existing cover reference is stale/missing on disk; accept the new image as it's better than nothing
+                        _logger.LogWarning("Existing cover for Series {SeriesId} is missing on disk ({Path}); accepting new cover from source", series.Id, existingPath);
+                        _directoryService.CopyFile(tempFullPath, finalFullPath);
+                        series.CoverImage = finalFileName;
+                    }
+                    else
+                    {
+                        try
                         {
-                            // Don't delete the Series cover unless it is an override, otherwise the first chapter will be null
-                            if (existingPath.Contains(ImageService.GetSeriesFormat(series.Id)))
-                            {
-                                _directoryService.DeleteFiles([existingPath]);
-                            }
+                            var betterImage = existingPath.GetBetterImage(tempFullPath)!;
 
+                            var choseNewImage = string.Equals(betterImage, tempFullPath, StringComparison.OrdinalIgnoreCase);
+                            if (choseNewImage)
+                            {
+                                // Don't delete the Series cover unless it is an override, otherwise the first chapter will be null
+                                if (existingPath.Contains(ImageService.GetSeriesFormat(series.Id)))
+                                {
+                                    _directoryService.DeleteFiles([existingPath]);
+                                }
+
+                                _directoryService.CopyFile(tempFullPath, finalFullPath);
+                                series.CoverImage = finalFileName;
+                            }
+                            else
+                            {
+                                _directoryService.DeleteFiles([tempFullPath]);
+                                return;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Error choosing better image for Series: {SeriesId}; accepting new cover from source", series.Id);
                             _directoryService.CopyFile(tempFullPath, finalFullPath);
                             series.CoverImage = finalFileName;
                         }
-                        else
-                        {
-                            _directoryService.DeleteFiles([tempFullPath]);
-                            return;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error choosing better image for Series: {SeriesId}", series.Id);
-                        _directoryService.CopyFile(tempFullPath, finalFullPath);
-                        series.CoverImage = finalFileName;
                     }
                 }
                 else
@@ -671,30 +693,46 @@ public class CoverDbService : ICoverDbService
 
                 if (chooseBetterImage && !string.IsNullOrEmpty(chapter.CoverImage))
                 {
-                    try
+                    var existingPath = Path.Combine(_directoryService.CoverImageDirectory, chapter.CoverImage);
+
+                    if (!File.Exists(existingPath))
                     {
-                        var existingPath = Path.Combine(_directoryService.CoverImageDirectory, chapter.CoverImage);
-                        var betterImage = existingPath.GetBetterImage(tempFullPath)!;
-                        var choseNewImage = string.Equals(betterImage, tempFullPath, StringComparison.OrdinalIgnoreCase);
-
-                        if (choseNewImage)
-                        {
-                            // This will fail if Cover gen is done just before this as there is a bug with files getting locked.
-                            _directoryService.DeleteFiles([existingPath]);
-                            _directoryService.CopyFile(tempFullPath, finalFullPath);
-                            _directoryService.DeleteFiles([tempFullPath]);
-                        }
-                        else
-                        {
-                            _directoryService.DeleteFiles([tempFullPath]);
-                            return;
-                        }
-
+                        // Existing cover reference is stale/missing on disk; accept the new image as it's better than nothing
+                        _logger.LogWarning("Existing cover for Chapter {FileName} ({ChapterId}) is missing on disk ({Path}); accepting new cover from source", chapter.Range, chapter.Id, new FileInfo(existingPath).Name);
+                        _directoryService.CopyFile(tempFullPath, finalFullPath);
+                        _directoryService.DeleteFiles([tempFullPath]);
                         chapter.CoverImage = finalFileName;
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        _logger.LogError(ex, "There was an issue trying to choose a better cover image for Chapter: {FileName} ({ChapterId})", chapter.Range, chapter.Id);
+                        try
+                        {
+                            var betterImage = existingPath.GetBetterImage(tempFullPath)!;
+                            var choseNewImage = string.Equals(betterImage, tempFullPath, StringComparison.OrdinalIgnoreCase);
+
+                            if (choseNewImage)
+                            {
+                                // This will fail if Cover gen is done just before this as there is a bug with files getting locked.
+                                _directoryService.DeleteFiles([existingPath]);
+                                _directoryService.CopyFile(tempFullPath, finalFullPath);
+                                _directoryService.DeleteFiles([tempFullPath]);
+                            }
+                            else
+                            {
+                                _directoryService.DeleteFiles([tempFullPath]);
+                                return;
+                            }
+
+                            chapter.CoverImage = finalFileName;
+                        }
+                        catch (Exception ex)
+                        {
+                            // Accept the new image rather than keeping no/old cover, since a source is better than nothing
+                            _logger.LogWarning(ex, "There was an issue trying to choose a better cover image for Chapter: {FileName} ({ChapterId}); accepting new cover from source", chapter.Range, chapter.Id);
+                            _directoryService.CopyFile(tempFullPath, finalFullPath);
+                            _directoryService.DeleteFiles([tempFullPath]);
+                            chapter.CoverImage = finalFileName;
+                        }
                     }
                 }
                 else
@@ -797,8 +835,8 @@ public class CoverDbService : ICoverDbService
 
         if (fromBase64)
         {
-            return _imageService.CreateThumbnailFromBase64(url,
-                filenameWithoutExtension, encodeFormat, coverImageSize.GetDimensions().Width, targetDirectory);
+            var (width, height) = coverImageSize.GetDimensions();
+            return _imageService.CreateThumbnailFromBase64(url, filenameWithoutExtension, encodeFormat, width, height, targetDirectory);
         }
 
         return await DownloadImageFromUrl(filenameWithoutExtension, encodeFormat, url, targetDirectory);

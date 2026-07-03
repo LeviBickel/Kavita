@@ -9,6 +9,7 @@ using Kavita.Models.DTOs.KavitaPlus.Scrobble;
 using Kavita.Models.DTOs.Scrobbling;
 using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
+using Kavita.Models.Entities.Enums.KavitaPlus;
 using Kavita.Models.Entities.Scrobble;
 using Kavita.Models.Entities.User;
 using Microsoft.Extensions.Logging;
@@ -27,6 +28,11 @@ public class MangabakaScrobbleProviderService(ILogger<MangabakaScrobbleProviderS
     protected override void SetScrobbleIds(ScrobbleEvent evt, Series series)
     {
         evt.MangabakaId = series.MangaBakaId;
+    }
+
+    protected override bool HasRequiredIds(Series series)
+    {
+        return series.MangaBakaId > 0;
     }
 
     // MangaBaka is technically unlimited and server-wide (API keys), but we still pace it to be polite (~80/min)

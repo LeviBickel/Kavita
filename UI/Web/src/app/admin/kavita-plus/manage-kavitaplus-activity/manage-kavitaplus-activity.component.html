@@ -55,6 +55,10 @@
         <span>{{t('stats-queue-label')}}</span>
       </div>
       <div class="stat-value text-warning">{{stats()?.scrobbleQueueCount | defaultValue}}</div>
+      @let nextScrobbleDate = nextScrobble();
+      @if (nextScrobbleDate != null) {
+        <div class="stat-subtitle">{{t('next-scrobble', {date: nextScrobbleDate | utcToLocalDate | timeDifference})}}</div>
+      }
     </div>
   </div>
 
@@ -72,9 +76,23 @@
               (click)="setCategoryFilter(KavitaPlusAuditCategory.Scrobble)">{{t('filter-scrobble')}}</button>
       <button class="btn btn-sm btn-outline-secondary" [class.active-filter]="categoryFilter() === KavitaPlusAuditCategory.Sync"
               (click)="setCategoryFilter(KavitaPlusAuditCategory.Sync)">{{t('filter-sync')}}</button>
+      <button class="btn btn-sm btn-outline-secondary" [class.active-filter]="categoryFilter() === KavitaPlusAuditCategory.System"
+              (click)="setCategoryFilter(KavitaPlusAuditCategory.System)">{{t('filter-system')}}</button>
     </div>
 
     <div class="d-flex align-items-center gap-2 flex-wrap">
+
+      @if (categoryFilter() === KavitaPlusAuditCategory.Scrobble) {
+        <label class="visually-hidden" for="providerFilter">{{t('filter-provider-label')}}</label>
+        <select id="providerFilter" class="form-select form-select-sm" style="width: auto"
+          (change)="onProviderFilterChange($any($event.target).value)">
+          <option [value]="null">{{t('filter-provider-label')}}</option>
+          @for (provider of scrobblingService.validExternalScrobbleProviders(); track provider) {
+            <option [value]="provider">{{provider | scrobbleProviderName}}</option>
+          }
+        </select>
+      }
+
       <label class="visually-hidden" for="auditStatusFilter">{{t('filter-status-label')}}</label>
       <select id="auditStatusFilter" class="form-select form-select-sm" style="width: auto"
               (change)="onStatusFilterChange($any($event.target).value)">
@@ -115,7 +133,6 @@
     <app-search-input [value]="searchQuery()" (search)="onSearchChange($event)" [label]="t('search-alt')" />
   </div>
 
-  <!-- Timeline with custom entry card -->
   <ng-template #entryTpl let-entry>
     <app-kavitaplus-audit-entry [entry]="entry" [showStatus]="true" [showUser]="true" [showDiff]="true" />
   </ng-template>

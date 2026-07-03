@@ -2,12 +2,12 @@
   "openapi": "3.0.4",
   "info": {
     "title": "Kavita",
-    "description": "Kavita provides a set of APIs authenticated via an Auth Key passed in the `x-api-key` header. Generate an Auth Key under User Settings → Manage Auth Keys, paste it into the Authorize panel, and all Try It requests will include it. Assume all fields of a payload are required unless marked optional. Built against v0.9.0.6",
+    "description": "Kavita provides a set of APIs authenticated via an Auth Key passed in the `x-api-key` header. Generate an Auth Key under User Settings → Manage Auth Keys, paste it into the Authorize panel, and all Try It requests will include it. Assume all fields of a payload are required unless marked optional. Built against v0.9.0.12",
     "license": {
       "name": "GPL-3.0",
       "url": "https://github.com/Kareadita/Kavita/blob/develop/LICENSE"
     },
-    "version": "0.9.0.6"
+    "version": "0.9.0.12"
   },
   "servers": [
     {
@@ -4888,12 +4888,12 @@
         "tags": [
           "Font"
         ],
-        "summary": "Removes a font from the system",
+        "summary": "Removes a font family from the system. The family is validated for in-use server side and only removed when\nit is not selected by a user, or when an admin forces the deletion.",
         "parameters": [
           {
             "name": "fontId",
             "in": "query",
-            "description": "",
+            "description": "Any file within the family to delete",
             "schema": {
               "type": "integer",
               "format": "int32"
@@ -4902,34 +4902,10 @@
           {
             "name": "force",
             "in": "query",
-            "description": "If the font is in use by other users and an admin wants it deleted, they must confirm to force delete it. This is prompted in the UI.",
+            "description": "If the family is in use and an admin wants it deleted, they must confirm to force delete it. This is prompted in the UI.",
             "schema": {
               "type": "boolean",
               "default": false
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/Font/in-use": {
-      "get": {
-        "tags": [
-          "Font"
-        ],
-        "summary": "Returns if the given font is in use by any other user. System provided fonts will always return true.",
-        "parameters": [
-          {
-            "name": "fontId",
-            "in": "query",
-            "description": "",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
             }
           }
         ],
@@ -4939,17 +4915,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "boolean"
+                  "$ref": "#/components/schemas/FontDeleteResultDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "boolean"
+                  "$ref": "#/components/schemas/FontDeleteResultDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "boolean"
+                  "$ref": "#/components/schemas/FontDeleteResultDto"
                 }
               }
             }
@@ -5024,7 +5000,33 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EpubFontDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EpubFontDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EpubFontDto"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -6760,6 +6762,54 @@
         }
       }
     },
+    "/api/Library/metadata-providers": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "parameters": [
+          {
+            "name": "libraryType",
+            "in": "query",
+            "description": "Members:\n- `0` — Manga\n- `1` — Comic (Flexible) (Comic)\n- `2` — Book\n- `3` — Image\n- `4` — Light Novel (LightNovel)\n- `5` — Comic (ComicVine)",
+            "schema": {
+              "$ref": "#/components/schemas/LibraryType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MetadataProvider"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MetadataProvider"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MetadataProvider"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/Library/type": {
       "get": {
         "tags": [
@@ -7109,6 +7159,176 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/KavitaPlusLicenseUsageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/License/cancel": {
+      "delete": {
+        "tags": [
+          "License"
+        ],
+        "summary": "Cancels the active Kavita+ Subscription tied to this server. License will elapse at end of billing period.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelKavitaPlusLicenseDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelKavitaPlusLicenseDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelKavitaPlusLicenseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/License/products": {
+      "get": {
+        "tags": [
+          "License"
+        ],
+        "summary": "Returns the available Kavita+ products (billing interval and list price) the renew flow can select.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KavitaPlusProductInfoDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KavitaPlusProductInfoDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KavitaPlusProductInfoDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/License/renew": {
+      "post": {
+        "tags": [
+          "License"
+        ],
+        "summary": "Renews the subscription on the given billing interval and returns the Stripe Checkout (Pay Now) URL the customer visits to pay.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenewKavitaPlusLicenseDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenewKavitaPlusLicenseDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenewKavitaPlusLicenseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/License/change-email": {
+      "post": {
+        "tags": [
+          "License"
+        ],
+        "summary": "Change email on Kavita+ License/Stripe - Sends a confirmation email on Kavita+ side. No-op for server.",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeEmailOnLicenseDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeEmailOnLicenseDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeEmailOnLicenseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "boolean"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "boolean"
                 }
               }
             }
@@ -7866,6 +8086,76 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/OAuth/start": {
+      "get": {
+        "tags": [
+          "OAuth"
+        ],
+        "summary": "Start the OAuth flow for the given upstream, redirect (302!) to KavitaPlus",
+        "parameters": [
+          {
+            "name": "upstream",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "$ref": "#/components/schemas/OAuthUpstream"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/OAuth/callback": {
+      "get": {
+        "tags": [
+          "OAuth"
+        ],
+        "summary": "Callback from KavitaPlus.",
+        "parameters": [
+          {
+            "name": "upstream",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "$ref": "#/components/schemas/OAuthUpstream"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "query",
+            "description": "Encrypted ApiKey",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "refreshToken",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -14184,6 +14474,42 @@
         }
       }
     },
+    "/api/Scrobbling/next-scrobble-time": {
+      "get": {
+        "tags": [
+          "Scrobbling"
+        ],
+        "summary": "Returns when Scrobbling upload will next execute",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/Search/series-for-mangafile": {
       "get": {
         "tags": [
@@ -15638,10 +15964,12 @@
         "tags": [
           "Series"
         ],
+        "summary": "Returns external series metadata around a Given External Series",
         "parameters": [
           {
             "name": "aniListId",
             "in": "query",
+            "description": "",
             "schema": {
               "type": "integer",
               "format": "int32"
@@ -15650,14 +15978,25 @@
           {
             "name": "malId",
             "in": "query",
+            "description": "",
             "schema": {
               "type": "integer",
               "format": "int64"
             }
           },
           {
+            "name": "mangaBakaId",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
             "name": "seriesId",
             "in": "query",
+            "description": "",
             "schema": {
               "type": "integer",
               "format": "int32"
@@ -15670,17 +16009,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ExternalSeriesDto"
+                  "$ref": "#/components/schemas/ExternalSeriesDetailDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ExternalSeriesDto"
+                  "$ref": "#/components/schemas/ExternalSeriesDetailDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ExternalSeriesDto"
+                  "$ref": "#/components/schemas/ExternalSeriesDetailDto"
                 }
               }
             }
@@ -15860,6 +16199,47 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Series/match-info": {
+      "get": {
+        "tags": [
+          "Series"
+        ],
+        "summary": "Returns extra information around an existing match (and series) to display on the Match Screen.",
+        "parameters": [
+          {
+            "name": "seriesId",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchSeriesInfoDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchSeriesInfoDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchSeriesInfoDto"
+                }
+              }
+            }
           }
         }
       }
@@ -22215,6 +22595,23 @@
         },
         "additionalProperties": false
       },
+      "CancelKavitaPlusLicenseDto": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CblBookResult": {
         "type": "object",
         "properties": {
@@ -22624,6 +23021,24 @@
             "format": "int32"
           },
           "seriesName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChangeEmailOnLicenseDto": {
+        "required": [
+          "newEmail",
+          "oldEmail"
+        ],
+        "type": "object",
+        "properties": {
+          "oldEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "newEmail": {
             "type": "string",
             "nullable": true
           }
@@ -24012,6 +24427,10 @@
             "type": "integer",
             "format": "int32"
           },
+          "family": {
+            "type": "string",
+            "nullable": true
+          },
           "name": {
             "type": "string",
             "nullable": true
@@ -24020,6 +24439,14 @@
             "$ref": "#/components/schemas/FontProvider"
           },
           "fileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "style": {
+            "type": "string",
+            "nullable": true
+          },
+          "weight": {
             "type": "string",
             "nullable": true
           }
@@ -24080,6 +24507,11 @@
           },
           "issueUrl": {
             "type": "string",
+            "nullable": true
+          },
+          "hardcoverId": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           },
           "criticReviews": {
@@ -24185,6 +24617,9 @@
             "format": "int32",
             "nullable": true
           },
+          "isStandAlone": {
+            "type": "boolean"
+          },
           "cbrId": {
             "type": "integer",
             "format": "int32",
@@ -24230,6 +24665,9 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "isStandAlone": {
+            "type": "boolean"
           },
           "mangabakaId": {
             "type": "integer",
@@ -24279,6 +24717,9 @@
             "type": "string",
             "nullable": true
           },
+          "ageRating": {
+            "$ref": "#/components/schemas/AgeRating"
+          },
           "provider": {
             "$ref": "#/components/schemas/ScrobbleProvider"
           },
@@ -24315,6 +24756,13 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SeriesCharacter"
+            },
+            "nullable": true
+          },
+          "ratings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RatingDto"
             },
             "nullable": true
           },
@@ -24361,6 +24809,11 @@
             "format": "int32",
             "nullable": true
           },
+          "mangaBakaId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
           "malId": {
             "type": "integer",
             "format": "int64",
@@ -24368,6 +24821,15 @@
           },
           "provider": {
             "$ref": "#/components/schemas/ScrobbleProvider"
+          },
+          "metadataProvider": {
+            "$ref": "#/components/schemas/MetadataProvider"
+          },
+          "recommendationSource": {
+            "$ref": "#/components/schemas/RecommendationSource"
+          },
+          "ageRating": {
+            "$ref": "#/components/schemas/AgeRating"
           }
         },
         "additionalProperties": false
@@ -24656,6 +25118,18 @@
           "Person",
           "Annotation"
         ]
+      },
+      "FontDeleteResultDto": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          },
+          "inUse": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
       },
       "FontProvider": {
         "enum": [
@@ -25093,22 +25567,25 @@
           0,
           1,
           2,
-          3
+          3,
+          4
         ],
         "type": "integer",
-        "description": "Members:\n- `0` — Match\n- `1` — Metadata\n- `2` — Scrobble\n- `3` — Sync",
+        "description": "Members:\n- `0` — Match\n- `1` — Metadata\n- `2` — Scrobble\n- `3` — Sync\n- `4` — System",
         "format": "int32",
         "x-enum-varnames": [
           "Match",
           "Metadata",
           "Scrobble",
-          "Sync"
+          "Sync",
+          "System"
         ],
         "x-enum-descriptions": [
           "Match",
           "Metadata",
           "Scrobble",
-          "Sync"
+          "Sync",
+          "System"
         ]
       },
       "KavitaPlusAuditEntryDto": {
@@ -25185,6 +25662,9 @@
           "metadataExtras": {
             "$ref": "#/components/schemas/KavitaPlusAuditMetadataExtrasDto"
           },
+          "systemDetails": {
+            "$ref": "#/components/schemas/KavitaPlusAuditSystemDetailsDto"
+          },
           "canRetry": {
             "type": "boolean"
           }
@@ -25202,6 +25682,9 @@
           },
           "subjectType": {
             "$ref": "#/components/schemas/AuditSubjectType"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ScrobbleProvider"
           },
           "userId": {
             "type": "integer",
@@ -25331,6 +25814,9 @@
             "format": "int32",
             "nullable": true
           },
+          "metadataProvider": {
+            "$ref": "#/components/schemas/MetadataProvider"
+          },
           "nextRefreshUtc": {
             "type": "string",
             "format": "date-time",
@@ -25410,6 +25896,10 @@
             "format": "int32",
             "nullable": true
           },
+          "collectionUrl": {
+            "type": "string",
+            "nullable": true
+          },
           "seriesName": {
             "type": "string",
             "nullable": true
@@ -25435,6 +25925,23 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KavitaPlusAuditSystemDetailsDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/ScrobbleProvider"
+          },
+          "validUntilUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "userInfo": {
+            "$ref": "#/components/schemas/KavitaPlusUserInfo"
           }
         },
         "additionalProperties": false
@@ -25488,10 +25995,12 @@
           57,
           60,
           61,
-          62
+          62,
+          80,
+          81
         ],
         "type": "integer",
-        "description": "Members:\n- `0` — SeriesMatched\n- `1` — SeriesMatchFailed\n- `2` — SeriesBlacklisted\n- `3` — SeriesMatchFixed\n- `4` — SeriesDontMatchSet\n- `10` — MetadataFetched\n- `11` — MetadataUpdated\n- `13` — CoverUpdated\n- `20` — ChapterMetadataUpdated\n- `21` — ChapterCoverUpdated\n- `30` — PersonCoverUpdated\n- `31` — PersonAliasAdded\n- `40` — CollectionSynced\n- `41` — CollectionItemAdded\n- `50` — ScrobbleEventCreated\n- `51` — ScrobbleEventUpdated\n- `52` — ScrobbleEventSent\n- `53` — ScrobbleEventFailed\n- `54` — ScrobbleRateLimitHit\n- `55` — ScrobbleEventSkipped\n- `56` — ScrobbleHoldRemoved\n- `57` — ScrobbleHoldAdded\n- `60` — SyncStarted\n- `61` — SyncCompleted\n- `62` — SyncFailed",
+        "description": "Members:\n- `0` — SeriesMatched\n- `1` — SeriesMatchFailed\n- `2` — SeriesBlacklisted\n- `3` — SeriesMatchFixed\n- `4` — SeriesDontMatchSet\n- `10` — MetadataFetched\n- `11` — MetadataUpdated\n- `13` — CoverUpdated\n- `20` — ChapterMetadataUpdated\n- `21` — ChapterCoverUpdated\n- `30` — PersonCoverUpdated\n- `31` — PersonAliasAdded\n- `40` — CollectionSynced\n- `41` — CollectionItemAdded\n- `50` — ScrobbleEventCreated\n- `51` — ScrobbleEventUpdated\n- `52` — ScrobbleEventSent\n- `53` — ScrobbleEventFailed\n- `54` — ScrobbleRateLimitHit\n- `55` — ScrobbleEventSkipped\n- `56` — ScrobbleHoldRemoved\n- `57` — ScrobbleHoldAdded\n- `60` — SyncStarted\n- `61` — SyncCompleted\n- `62` — SyncFailed\n- `80` — SystemTokenRefresh\n- `81` — SystemProviderInfoSync",
         "format": "int32",
         "x-enum-varnames": [
           "SeriesMatched",
@@ -25518,7 +26027,9 @@
           "ScrobbleHoldAdded",
           "SyncStarted",
           "SyncCompleted",
-          "SyncFailed"
+          "SyncFailed",
+          "SystemTokenRefresh",
+          "SystemProviderInfoSync"
         ],
         "x-enum-descriptions": [
           "SeriesMatched",
@@ -25545,7 +26056,9 @@
           "ScrobbleHoldAdded",
           "SyncStarted",
           "SyncCompleted",
-          "SyncFailed"
+          "SyncFailed",
+          "SystemTokenRefresh",
+          "SystemProviderInfoSync"
         ]
       },
       "KavitaPlusLicenseUsageDto": {
@@ -25561,6 +26074,27 @@
               "$ref": "#/components/schemas/ApiUsageDto"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KavitaPlusProductInfoDto": {
+        "type": "object",
+        "properties": {
+          "productName": {
+            "type": "string",
+            "nullable": true
+          },
+          "priceAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "priceCurrency": {
+            "type": "string",
+            "nullable": true
+          },
+          "billingInterval": {
+            "$ref": "#/components/schemas/KavitaPlusBillingInterval"
           }
         },
         "additionalProperties": false
@@ -25750,6 +26284,19 @@
           "Cancelling",
           "Expired"
         ]
+      },
+      "KavitaPlusUserInfo": {
+        "required": [
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
       },
       "KeyBind": {
         "required": [
@@ -26063,6 +26610,10 @@
             "type": "string",
             "nullable": true
           },
+          "discordUsername": {
+            "type": "string",
+            "nullable": true
+          },
           "hasDiscordSet": {
             "type": "boolean",
             "readOnly": true
@@ -26341,6 +26892,56 @@
           },
           "query": {
             "type": "string",
+            "nullable": true
+          },
+          "isStandAlone": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MatchSeriesInfoDto": {
+        "type": "object",
+        "properties": {
+          "hasMatch": {
+            "type": "boolean"
+          },
+          "isLegacy": {
+            "type": "boolean"
+          },
+          "plusMediaFormat": {
+            "$ref": "#/components/schemas/PlusMediaFormat"
+          },
+          "libraryType": {
+            "$ref": "#/components/schemas/LibraryType"
+          },
+          "matchedProvider": {
+            "$ref": "#/components/schemas/MetadataProvider"
+          },
+          "primaryProvider": {
+            "$ref": "#/components/schemas/MetadataProvider"
+          },
+          "seriesFormat": {
+            "$ref": "#/components/schemas/MangaFormat"
+          },
+          "mangaBakaId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "aniListId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "hardcoverId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "cbrId": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },
@@ -26623,6 +27224,26 @@
           "Tag"
         ]
       },
+      "MetadataProvider": {
+        "enum": [
+          2,
+          3,
+          4
+        ],
+        "type": "integer",
+        "description": "Members:\n- `2` — Hardcover\n- `3` — Mangabaka\n- `4` — ComicBookRoundup",
+        "format": "int32",
+        "x-enum-varnames": [
+          "Hardcover",
+          "Mangabaka",
+          "ComicBookRoundup"
+        ],
+        "x-enum-descriptions": [
+          "Hardcover",
+          "Mangabaka",
+          "ComicBookRoundup"
+        ]
+      },
       "MetadataSettingField": {
         "enum": [
           1,
@@ -26855,6 +27476,29 @@
           }
         },
         "additionalProperties": false
+      },
+      "OAuthUpstream": {
+        "enum": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "type": "integer",
+        "description": "Members:\n- `0` — Discord\n- `1` — MangaBaka\n- `2` — AniList\n- `3` — MyAnimeList",
+        "format": "int32",
+        "x-enum-varnames": [
+          "Discord",
+          "MangaBaka",
+          "AniList",
+          "MyAnimeList"
+        ],
+        "x-enum-descriptions": [
+          "Discord",
+          "MangaBaka",
+          "AniList",
+          "MyAnimeList"
+        ]
       },
       "OidcConfigDto": {
         "type": "object",
@@ -27686,7 +28330,8 @@
           },
           "favoriteCount": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "deprecated": true
           },
           "provider": {
             "$ref": "#/components/schemas/ScrobbleProvider"
@@ -28587,7 +29232,7 @@
           "ownedSeries": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/SeriesDto"
+              "$ref": "#/components/schemas/RecommendedSeriesDto"
             },
             "nullable": true
           },
@@ -28597,6 +29242,41 @@
               "$ref": "#/components/schemas/ExternalSeriesDto"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RecommendationSource": {
+        "enum": [
+          1,
+          2,
+          3
+        ],
+        "type": "integer",
+        "description": "Members:\n- `1` — Similar\n- `2` — UserBased\n- `3` — Personalized",
+        "format": "int32",
+        "x-enum-varnames": [
+          "Similar",
+          "UserBased",
+          "Personalized"
+        ],
+        "x-enum-descriptions": [
+          "Similar",
+          "UserBased",
+          "Personalized"
+        ]
+      },
+      "RecommendedSeriesDto": {
+        "required": [
+          "series"
+        ],
+        "type": "object",
+        "properties": {
+          "series": {
+            "$ref": "#/components/schemas/SeriesDto"
+          },
+          "source": {
+            "$ref": "#/components/schemas/RecommendationSource"
           }
         },
         "additionalProperties": false
@@ -28748,6 +29428,13 @@
               "$ref": "#/components/schemas/SeriesDto"
             },
             "nullable": true
+          },
+          "cameos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeriesDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -28767,10 +29454,11 @@
           11,
           12,
           13,
-          14
+          14,
+          16
         ],
         "type": "integer",
-        "description": "Members:\n- `1` — Prequel\n- `2` — Sequel\n- `3` — Spin Off (SpinOff)\n- `4` — Adaptation\n- `5` — Side Story (SideStory)\n- `6` — Character\n- `7` — Contains\n- `8` — Other\n- `9` — Alternative Setting (AlternativeSetting)\n- `10` — Alternative Version (AlternativeVersion)\n- `11` — Doujinshi\n- `12` — Parent\n- `13` — Edition\n- `14` — Annual",
+        "description": "Members:\n- `1` — Prequel\n- `2` — Sequel\n- `3` — Spin Off (SpinOff)\n- `4` — Adaptation\n- `5` — Side Story (SideStory)\n- `6` — Character\n- `7` — Contains\n- `8` — Other\n- `9` — Alternative Setting (AlternativeSetting)\n- `10` — Alternative Version (AlternativeVersion)\n- `11` — Doujinshi\n- `12` — Parent\n- `13` — Edition\n- `14` — Annual\n- `16` — Cameo",
         "format": "int32",
         "x-enum-varnames": [
           "Prequel",
@@ -28786,7 +29474,8 @@
           "Doujinshi",
           "Parent",
           "Edition",
-          "Annual"
+          "Annual",
+          "Cameo"
         ],
         "x-enum-descriptions": [
           "Prequel",
@@ -28802,7 +29491,8 @@
           "Doujinshi",
           "Parent",
           "Edition",
-          "Annual"
+          "Annual",
+          "Cameo"
         ]
       },
       "RemapRuleDto": {
@@ -28891,6 +29581,24 @@
           "seriesId": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RenewKavitaPlusLicenseDto": {
+        "required": [
+          "billingInterval",
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "minLength": 1,
+            "type": "string",
+            "format": "email"
+          },
+          "billingInterval": {
+            "$ref": "#/components/schemas/KavitaPlusBillingInterval"
           }
         },
         "additionalProperties": false
@@ -29317,6 +30025,10 @@
             "nullable": true
           },
           "authenticationToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "refreshToken": {
             "type": "string",
             "nullable": true
           },
@@ -30238,6 +30950,11 @@
             "format": "int32",
             "nullable": true
           },
+          "mangabakaId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
           "seriesName": {
             "$ref": "#/components/schemas/ALMediaTitle"
           },
@@ -30247,8 +30964,14 @@
           "provider": {
             "$ref": "#/components/schemas/ScrobbleProvider"
           },
-          "plusMediaFormat": {
+          "format": {
             "$ref": "#/components/schemas/PlusMediaFormat"
+          },
+          "series": {
+            "$ref": "#/components/schemas/ExternalSeriesDetailDto"
+          },
+          "metadataProvider": {
+            "$ref": "#/components/schemas/MetadataProvider"
           }
         },
         "additionalProperties": false
@@ -32057,6 +32780,9 @@
             "type": "string",
             "nullable": true
           },
+          "metadataProvider": {
+            "$ref": "#/components/schemas/MetadataProvider"
+          },
           "fileGroupTypes": {
             "type": "array",
             "items": {
@@ -32590,6 +33316,14 @@
               "format": "int32"
             },
             "nullable": true
+          },
+          "cameos": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -32641,6 +33375,10 @@
             "nullable": true
           },
           "authenticationToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "refreshToken": {
             "type": "string",
             "nullable": true
           }
@@ -33791,6 +34529,9 @@
     },
     {
       "name": "Metadata"
+    },
+    {
+      "name": "OAuth"
     },
     {
       "name": "Oidc"

@@ -10,6 +10,7 @@ using Kavita.Models.DTOs.KavitaPlus.Scrobble;
 using Kavita.Models.DTOs.Scrobbling;
 using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
+using Kavita.Models.Entities.Enums.KavitaPlus;
 using Kavita.Models.Entities.Scrobble;
 using Kavita.Models.Entities.User;
 using Microsoft.Extensions.Logging;
@@ -30,6 +31,11 @@ public class HardcoverScrobbleProviderService(ILogger<HardcoverScrobbleProviderS
     protected override void SetScrobbleIds(ScrobbleEvent evt, Series series, Chapter chapter)
     {
         evt.HardcoverId = chapter.HardcoverId;
+    }
+
+    protected override bool HasRequiredIds(Chapter chapter)
+    {
+        return chapter.HardcoverId > 0;
     }
 
     // Hardcover's rate limit is enforced per-user (~60 requests/min), so each user is tracked independently

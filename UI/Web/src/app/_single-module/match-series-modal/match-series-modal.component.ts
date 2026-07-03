@@ -25,6 +25,14 @@ import {
 import {ImageComponent} from "../../shared/image/image.component";
 import {ImageService} from "../../_services/image.service";
 import {SeriesDetail} from "../../_models/series-detail/series-detail";
+import {
+  ScrobbleProviderTagBadgeComponent
+} from "../../shared/_components/scrobble-provider-tag-badge/scrobble-provider-tag-badge.component";
+import {MatchSeriesInfo} from "../../_models/kavitaplus/match-series-info";
+import {MetadataProvider} from "../../_models/kavitaplus/metadata-provider.enum";
+import {ScrobbleProvider} from "../../_services/scrobbling.service";
+import {MetadataProviderTitlePipe} from "../../_pipes/metadata-provider-title.pipe";
+import {PlusMediaFormat} from "../../_models/series-detail/external-series-detail";
 
 @Component({
   selector: 'app-match-series-modal',
@@ -35,12 +43,15 @@ import {SeriesDetail} from "../../_models/series-detail/series-detail";
     EmptyStateComponent,
     MatchSeriesResultItemComponent,
     ImageComponent,
+    ScrobbleProviderTagBadgeComponent,
+    MetadataProviderTitlePipe,
   ],
   templateUrl: './match-series-modal.component.html',
   styleUrl: './match-series-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MatchSeriesModalComponent implements OnInit {
+
   private readonly seriesService = inject(SeriesService);
   private readonly modalService = inject(NgbActiveModal);
   private readonly toastr = inject(ToastrService);
@@ -50,6 +61,7 @@ export class MatchSeriesModalComponent implements OnInit {
 
   formGroup = new FormGroup({
     query: new FormControl('', []),
+    isStandAlone: new FormControl(false),
     dontMatch: new FormControl(false, []),
   });
 
@@ -60,8 +72,7 @@ export class MatchSeriesModalComponent implements OnInit {
     { initialValue: false }
   );
 
-  protected readonly canSaveDontMatch!: Signal<boolean>;
-
+  canSaveDontMatch!: Signal<boolean>;
   matches = signal<ExternalSeriesMatch[]>([]);
   isLoading = signal<boolean>(false);
   hasSearched = signal<boolean>(false);
@@ -75,16 +86,23 @@ export class MatchSeriesModalComponent implements OnInit {
     return this.matches().length > 0 ? 'results' : 'no-results';
   });
 
-  protected coverImageUrl!: Signal<string>;
-  protected readonly kavitaVolumeCount!: Signal<number>;
-  protected readonly kavitaChapterCount!: Signal<number>;
-  protected readonly seriesDetail = signal<SeriesDetail | null>(null);
+  coverImageUrl!: Signal<string>;
+  kavitaVolumeCount!: Signal<number>;
+  kavitaChapterCount!: Signal<number>;
+  seriesDetail = signal<SeriesDetail | null>(null);
+  matchInfo = signal<MatchSeriesInfo | null>(null);
 
   constructor() {
     this.canSaveDontMatch = computed(() => this.isDontMatch() === true && !this.series().dontMatch);
     this.coverImageUrl = computed(() => this.imageService.getSeriesCoverImage(this.series().id));
     this.kavitaVolumeCount = computed(() => (this.seriesDetail()?.volumes ?? []).length);
     this.kavitaChapterCount = computed(() => (this.seriesDetail()?.chapters ?? []).length);
+
+    effect(() => {
+      this.seriesService.getMatchInfo(this.series().id).subscribe(res => {
+        this.matchInfo.set(res);
+      });
+    });
 
     effect(() => {
       if (this.isDontMatch()) {
@@ -103,8 +121,16 @@ export class MatchSeriesModalComponent implements OnInit {
 
   ngOnInit() {
     this.formGroup.patchValue({ dontMatch: this.series().dontMatch || false });
-    this.seriesService.getSeriesDetail(this.series().id).subscribe(detail => this.seriesDetail.set(detail));
-    this.search();
+    this.seriesService.getSeriesDetail(this.series().id).pipe(
+      tap(detail => {
+        this.seriesDetail.set(detail)
+
+        const isStandAlone = detail.chapters.length + detail.specials.length == 1;
+        this.formGroup.get('isStandAlone')?.setValue(isStandAlone);
+
+        this.search();
+      }),
+    ).subscribe();
   }
 
   search() {
@@ -164,4 +190,10 @@ export class MatchSeriesModalComponent implements OnInit {
       this.modalService.close(true);
     });
   }
+
+
+
+  protected readonly MetadataProvider = MetadataProvider;
+  protected readonly ScrobbleProvider = ScrobbleProvider;
+  protected readonly PlusMediaFormat = PlusMediaFormat;
 }

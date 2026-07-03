@@ -42,6 +42,17 @@ export class ScrobblingService {
     );
   }
 
+  getNextScrobble() {
+    return this.httpClient.get<string | null>(this.baseUrl + 'scrobbling/next-scrobble-time', TextResonse).pipe(map(res => {
+      // For some reason, sending a Raw DateTime puts quotes around it
+      if (res && res.startsWith('"')) {
+        return res.replaceAll('"', '');
+      }
+
+      return res;
+    }));
+  }
+
   saveScrobbleSettings(provider: ScrobbleProvider, settings: ScrobbleProviderSettings) {
     return this.httpClient.post(this.baseUrl + 'scrobbling/update-scrobble-settings?provider=' + provider, settings);
   }
@@ -56,7 +67,7 @@ export class ScrobblingService {
     );
   }
 
-  expiredTokens() {
+  checkExpiredTokens() {
     return this.httpClient.get<ScrobbleProvider[]>(this.baseUrl + 'scrobbling/expired-tokens');
   }
 

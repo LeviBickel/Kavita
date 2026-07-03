@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using Kavita.Models.DTOs.KavitaPlus.ExternalMetadata;
 using Kavita.Models.DTOs.Scrobbling;
 using Kavita.Models.Entities.Enums;
+using Kavita.Models.Entities.Enums.KavitaPlus;
 using Kavita.Models.Entities.Enums.UserPreferences;
 using Kavita.Models.Entities.Scrobble;
 
 namespace Kavita.Models.DTOs.KavitaPlus.Scrobble;
+#nullable enable
 
 public record ScrobbleV3Dto: MetadataRequest
 {
@@ -45,6 +47,10 @@ public record ScrobbleV3Dto: MetadataRequest
     /// </summary>
     /// <remarks>This is relevant when scrobbling to Hardcover, this will be converted to pages based on the edition page count</remarks>
     public int? PercentRead { get; set; }
+    /// <summary>
+    /// Total number of times the Series has been read
+    /// </summary>
+    public int? TotalReadCountForSeries { get; set; }
     /// <summary>
     /// Rating for the Series
     /// </summary>

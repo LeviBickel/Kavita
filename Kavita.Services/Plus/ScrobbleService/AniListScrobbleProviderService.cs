@@ -10,6 +10,7 @@ using Kavita.Models.DTOs.KavitaPlus.Scrobble;
 using Kavita.Models.DTOs.Scrobbling;
 using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
+using Kavita.Models.Entities.Enums.KavitaPlus;
 using Kavita.Models.Entities.Scrobble;
 using Kavita.Models.Entities.User;
 using Microsoft.Extensions.Logging;
@@ -28,6 +29,11 @@ public class AniListScrobbleProviderService(ILogger<AniListScrobbleProviderServi
     protected override void SetScrobbleIds(ScrobbleEvent evt, Series series)
     {
         evt.AniListId = series.AniListId;
+    }
+
+    protected override bool HasRequiredIds(Series series)
+    {
+        return series.AniListId > 0;
     }
 
     // AniList's rate limit is enforced server-wide (~30 requests/min), shared across all users.

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using EasyCaching.Core;
@@ -19,17 +20,22 @@ using Kavita.Models.DTOs.Filtering.v2.Requests;
 using Kavita.Models.DTOs.Metadata.Matching;
 using Kavita.Models.DTOs.Recommendation;
 using Kavita.Models.DTOs.KavitaPlus.ExternalMetadata;
+using Kavita.Models.DTOs.KavitaPlus.Metadata;
 using Kavita.Models.DTOs.SeriesDetail;
 using Kavita.Models.Entities.Enums;
+using Kavita.Models.Entities.Enums.KavitaPlus;
 using Kavita.Models.Entities.MetadataMatching;
+using Kavita.Models.Extensions;
 using Kavita.Server.Attributes;
 using Kavita.Server.Extensions;
 using Kavita.Server.Helpers;
+using Kavita.Services.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using MetadataProvider = Kavita.Models.Entities.Enums.MetadataProvider;
 
 namespace Kavita.Server.Controllers;
 
@@ -181,8 +187,14 @@ public class SeriesController(
             series.SortName = updateSeries.SortName.Trim();
         }
 
-        series.LocalizedName = updateSeries.LocalizedName?.Trim();
-        series.NormalizedLocalizedName = series.LocalizedName?.ToNormalized();
+        var newNormalizedLocalizedName = updateSeries.LocalizedName?.Trim().ToNormalized();
+        if (series.NormalizedLocalizedName != newNormalizedLocalizedName)
+        {
+            series.LocalizedName = updateSeries.LocalizedName?.Trim();
+            series.NormalizedLocalizedName = newNormalizedLocalizedName;
+
+            series.Metadata.KPlusOverrides.Remove(MetadataSettingField.LocalizedName);
+        }
 
         series.SortNameLocked = updateSeries.SortNameLocked;
         series.LocalizedNameLocked = updateSeries.LocalizedNameLocked;
@@ -518,29 +530,58 @@ public class SeriesController(
         return BadRequest(await localizationService.TranslateAsync(UserId, "generic-relationship"));
     }
 
+    /// <summary>
+    /// Returns external series metadata around a Given External Series
+    /// </summary>
+    /// <param name="aniListId"></param>
+    /// <param name="malId"></param>
+    /// <param name="mangaBakaId"></param>
+    /// <param name="seriesId"></param>
+    /// <returns></returns>
     [KPlus]
     [HttpGet("external-series-detail")]
-    [Authorize(Policy = PolicyGroups.AdminPolicy)]
-    public async Task<ActionResult<ExternalSeriesDto>> GetExternalSeriesInfo(int? aniListId, long? malId, int? seriesId)
+    public async Task<ActionResult<ExternalSeriesDetailDto>> GetExternalSeriesInfo(int? aniListId, long? malId, int? mangaBakaId, int? seriesId)
     {
         var ct = HttpContext.RequestAborted;
-        var cacheKey = $"{CacheKey}-{aniListId ?? 0}-{malId ?? 0}-{seriesId ?? 0}";
-        var results = await _externalSeriesCacheProvider.GetAsync<ExternalSeriesDto>(cacheKey, ct);
+        var cacheKey = $"{CacheKey}-{aniListId ?? 0}-{malId ?? 0}-{mangaBakaId ?? 0}-{seriesId ?? 0}";
+
+        ExternalSeriesDetailDto? ret;
+        var results = await _externalSeriesCacheProvider.GetAsync<ExternalSeriesDetailDto>(cacheKey, ct);
         if (results.HasValue)
         {
-            return Ok(results.Value);
+            ret = results.Value;
+        }
+        else
+        {
+            try
+            {
+                ret = await externalMetadataService.GetExternalSeriesDetail(aniListId, malId, mangaBakaId, seriesId, ct);
+                await _externalSeriesCacheProvider.SetAsync(cacheKey, ret, TimeSpan.FromMinutes(15), ct);
+            }
+            catch (Exception)
+            {
+                return BadRequest(await localizationService.TranslateAsync("generic-error"));
+            }
         }
 
-        try
+        if (ret == null) return BadRequest(await localizationService.TranslateAsync("generic-error"));
+
+        var user = await unitOfWork.UserRepository.GetUserByIdAsync(UserId, ct: ct);
+        var restriction = new Models.Entities.AgeRestriction
         {
-            var ret = await externalMetadataService.GetExternalSeriesDetail(aniListId, malId, seriesId, ct);
-            await _externalSeriesCacheProvider.SetAsync(cacheKey, ret, TimeSpan.FromMinutes(15), ct);
-            return Ok(ret);
-        }
-        catch (Exception)
+            AgeRating = user?.AgeRestriction ?? AgeRating.NotApplicable,
+            IncludeUnknowns = user?.AgeRestrictionIncludeUnknowns ?? true
+        };
+        var settings = await unitOfWork.SettingsRepository.GetMetadataSettingDto(ct);
+        var effectiveRating = RecommendationHelper.ComputeExternalAgeRating(ret.AgeRating,
+            ret.Genres ?? [], (ret.Tags ?? []).Select(t => t.Name), settings);
+
+        if (!RecommendationHelper.IsWithinAgeRestriction(effectiveRating, restriction))
         {
-            return BadRequest("Unable to load External Series details");
+            throw new KavitaNotFoundException(await localizationService.TranslateAsync("series-restricted-age-restriction"));
         }
+
+        return Ok(ret);
     }
 
     /// <summary>
@@ -570,7 +611,7 @@ public class SeriesController(
     public async Task<ActionResult<IList<ExternalSeriesMatchDto>>> MatchSeries(MatchSeriesDto dto)
     {
         var ct = HttpContext.RequestAborted;
-        var cacheKey = $"{MatchSeriesCacheKey}-{dto.SeriesId}-{dto.Query}";
+        var cacheKey = $"{MatchSeriesCacheKey}-{dto.SeriesId}-{dto.Query}-{dto.IsStandAlone}";
         var results = await _matchSeriesCacheProvider.GetAsync<IList<ExternalSeriesMatchDto>>(cacheKey, ct);
         if (results.HasValue && !environment.IsDevelopment())
         {
@@ -613,6 +654,42 @@ public class SeriesController(
         var ct = HttpContext.RequestAborted;
         await externalMetadataService.UpdateSeriesDontMatch(seriesId, dontMatch, ct);
         return Ok();
+    }
+
+    /// <summary>
+    /// Returns extra information around an existing match (and series) to display on the Match Screen.
+    /// </summary>
+    /// <param name="seriesId"></param>
+    /// <returns></returns>
+    [KPlus]
+    [HttpGet("match-info")]
+    [Authorize(Policy = PolicyGroups.AdminPolicy)]
+    public async Task<ActionResult<MatchSeriesInfoDto>> GetExistingMatchInfo(int seriesId)
+    {
+        var series = await unitOfWork.SeriesRepository.GetSeriesByIdAsync(seriesId, SeriesIncludes.ExternalMetadata | SeriesIncludes.Library);
+        if (series == null) return NotFound();
+
+        var plusFormat = series.Library.Type.ConvertToPlusMediaFormat(series.Format);
+        var libraryType = series.Library.Type;
+        var externalMetadata = series.ExternalSeriesMetadata;
+
+        var provider = externalMetadata?.Provider;
+
+        return Ok(new MatchSeriesInfoDto
+        {
+            HasMatch = externalMetadata is {Id: > 0} && provider != null,
+            // MangaBaka will always set AniList if set
+            IsLegacy = series is {AniListId: > 0, MangaBakaId: 0},
+            CbrId = series.CbrId,
+            HardcoverId = series.HardcoverId,
+            MangaBakaId = (int) series.MangaBakaId,
+            AniListId = series.AniListId,
+            LibraryType = libraryType,
+            PlusMediaFormat = plusFormat,
+            MatchedProvider = provider,
+            PrimaryProvider = series.Library.MetadataProvider,
+            SeriesFormat = series.Format
+        });
     }
 
     /// <summary>

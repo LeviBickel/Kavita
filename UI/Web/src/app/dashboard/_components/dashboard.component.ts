@@ -150,7 +150,7 @@ export class DashboardComponent {
     });
 
     if (this.licenseService.hasActiveLicense()) {
-      this.scrobblingService.expiredTokens()
+      this.scrobblingService.checkExpiredTokens()
         .pipe(
           takeUntilDestroyed(this.destroyRef),
           filter(providers => providers.length > 0),

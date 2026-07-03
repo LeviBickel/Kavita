@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Kavita.API.Services;
 using Kavita.API.Services.Plus;
 using Kavita.API.Store;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,12 +11,12 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kavita.Server.Attributes;
 
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
-public class KPlusAttribute : Attribute, IAsyncAuthorizationFilter
+public class KPlusAttribute(bool allowUnauthenticated = false) : Attribute, IAsyncAuthorizationFilter
 {
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
         var userContext = context.HttpContext.RequestServices.GetRequiredService<IUserContext>();
-        if (!userContext.IsAuthenticated)
+        if (!allowUnauthenticated && !userContext.IsAuthenticated)
         {
             context.Result = new UnauthorizedResult();
             return;
@@ -26,9 +27,12 @@ public class KPlusAttribute : Attribute, IAsyncAuthorizationFilter
         if (!await licenseService.HasActiveLicense(ct: context.HttpContext.RequestAborted))
         {
             var localizationService = context.HttpContext.RequestServices.GetRequiredService<ILocalizationService>();
-            var message = await localizationService.TranslateAsync(userContext.GetUserIdOrThrow(), "kavitaplus-restricted");
+            var message = await localizationService.TranslateAsync("kavitaplus-restricted");
 
-            context.Result = new BadRequestObjectResult(new {Message = message});
+            context.Result = new ObjectResult(new {Message = message})
+            {
+                StatusCode = StatusCodes.Status403Forbidden
+            };
         }
 
     }

@@ -5,6 +5,9 @@ import {KavitaPlusEventType} from '../_models/kavitaplus/kavita-plus-event-type.
 import {ScrobbleEventType} from '../_models/scrobbling/scrobble-event';
 import {EntityTitleService} from '../_services/entity-title.service';
 import {ScrobbleReadStatusPipe} from "./scrobble-read-status.pipe";
+import {ScrobbleProviderNamePipe} from "./scrobble-provider-name.pipe";
+import {UtcToLocalTimePipe} from "./utc-to-local-time.pipe";
+import {AuditStatus} from "../_models/kavitaplus/audit-status.enum";
 
 const PREFIX = 'kavita-plus-event-description-pipe';
 
@@ -15,14 +18,22 @@ const PREFIX = 'kavita-plus-event-description-pipe';
 export class KavitaPlusEventDescriptionPipe implements PipeTransform {
 
   private readonly readStatusPipe = new ScrobbleReadStatusPipe();
+  private readonly providerNamePipe = new ScrobbleProviderNamePipe();
+  private readonly utcToLocalTimePipe = new UtcToLocalTimePipe();
   private readonly translocoService = inject(TranslocoService);
   private readonly entityTitleService = inject(EntityTitleService);
 
   transform(entry: KavitaPlusAuditEntry): string {
     const sd = entry.scrobbleDetails;
     if (sd) {
+      if (entry.eventType === KavitaPlusEventType.ScrobbleEventSkipped) {
+        return '';
+      }
+
       switch (sd.scrobbleEventType) {
         case ScrobbleEventType.ChapterRead: {
+          // Note: there can be a discrepancy where creation event says Ch 2 and Sent event says Vol 0 Ch 2 due to
+          // -100000 being overridden to 0 on send
           const chapter = this.entityTitleService.scrobbleDetailLabel(sd);
           return chapter ? this.translocoService.translate(`${PREFIX}.read-progress-sent`, {chapter}) : '';
         }
@@ -86,6 +97,40 @@ export class KavitaPlusEventDescriptionPipe implements PipeTransform {
 
     if (entry.eventType === KavitaPlusEventType.PersonAliasAdded) {
       return this.translocoService.translate(`${PREFIX}.person-alias-added`, {personName: entry.metadataExtras?.personName, alias: entry.metadataExtras?.aliasAdded});
+    }
+
+    if (entry.eventType === KavitaPlusEventType.SeriesMatched) {
+      return this.translocoService.translate(`${PREFIX}.series-matched-against`, {matchName: entry.matchDetails?.matchedName});
+    }
+
+    if (entry.eventType === KavitaPlusEventType.SystemTokenRefresh) {
+      if (entry.status === AuditStatus.Success) {
+        return this.translocoService.translate(`${PREFIX}.system-token-refresh-success`,
+          {
+            provider: this.providerNamePipe.transform(entry.systemDetails!.provider),
+            validUntil: this.utcToLocalTimePipe.transform(entry.systemDetails!.validUntilUtc)
+          });
+      }
+
+      return this.translocoService.translate(`${PREFIX}.system-token-refresh-failure`,
+        {
+          provider: this.providerNamePipe.transform(entry.systemDetails!.provider),
+        });
+    }
+
+    if (entry.eventType === KavitaPlusEventType.SystemProviderInfoSync) {
+      if (entry.status === AuditStatus.Success) {
+        return this.translocoService.translate(`${PREFIX}.system-provider-info-sync-success`,
+          {
+            provider: this.providerNamePipe.transform(entry.systemDetails!.provider),
+            username: entry.systemDetails!.userInfo!.username
+          });
+      }
+
+      return this.translocoService.translate(`${PREFIX}.system-provider-info-sync-failure`,
+        {
+          provider: this.providerNamePipe.transform(entry.systemDetails!.provider),
+        });
     }
 
     return '';

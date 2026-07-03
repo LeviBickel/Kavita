@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Kavita.Models.DTOs.Scrobbling;
+using Kavita.Models.Entities.Enums.KavitaPlus;
 
 namespace Kavita.Models.DTOs.KavitaPlus.ExternalMetadata;
 #nullable enable
@@ -18,5 +19,6 @@ public sealed record MatchSeriesRequestDto
     public string? HardcoverSlug { get; set; }
     public int? MangabakaId { get; set; }
     public int? CbrId { get; set; }
+    public string? CbrSlug { get; set; }
     public PlusMediaFormat Format { get; set; }
 }

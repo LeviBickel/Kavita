@@ -5,6 +5,7 @@ import {WikiLink} from "../../../_models/wiki";
 import {NgbActiveModal} from "@ng-bootstrap/ng-bootstrap";
 import {ChangelogUpdateItemComponent} from "../changelog-update-item/changelog-update-item.component";
 import {SafeHtmlPipe} from "../../../_pipes/safe-html.pipe";
+import {clearTransloco} from "../../../../libs/transloco-util";
 
 @Component({
   selector: 'app-version-update-modal',
@@ -38,7 +39,16 @@ export class VersionUpdateModalComponent {
     'update-available': 'update-notification',
     'out-of-date': 'out-of-date',
   };
-  title = computed(() => `${this.localePrefix[this.mode()]}.title`);
+  title = computed(() => {
+    const update = this.update();
+    const mode = this.mode();
+    if (mode === 'update-available' && update?.updateTitle != '') {
+        return update?.updateTitle ?? `${this.localePrefix[this.mode()]}.title`;
+    }
+
+    return `${this.localePrefix[this.mode()]}.title`;
+
+  });
 
   close() {
     this.modal.dismiss();
@@ -55,9 +65,7 @@ export class VersionUpdateModalComponent {
 
 
   private bustLocaleCache() {
-    localStorage.removeItem('@transloco/translations/timestamp');
-    localStorage.removeItem('@transloco/translations');
-    localStorage.removeItem('translocoLang');
+    clearTransloco();
     const locale = localStorage.getItem('kavita-locale') || 'en';
     (this.translocoService as any).cache.delete(locale);
     (this.translocoService as any).cache.clear();

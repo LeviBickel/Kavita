@@ -66,6 +66,7 @@ public static class IdentityServiceExtensions
 
             })
             .AddTokenProvider<DataProtectorTokenProvider<AppUser>>(TokenOptions.DefaultProvider)
+            .AddTokenProvider<RefreshTokenProvider>(TokenService.RefreshTokenProviderName)
             .AddRoles<AppRole>()
             .AddRoleManager<RoleManager<AppRole>>()
             .AddSignInManager<SignInManager<AppUser>>()
@@ -265,7 +266,6 @@ public static class IdentityServiceExtensions
     )
     {
         var scopes = OidcService.DefaultScopes;
-        scopes.AddRange(settings.CustomScopes);
 
         ICollection<string> supportedScopes;
         try
@@ -281,7 +281,7 @@ public static class IdentityServiceExtensions
             // Most idps will safely ignore invalid scopes (all except Authelia as far as I know), so we return them here
             // to have the least amount of impact on users
             Log.Error(ex, "Failed to load OIDC configuration, scopes will not be filtered. This may cause issues with some idps.");
-            return scopes;
+            return scopes.Concat(settings.CustomScopes);
         }
 
         return scopes.Where(scope =>
@@ -291,7 +291,7 @@ public static class IdentityServiceExtensions
 
             Log.Warning("Scope {Scope} is configured, but not supported by your OIDC provider. Skipping", scope);
             return false;
-        });
+        }).Concat(settings.CustomScopes);
     }
 
     private static Task SetTokenFromQuery(MessageReceivedContext context)

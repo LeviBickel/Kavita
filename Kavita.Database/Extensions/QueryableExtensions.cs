@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Kavita.API.Repositories;
+using Kavita.Common.Extensions;
 using Kavita.Models.DTOs.Annotations;
 using Kavita.Models.DTOs.Filtering.v2.SortFields;
 using Kavita.Models.DTOs.Filtering.v2.SortOptions;
@@ -22,6 +24,31 @@ namespace Kavita.Database.Extensions;
 public static class QueryableExtensions
 {
     private const float DefaultTolerance = 0.001f;
+
+    /// <summary>
+    /// Filters Series to those whose parsed name matches - against the stored normalized columns
+    /// (NormalizedName / NormalizedLocalizedName / NormalizedOriginalName). This is the canonical
+    /// folder-to-series name predicate; keep all lookups routed through here so they stay consistent.
+    /// </summary>
+    /// <param name="query"></param>
+    /// <param name="seriesName">Raw series name (will be normalized)</param>
+    /// <param name="localizedName">Raw localized name (will be normalized); may be empty</param>
+    public static IQueryable<Series> WhereSeriesNameMatches(this IQueryable<Series> query, string seriesName, string localizedName)
+    {
+        var normalizedSeries = seriesName.ToNormalized();
+        var normalizedLocalized = localizedName.ToNormalized();
+
+        return query.Where(s =>
+            s.NormalizedName == normalizedSeries
+            || s.NormalizedName == normalizedLocalized
+
+            || s.NormalizedLocalizedName == normalizedSeries
+            || (!string.IsNullOrEmpty(normalizedLocalized) && s.NormalizedLocalizedName == normalizedLocalized)
+
+            || s.NormalizedOriginalName == normalizedSeries
+            || (!string.IsNullOrEmpty(normalizedLocalized) && s.NormalizedOriginalName == normalizedLocalized)
+        );
+    }
 
     public static Task<AgeRestriction> GetUserAgeRestriction(this DbSet<AppUser> queryable, int userId, CancellationToken ct = default)
     {
@@ -452,5 +479,44 @@ public static class QueryableExtensions
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Returns a <see cref="IAsyncEnumerable"/> that loads <see cref="batchSize"/> into memory at once and then yields
+    /// </summary>
+    /// <param name="query"></param>
+    /// <param name="batchSize"></param>
+    /// <param name="cancellationToken"></param>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    public static async IAsyncEnumerable<List<T>> BatchToAsyncEnumerable<T>(
+        this IOrderedQueryable<T> query,
+        int batchSize,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (batchSize <= 0)
+            throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be greater than zero.");
+
+        var skip = 0;
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var batch = await query
+                .Skip(skip)
+                .Take(batchSize)
+                .ToListAsync(cancellationToken);
+
+            if (batch.Count == 0)
+                yield break;
+
+            yield return batch;
+
+            if (batch.Count < batchSize)
+                yield break;
+
+            skip += batchSize;
+        }
     }
 }

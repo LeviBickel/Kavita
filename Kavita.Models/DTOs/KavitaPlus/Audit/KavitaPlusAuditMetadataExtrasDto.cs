@@ -1,5 +1,6 @@
-using Kavita.Models.DTOs.KavitaPlus.Audit;
+﻿using Kavita.Models.DTOs.KavitaPlus.Audit;
 using Kavita.Models.Entities.Enums.Audit;
+using System.ComponentModel.DataAnnotations;
 
 namespace Kavita.Models.DTOs.KavitaPlus;
 #nullable enable
@@ -17,6 +18,9 @@ public sealed record KavitaPlusAuditMetadataExtrasDto
     // ChapterCoverUpdated
     public string? IssueNumber { get; init; }
 
+    // VolumeCoverUpdated
+    public string? VolumeNumber { get; init; }
+
     // PersonAliasAdded, PersonCoverUpdated
     public string? PersonName { get; init; }
 
@@ -24,6 +28,7 @@ public sealed record KavitaPlusAuditMetadataExtrasDto
     public string? AliasAdded { get; init; }
 
     // MetadataFetched - why the fetch fired
+    [EnumDataType(typeof(MetadataFetchTrigger))]
     public MetadataFetchTrigger? FetchTrigger { get; init; }
 
     public static KavitaPlusAuditMetadataExtrasDto? From(AuditLogSeriesCoverParamsDto? p) =>
@@ -31,6 +36,9 @@ public sealed record KavitaPlusAuditMetadataExtrasDto
 
     public static KavitaPlusAuditMetadataExtrasDto? From(AuditLogChapterCoverParamsDto? p) =>
         p is null ? null : new KavitaPlusAuditMetadataExtrasDto { CoverUrl = p.CoverUrl, IssueNumber = p.IssueNumber };
+
+    public static KavitaPlusAuditMetadataExtrasDto? From(AuditLogVolumeCoverParamsDto? p) =>
+        p is null ? null : new KavitaPlusAuditMetadataExtrasDto { CoverUrl = p.CoverUrl, VolumeNumber = p.VolumeNumber };
 
     public static KavitaPlusAuditMetadataExtrasDto? From(AuditLogPersonAliasParamsDto? p) =>
         p is null ? null : new KavitaPlusAuditMetadataExtrasDto { PersonName = p.PersonName, AliasAdded = p.AliasAdded };

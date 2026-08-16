@@ -14,6 +14,7 @@ using Kavita.Common.Helpers;
 using Kavita.Database.Converters;
 using Kavita.Database.Extensions;
 using Kavita.Database.Extensions.Filters;
+using Kavita.Models.Constants;
 using Kavita.Models.DTOs;
 using Kavita.Models.DTOs.Collection;
 using Kavita.Models.DTOs.Dashboard;
@@ -568,9 +569,20 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
             .SumAsync(v => v.Chapters.Sum(c => c.Files.Sum(f => f.Bytes)), cancellationToken: ct);
     }
 
-    public async Task<Dictionary<int, long>> GetFilesizesAsync(IList<int> seriesIds, CancellationToken ct = default)
+    public async Task<Dictionary<int, long>> GetFilesizesAsync(int userId, IList<int> seriesIds,
+        CancellationToken ct = default)
     {
-        return await seriesIds.BatchToDictionaryAsync(50, batch =>
+        var ageRestriction = await context.AppUser.GetUserAgeRestriction(userId, ct);
+        var allowedLibraries = await context.Library.GetUserLibraries(userId).ToListAsync(ct);
+
+        var filteredSeriesIds = await context.Series
+            .RestrictAgainstAgeRestriction(ageRestriction)
+            .Where(s => allowedLibraries.Contains(s.LibraryId))
+            .Where(s => seriesIds.Contains(s.Id))
+            .Select(s => s.Id)
+            .ToListAsync(ct);
+
+        return await filteredSeriesIds.BatchToDictionaryAsync(50, batch =>
             context.Volume
                 .Where(v => batch.Contains(v.SeriesId))
                 .GroupBy(v => v.SeriesId)
@@ -666,6 +678,7 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
                 MangaDexId = ExternalIdParser.GetMangaDexId(series.Metadata.WebLinks),
 
                 MangabakaId = (int?) series.MangaBakaId,
+                MangaBakaEditionId = series.MangaBakaEditionId,
                 HardcoverId = series.HardcoverId,
                 IsStandAlone = series.IsStandAlone,
                 VolumeCount = series.Volumes.Count,
@@ -762,9 +775,8 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
         var userLibraries = await GetUserLibrariesForFilteredQuery(0, userId, queryContext, ct);
         var allLibraryCount = await context.Library.CountAsync(ct);
         var userRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
-        var onlyParentSeries = await context.AppUserPreferences.Where(u => u.AppUserId == userId)
-            .Select(u => u.CollapseSeriesRelationships)
-            .SingleOrDefaultAsync(ct);
+
+
 
         query ??= context.Series
             .AsNoTracking();
@@ -782,17 +794,14 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
 
         query = await ApplyCollectionFilter(seriesFilter, query, userId, userRating, ct);
 
+        query = await AppleCollapseSeriesRelationshipsFilter(query, seriesFilter, userId, ct);
 
         query = FilterQueryBuilder.Apply(seriesFilter, query,
             (stmt, q) => BuildFilterGroup(userId, stmt, q));
 
         query = query
             .WhereIf(allLibraryCount != userLibraries.Count && userLibraries.Count > 0, s => userLibraries.Contains(s.LibraryId))
-            .WhereIf(onlyParentSeries, s =>
-                s.RelationOf.Count == 0 ||
-                s.RelationOf.All(p => p.RelationKind == RelationKind.Prequel))
             .RestrictAgainstAgeRestriction(userRating);
-
 
         return query
                 .Sort(userId, seriesFilter.SortOptions)
@@ -853,6 +862,29 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
         }
 
         return query;
+    }
+
+    private async Task<IQueryable<Series>> AppleCollapseSeriesRelationshipsFilter(IQueryable<Series> query,
+        SeriesFilterV2Dto seriesFilter, int userId, CancellationToken ct = default)
+    {
+        bool onlyParentSeries;
+
+        var collapseSeriesRelationshipsStmt = seriesFilter.Statements
+            .FirstOrDefault(stmt => stmt.Field == SeriesFilterField.CollapseSeriesRelationships);
+        if (collapseSeriesRelationshipsStmt != null)
+        {
+            onlyParentSeries = bool.Parse(collapseSeriesRelationshipsStmt.Value);
+        }
+        else
+        {
+            onlyParentSeries = await context.AppUserPreferences.Where(u => u.AppUserId == userId)
+                .Select(u => u.CollapseSeriesRelationships)
+                .SingleOrDefaultAsync(ct);
+        }
+
+        return query.WhereIf(onlyParentSeries, s =>
+            s.RelationOf.Count == 0 ||
+            s.RelationOf.All(p => p.RelationKind == RelationKind.Prequel));
     }
 
     private IQueryable<Series> ApplyWantToReadFilter(SeriesFilterV2Dto seriesFilter, IQueryable<Series> query, int userId)
@@ -957,6 +989,9 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
                 // This is handled in the code before this as it's handled in a more general, combined manner
                 query,
             SeriesFilterField.WantToRead =>
+                // This is handled in the higher level of code as it's more general
+                query,
+            SeriesFilterField.CollapseSeriesRelationships =>
                 // This is handled in the higher level of code as it's more general
                 query,
             SeriesFilterField.ReadProgress => query.HasReadingProgress(true, statement.Comparison, (float) value, userId),
@@ -1300,20 +1335,10 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
     public Task<Series?> GetFullSeriesByAnyName(string seriesName, string localizedName, int libraryId,
         MangaFormat format, bool withFullIncludes = true, CancellationToken ct = default)
     {
-        var normalizedSeries = seriesName.ToNormalized();
-        var normalizedLocalized = localizedName.ToNormalized();
         var query = context.Series
             .Where(s => s.LibraryId == libraryId)
             .Where(s => s.Format == format && format != MangaFormat.Unknown)
-            .Where(s =>
-                s.NormalizedName.Equals(normalizedSeries)
-                || s.NormalizedName.Equals(normalizedLocalized)
-
-                || s.NormalizedLocalizedName.Equals(normalizedSeries)
-                || (!string.IsNullOrEmpty(normalizedLocalized) && s.NormalizedLocalizedName.Equals(normalizedLocalized))
-
-                || (s.OriginalName != null && s.OriginalName.Equals(seriesName))
-            );
+            .WhereSeriesNameMatches(seriesName, localizedName);
         if (!withFullIncludes)
         {
             return query.SingleOrDefaultAsync(ct);
@@ -1355,15 +1380,50 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
 #nullable enable
     }
 
+    public async Task<bool> IsSeriesNameUniqueInLibraryAsync(int libraryId, MangaFormat format, string normalizedName,
+        int excludeSeriesId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(normalizedName)) return true;
+
+        return !await context.Series
+            .Where(s => s.LibraryId == libraryId && s.Format == format && s.Id != excludeSeriesId)
+            .AnyAsync(s =>
+                s.NormalizedName == normalizedName
+                || s.NormalizedLocalizedName == normalizedName
+                || s.NormalizedOriginalName == normalizedName, ct);
+    }
+
+    public async Task<HashSet<string>> GetTakenNormalizedNamesInLibraryAsync(int libraryId, MangaFormat format,
+        int excludeSeriesId, CancellationToken ct = default)
+    {
+        // Pull every normalized name column for the library+format in one query so callers can test many
+        // candidates against an in-memory set instead of issuing a query per candidate.
+        var rows = await context.Series
+            .Where(s => s.LibraryId == libraryId && s.Format == format && s.Id != excludeSeriesId)
+            .Select(s => new { s.NormalizedName, s.NormalizedLocalizedName, s.NormalizedOriginalName })
+            .ToListAsync(ct);
+
+        var taken = new HashSet<string>();
+        foreach (var row in rows)
+        {
+            if (!string.IsNullOrEmpty(row.NormalizedName)) taken.Add(row.NormalizedName);
+            if (!string.IsNullOrEmpty(row.NormalizedLocalizedName)) taken.Add(row.NormalizedLocalizedName);
+            if (!string.IsNullOrEmpty(row.NormalizedOriginalName)) taken.Add(row.NormalizedOriginalName);
+        }
+
+        return taken;
+    }
+
     public async Task<Series?> GetSeriesFromExternalMetadata(IList<string> seriesNames, IList<MangaFormat> formats,
         int userId, ExternalMetadataIdsDto? dto = null, SeriesIncludes includes = SeriesIncludes.None, CancellationToken ct = default)
     {
         var libraryIds = context.AppUser.GetLibraryIdsForUser(userId);
 
-        // Prioritize direct id matches on ExternalSeriesMetadata
+        // Prioritize direct id matches
         var aniListId = dto?.AniListId ?? 0;
         var malId = dto?.MalId ?? 0;
         var mangaBakaId = dto?.MangabakaId ?? 0;
+        var hardcoverId = dto?.HardcoverId ?? 0;
 
         if (aniListId > 0 || malId > 0 || mangaBakaId > 0)
         {
@@ -1371,9 +1431,11 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
                 .Where(s => libraryIds.Contains(s.LibraryId))
                 .Where(s => formats.Contains(s.Format))
                 .Where(s =>
-                    (aniListId > 0 && s.ExternalSeriesMetadata.AniListId == aniListId)
-                    || (malId > 0 && s.ExternalSeriesMetadata.MalId == malId)
-                    || (mangaBakaId > 0 && s.ExternalSeriesMetadata.MangabakaId == mangaBakaId))
+                    (aniListId > 0 && s.AniListId == aniListId)
+                    || (malId > 0 && s.MalId == malId)
+                    || (mangaBakaId > 0 && s.MangaBakaId == mangaBakaId)
+                    || (hardcoverId > 0 && s.HardcoverId == hardcoverId)
+                    )
                 .Includes(includes)
                 .FirstOrDefaultAsync(ct);
 
@@ -1394,7 +1456,7 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
             .Where(s =>
                 normalizedNames.Contains(s.NormalizedName)
                 || normalizedNames.Contains(s.NormalizedLocalizedName)
-                || names.Contains(s.OriginalName))
+                || normalizedNames.Contains(s.NormalizedOriginalName))
             .Includes(includes)
             .FirstOrDefaultAsync(ct);
     }
@@ -1402,20 +1464,10 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
     public async Task<IList<Series>> GetAllSeriesByAnyNameAsync(string seriesName, string localizedName, int libraryId,
         MangaFormat format, CancellationToken ct = default)
     {
-        var normalizedSeries = seriesName.ToNormalized();
-        var normalizedLocalized = localizedName.ToNormalized();
         return await context.Series
             .Where(s => s.LibraryId == libraryId)
             .Where(s => s.Format == format && format != MangaFormat.Unknown)
-            .Where(s =>
-                s.NormalizedName.Equals(normalizedSeries)
-                || s.NormalizedName.Equals(normalizedLocalized)
-
-                || s.NormalizedLocalizedName.Equals(normalizedSeries)
-                || (!string.IsNullOrEmpty(normalizedLocalized) && s.NormalizedLocalizedName.Equals(normalizedLocalized))
-
-                || (s.OriginalName != null && s.OriginalName.Equals(seriesName))
-            )
+            .WhereSeriesNameMatches(seriesName, localizedName)
             .AsSplitQuery()
             .ToListAsync(ct);
     }
@@ -1427,42 +1479,71 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
     /// <param name="seenSeries"></param>
     /// <param name="libraryId"></param>
     /// <param name="ct"></param>
+    private sealed record SeriesNameMatch(int Id, MangaFormat Format, string NormalizedName,
+        string NormalizedLocalizedName, string NormalizedOriginalName);
+
     public async Task<IList<Series>> RemoveSeriesNotInListAsync(IList<ParsedSeries> seenSeries, int libraryId,
         CancellationToken ct = default)
     {
-        if (!seenSeries.Any()) return Array.Empty<Series>();
+        if (seenSeries.Count == 0) return Array.Empty<Series>();
 
-        // Get all series from DB in one go, based on libraryId
-        var dbSeries = await context.Series
+        var candidates = await context.Series
             .Where(s => s.LibraryId == libraryId)
+            .Select(s => new SeriesNameMatch(s.Id, s.Format, s.NormalizedName, s.NormalizedLocalizedName,
+                s.NormalizedOriginalName))
             .ToListAsync(ct);
+        if (candidates.Count == 0) return Array.Empty<Series>();
 
-        // Get a set of matching series ids for the given parsedSeries
-        var ids = new HashSet<int>();
+        var byName = new Dictionary<string, List<SeriesNameMatch>>(StringComparer.Ordinal);
 
-        foreach (var parsedSeries in seenSeries)
+        foreach (var s in candidates)
         {
-            var matchingSeries = dbSeries
-                .Where(s => s.Format == parsedSeries.Format && s.NormalizedName == parsedSeries.NormalizedName)
-                .OrderBy(s => s.Id) // Sort to handle potential duplicates
-                .ToList();
-
-            // Prefer the first match or handle duplicates by choosing the last one
-            if (matchingSeries.Count != 0)
-            {
-                ids.Add(matchingSeries.Last().Id);
-            }
+            Index(s.NormalizedName, s);
+            Index(s.NormalizedLocalizedName, s);
+            Index(s.NormalizedOriginalName, s);
         }
 
-        // Filter out series that are not in the seenSeries
-        var seriesToRemove = dbSeries
-            .Where(s => !ids.Contains(s.Id))
-            .ToList();
+        // For each seen key, keep the highest-Id match. Matching on all three normalized columns keeps
+        // a user/K+-renamed series (whose OriginalName still anchors the folder) from being deleted.
+        // Collapsing duplicates to the highest Id preserves the legacy self-heal for the v0.5.6 bug
+        // where a library could end up with multiple series sharing a (Format, NormalizedName).
+        var keepIds = new HashSet<int>();
+        foreach (var key in seenSeries)
+        {
+            if (!byName.TryGetValue(key.NormalizedName, out var matches)) continue;
 
-        // Remove series in bulk
+            var best = matches
+                .Where(m => m.Format == key.Format || m.Format == MangaFormat.Unknown)
+                .OrderBy(m => m.Id)
+                .LastOrDefault();
+            if (best != null) keepIds.Add(best.Id);
+        }
+
+        var removeIds = candidates.Where(s => !keepIds.Contains(s.Id)).Select(s => s.Id).ToList();
+        if (removeIds.Count == 0) return Array.Empty<Series>();
+
+        var seriesToRemove = new List<Series>();
+        foreach (var batch in removeIds.Chunk(50))
+        {
+            var batchList = batch.ToList();
+            seriesToRemove.AddRange(await context.Series
+                .Where(s => batchList.Contains(s.Id))
+                .ToListAsync(ct));
+        }
+
         context.Series.RemoveRange(seriesToRemove);
 
         return seriesToRemove;
+
+        void Index(string name, SeriesNameMatch s)
+        {
+            if (string.IsNullOrEmpty(name)) return;
+            if (!byName.TryGetValue(name, out var list))
+            {
+                byName[name] = list = [];
+            }
+            list.Add(s);
+        }
     }
 
     public async Task<RelatedSeriesDto> GetRelatedSeriesAsync(int userId, int seriesId, CancellationToken ct = default)
@@ -1877,5 +1958,20 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
             .Select(x => x.Series)
             .Includes(SeriesIncludes.Chapters | SeriesIncludes.ExternalMetadata | SeriesIncludes.Metadata | SeriesIncludes.Library)
             .ToListAsync(ct);
+    }
+
+    public async Task<int?> GetChapterCountIfAllSpecials(int seriesId, CancellationToken ct = default)
+    {
+        var result = await context.Chapter
+            .Where(c => c.Volume.SeriesId == seriesId)
+            .GroupBy(c => c.Volume.SeriesId)
+            .Select(g => new
+            {
+                Count = g.Count(),
+                AllSpecial = g.All(c => c.Volume.MaxNumber == ParserConstants.SpecialVolumeNumber)
+            })
+            .FirstOrDefaultAsync(cancellationToken: ct);
+
+        return result is { AllSpecial: true } ? result.Count : null;
     }
 }

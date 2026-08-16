@@ -19,9 +19,9 @@ export class ReadMoreComponent {
    */
   readonly text = input.required<string>();
   /**
-   * Max length before apply read more. Defaults to 250 characters.
+   * Max length before apply read more. Defaults to 555 characters.
    */
-  readonly maxLength = input<number>(250);
+  readonly maxLength = input<number>(555);
   /**
    * If the field is collapsed and blur true, text will not be readable
    */
@@ -39,7 +39,7 @@ export class ReadMoreComponent {
 
   private readonly effectiveMaxLength = computed(() => {
     if (this.useResponsiveLength()) {
-      return this.breakpointService.isDesktopOrBelow() ? 170 : 200;
+      return this.breakpointService.isTabletOrBelow() ? 170 : 400;
     }
     return this.maxLength();
   });

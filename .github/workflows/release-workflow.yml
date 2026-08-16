@@ -18,12 +18,12 @@ jobs:
       contents: read
     steps:
       - name: Check Out Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: develop
 
       - name: NodeJS to Compile WebUI
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
       - run: |
@@ -57,7 +57,7 @@ jobs:
         id: parse-version
 
       - name: Compile dotnet app
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 

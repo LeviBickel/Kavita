@@ -32,8 +32,7 @@ using Kavita.Services.Scanner;
 using Microsoft.Extensions.Logging;
 using Microsoft.IO;
 using Nager.ArticleNumber;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using NetVips;
 using VersOne.Epub;
 using VersOne.Epub.Options;
 using VersOne.Epub.Schema;
@@ -549,9 +548,22 @@ public partial class BookService(
         }
     }
 
-    private static bool IsIsbnScheme(EpubMetadataIdentifier identifier) =>
-        !string.IsNullOrEmpty(identifier.Scheme) &&
-        identifier.Scheme.Equals("ISBN", StringComparison.InvariantCultureIgnoreCase);
+    private static bool IsIsbnScheme(EpubMetadataIdentifier identifier)
+    {
+        if (!string.IsNullOrEmpty(identifier.Scheme))
+        {
+            return identifier.Scheme.Equals("ISBN", StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        if (!string.IsNullOrEmpty(identifier.Id))
+        {
+            // https://www.w3.org/TR/epub-33/#sec-opf-dcidentifier
+            return identifier.Id.Equals("pub-id", StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        return identifier.Identifier.StartsWith("ISBN:", StringComparison.InvariantCultureIgnoreCase)
+            || identifier.Identifier.StartsWith("URN:ISBN:", StringComparison.InvariantCultureIgnoreCase);
+    }
 
     private static bool IsUrlScheme(EpubMetadataIdentifier identifier) =>
         (!string.IsNullOrEmpty(identifier.Scheme) &&
@@ -561,12 +573,12 @@ public partial class BookService(
     private void TryApplyIsbn(EpubMetadataIdentifier identifier, ComicInfo info, string filePath)
     {
         var isbn = identifier.Identifier
-            .Replace("urn:isbn:", string.Empty)
-            .Replace("isbn:", string.Empty);
+            .Replace("urn:isbn:", string.Empty, StringComparison.InvariantCultureIgnoreCase)
+            .Replace("isbn:", string.Empty, StringComparison.InvariantCultureIgnoreCase);
 
         if (!ArticleNumberHelper.IsValidIsbn10(isbn) && !ArticleNumberHelper.IsValidIsbn13(isbn))
         {
-            logger.LogDebug("[BookService] {File} has invalid ISBN number", filePath);
+            logger.LogTrace("[BookService] {File} has invalid ISBN number", filePath);
             return;
         }
 
@@ -1898,10 +1910,19 @@ public partial class BookService(
         var rawBytes = pageReader.GetImage(new NaiveTransparencyRemover());
         var width = pageReader.GetPageWidth();
         var height = pageReader.GetPageHeight();
-        var image = Image.LoadPixelData<Bgra32>(rawBytes, width, height);
+
+        // Docnet returns raw BGRA pixel data. Wrap it as a 4-band NetVips image (the binding pins
+        // the managed array for the image's lifetime), then reorder the bands from B,G,R,A to
+        // R,G,B,A (swap the blue and red bands) so the encoded PNG has the correct colors. The
+        // image is consumed synchronously (WriteToBuffer) before rawBytes leaves scope. ImageSharp's
+        // Bgra32 pixel format handled this reorder implicitly.
+        using var bgra = Image.NewFromMemory(rawBytes, width, height, 4, Enums.BandFormat.Uchar);
+        using var rgba = bgra[2].Bandjoin(bgra[1], bgra[0], bgra[3]);
+        var pngBytes = rgba.WriteToBuffer(".png");
 
         stream.Seek(0, SeekOrigin.Begin);
-        image.SaveAsPng(stream);
+        stream.Write(pngBytes, 0, pngBytes.Length);
+        stream.SetLength(pngBytes.Length);   // drop any stale trailing bytes
         stream.Seek(0, SeekOrigin.Begin);
     }
 

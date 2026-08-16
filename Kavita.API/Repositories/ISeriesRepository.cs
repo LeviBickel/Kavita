@@ -82,7 +82,7 @@ public interface ISeriesRepository
     Task<int[]> GetChapterIdsForSeriesAsync(IList<int> seriesIds, CancellationToken ct = default);
     Task<IDictionary<int, IList<int>>> GetChapterIdWithSeriesIdForSeriesAsync(int[] seriesIds, CancellationToken ct = default);
     Task<long> GetFilesizeAsync(int seriesId, CancellationToken ct = default);
-    Task<Dictionary<int, long>> GetFilesizesAsync(IList<int> seriesIds, CancellationToken ct = default);
+    Task<Dictionary<int, long>> GetFilesizesAsync(int userId, IList<int> seriesIds, CancellationToken ct = default);
     Task<string?> GetSeriesCoverImageAsync(int seriesId, CancellationToken ct = default);
     Task<PagedList<SeriesDto>> GetOnDeckAsync(int userId, int libraryId, UserParams userParams, CancellationToken ct = default);
     Task<PagedList<SeriesDto>> GetRecentlyAddedAsync(int userId, UserParams userParams, SeriesFilterV2Dto seriesFilter, CancellationToken ct = default);
@@ -108,6 +108,14 @@ public interface ISeriesRepository
     Task<IEnumerable<Series>> GetAllSeriesByNameAsync(IList<string> normalizedNames,
         int userId, SeriesIncludes includes = SeriesIncludes.None, CancellationToken ct = default);
     Task<Series?> GetFullSeriesByAnyName(string seriesName, string localizedName, int libraryId, MangaFormat format, bool withFullIncludes = true, CancellationToken ct = default);
+    /// <summary>
+    /// Is the given normalized name free to use for a Series in this library+format? Checks against
+    /// every other series' NormalizedName, NormalizedLocalizedName and normalized OriginalName - the
+    /// same set the scanner's lookup matches on - so a rename can't create a collision that would make
+    /// <see cref="GetFullSeriesByAnyName"/> throw during a scan.
+    /// </summary>
+    Task<bool> IsSeriesNameUniqueInLibraryAsync(int libraryId, MangaFormat format, string normalizedName, int excludeSeriesId, CancellationToken ct = default);
+    Task<HashSet<string>> GetTakenNormalizedNamesInLibraryAsync(int libraryId, MangaFormat format, int excludeSeriesId, CancellationToken ct = default);
     Task<Series?> GetSeriesFromExternalMetadata(IList<string> seriesNames, IList<MangaFormat> formats,
         int userId, ExternalMetadataIdsDto? dto = null, SeriesIncludes includes = SeriesIncludes.None, CancellationToken ct = default);
     public Task<IList<Series>> GetAllSeriesByAnyNameAsync(string seriesName, string localizedName, int libraryId,
@@ -125,4 +133,11 @@ public interface ISeriesRepository
     Task<SeriesDetailRequestV3Dto?> GetKavitaPlusSeriesDetailRequestV3Dto(int seriesId, CancellationToken ct = default);
     Task<Series?> MatchSeriesAsync(ExternalSeriesDetailDto externalSeries, CancellationToken ct = default);
     Task<List<Series>> GetSeriesForReadStatusTransitionRuleAsync(int userId, ReadStatusTransitionRule rule, bool requireUnReadChapters, CancellationToken ct);
+    /// <summary>
+    /// Returns the total amount of chapters, if all chapters in the series are specials
+    /// </summary>
+    /// <param name="seriesId"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    Task<int?> GetChapterCountIfAllSpecials(int seriesId, CancellationToken ct = default);
 }

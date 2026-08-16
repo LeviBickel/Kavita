@@ -20,6 +20,8 @@ using Kavita.Models.DTOs.KavitaPlus.Metadata;
 using Kavita.Models.DTOs.Settings;
 using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
+using Kavita.Services.Helpers;
+using Kavita.Models.Entities.MetadataMatching;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -52,7 +54,9 @@ public class SettingsService(
         existingMetadataSetting.EnableExtendedMetadataProcessing = dto.EnableExtendedMetadataProcessing;
         existingMetadataSetting.EnableSummary = dto.EnableSummary;
         existingMetadataSetting.EnableLocalizedName = dto.EnableLocalizedName;
+        existingMetadataSetting.EnableName = dto.EnableName;
         existingMetadataSetting.EnablePublicationStatus = dto.EnablePublicationStatus;
+        existingMetadataSetting.EnableAgeRating = dto.EnableAgeRating;
         existingMetadataSetting.EnableRelationships = dto.EnableRelationships;
         existingMetadataSetting.EnablePeople = dto.EnablePeople;
         existingMetadataSetting.EnableStartDate = dto.EnableStartDate;
@@ -67,7 +71,7 @@ public class SettingsService(
         existingMetadataSetting.EnableChapterReleaseDate = dto.EnableChapterReleaseDate;
         existingMetadataSetting.EnableChapterCoverImage = dto.EnableChapterCoverImage;
 
-        existingMetadataSetting.AgeRatingMappings = dto.AgeRatingMappings ?? [];
+        existingMetadataSetting.EnableVolumeCoverImage = dto.EnableVolumeCoverImage;
 
         existingMetadataSetting.EnableOpenLibrary = dto.EnableOpenLibrary;
         existingMetadataSetting.EnableGoogleBooks = dto.EnableGoogleBooks;
@@ -78,10 +82,25 @@ public class SettingsService(
         if (!string.IsNullOrWhiteSpace(dto.HardcoverApiKey) && dto.HardcoverApiKey != "***")
             existingMetadataSetting.HardcoverApiKey = dto.HardcoverApiKey;
 
-        existingMetadataSetting.Blacklist = (dto.Blacklist ?? []).Where(s => !string.IsNullOrWhiteSpace(s)).DistinctBy(d => d.ToNormalized()).ToList() ?? [];
-        existingMetadataSetting.Whitelist = (dto.Whitelist ?? []).Where(s => !string.IsNullOrWhiteSpace(s)).DistinctBy(d => d.ToNormalized()).ToList() ?? [];
+        existingMetadataSetting.AgeRatingMappings = dto.AgeRatingMappings ?? [];
+        existingMetadataSetting.ExternalAgeRatingMappings = dto.ExternalAgeRatingMappings ?? [];
+
+        existingMetadataSetting.Blacklist = TagHelper.SortAndCleanTagList(dto.Blacklist);
+        existingMetadataSetting.Whitelist = TagHelper.SortAndCleanTagList(dto.Whitelist);
         existingMetadataSetting.Overrides = [.. dto.Overrides ?? []];
         existingMetadataSetting.PersonRoles = dto.PersonRoles ?? [];
+        existingMetadataSetting.FilterAboveWeight = dto.FilterAboveWeight;
+
+        // Sanitize the tags by shape only as Windows/Linux will differ on supported codes from CultureInfo.GetCultures, like ja-Latn
+        existingMetadataSetting.GlobalNameLanguages = LanguageCodeHelper.Sanitize(dto.GlobalLanguageTitleSettings.Name);
+        existingMetadataSetting.GlobalLocalizedNameLanguages = LanguageCodeHelper.Sanitize(dto.GlobalLanguageTitleSettings?.LocalizedName);
+        existingMetadataSetting.LibraryLanguageTitleOverrides = (dto.LibraryLanguageTitleOverrides ?? [])
+            .Where(kvp => kvp is { Key: > 0, Value: not null })
+            .ToDictionary(kvp => kvp.Key, kvp => new SeriesNameLanguage
+            {
+                Name = LanguageCodeHelper.Sanitize(kvp.Value.Name),
+                LocalizedName = LanguageCodeHelper.Sanitize(kvp.Value.LocalizedName),
+            });
 
         // Handle Field Mappings
 
@@ -158,6 +177,7 @@ public class SettingsService(
         {
             existingMetadataSetting.AgeRatingMappings = dto.AgeRatingMappings;
         }
+
 
         if (settings.FieldMappings)
         {

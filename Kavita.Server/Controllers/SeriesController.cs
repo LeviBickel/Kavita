@@ -177,25 +177,74 @@ public class SeriesController(
     public async Task<ActionResult<SeriesDto>> UpdateSeries(UpdateSeriesDto updateSeries)
     {
         var ct = HttpContext.RequestAborted;
-        var series = await unitOfWork.SeriesRepository.GetSeriesByIdAsync(updateSeries.Id, ct: ct);
+        var series = await unitOfWork.SeriesRepository.GetSeriesByIdAsync(updateSeries.Id,
+            SeriesIncludes.Metadata | SeriesIncludes.Library, ct);
         if (series == null)
             return BadRequest(await localizationService.TranslateAsync(UserId, "series-doesnt-exist"));
 
+        var renamed = false;
+        var newName = updateSeries.Name?.Trim();
+        if (!string.IsNullOrEmpty(newName) && newName != series.Name)
+        {
+            var normalizedNewName = newName.ToNormalized();
+            if (!await unitOfWork.SeriesRepository.IsSeriesNameUniqueInLibraryAsync(
+                    series.LibraryId, series.Format, normalizedNewName, series.Id, ct))
+            {
+                return BadRequest(await localizationService.TranslateAsync(UserId, "series-name-exists"));
+            }
+
+            // The current name may anchor merged folders on disk. Changing it would orphan those files and the scanner
+            // would split them into a new series, so reject the edit.
+            if (await externalMetadataService.WouldNameChangeOrphanMergedFiles(series, newName, ct))
+            {
+                return BadRequest(await localizationService.TranslateAsync(UserId, "series-name-orphans-files"));
+            }
+
+            series.Name = newName;
+            // A user rename is an override; drop any prior K+ name override so K+ respects it
+            series.Metadata.KPlusOverrides.Remove(MetadataSettingField.Name);
+            renamed = true;
+        }
+
         series.NormalizedName = series.Name.ToNormalized();
-        if (!string.IsNullOrEmpty(updateSeries.SortName?.Trim()))
+
+        if (renamed && !updateSeries.SortNameLocked)
+        {
+            // An unlocked sort name is derived from Name - reseed it (mirrors the scanner logic)
+            series.SortName = series.Library is {RemovePrefixForSortName: true}
+                ? BookSortTitlePrefixHelper.GetSortTitle(series.Name)
+                : series.Name;
+        }
+        else if (!string.IsNullOrEmpty(updateSeries.SortName?.Trim()))
         {
             series.SortName = updateSeries.SortName.Trim();
         }
 
-        var newNormalizedLocalizedName = updateSeries.LocalizedName?.Trim().ToNormalized();
+        var newLocalizedName = updateSeries.LocalizedName?.Trim();
+        var newNormalizedLocalizedName = newLocalizedName.ToNormalized();
         if (series.NormalizedLocalizedName != newNormalizedLocalizedName)
         {
-            series.LocalizedName = updateSeries.LocalizedName?.Trim();
+            // A localized name that collides (normalized) with another series' name in the library+format breaks the scanner
+            if (!string.IsNullOrEmpty(newNormalizedLocalizedName) && !await unitOfWork.SeriesRepository.IsSeriesNameUniqueInLibraryAsync(
+                    series.LibraryId, series.Format, newNormalizedLocalizedName, series.Id, ct))
+            {
+                return BadRequest(await localizationService.TranslateAsync(UserId, "series-localized-name-exists"));
+            }
+
+            // The current localized name may anchor merged folders on disk. Changing/clearing it would orphan those
+            // files and the scanner would split them into a new series, so reject the edit.
+            if (await externalMetadataService.WouldLocalizedNameChangeOrphanMergedFiles(series, newLocalizedName, ct))
+            {
+                return BadRequest(await localizationService.TranslateAsync(UserId, "series-localized-name-orphans-files"));
+            }
+
+            series.LocalizedName = newLocalizedName;
             series.NormalizedLocalizedName = newNormalizedLocalizedName;
 
             series.Metadata.KPlusOverrides.Remove(MetadataSettingField.LocalizedName);
         }
 
+        series.NameLocked = updateSeries.NameLocked;
         series.SortNameLocked = updateSeries.SortNameLocked;
         series.LocalizedNameLocked = updateSeries.LocalizedNameLocked;
 
@@ -677,18 +726,21 @@ public class SeriesController(
 
         return Ok(new MatchSeriesInfoDto
         {
-            HasMatch = externalMetadata is {Id: > 0} && provider != null,
+            HasMatch = externalMetadata is {Id: > 0} &&
+                       (series.MangaBakaId > 0 || series.HardcoverId > 0 || series.CbrId > 0 || series.AniListId > 0),
             // MangaBaka will always set AniList if set
             IsLegacy = series is {AniListId: > 0, MangaBakaId: 0},
             CbrId = series.CbrId,
             HardcoverId = series.HardcoverId,
             MangaBakaId = (int) series.MangaBakaId,
+            MangaBakaEditionId = series.MangaBakaEditionId,
             AniListId = series.AniListId,
             LibraryType = libraryType,
             PlusMediaFormat = plusFormat,
             MatchedProvider = provider,
             PrimaryProvider = series.Library.MetadataProvider,
-            SeriesFormat = series.Format
+            SeriesFormat = series.Format,
+            IsStandalone = series.IsStandAlone,
         });
     }
 

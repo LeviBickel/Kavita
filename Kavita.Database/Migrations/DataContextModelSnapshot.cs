@@ -18,7 +18,7 @@ namespace Kavita.Database.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.9");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
 
             modelBuilder.Entity("AppUserCollectionSeries", b =>
                 {
@@ -1359,6 +1359,11 @@ namespace Kavita.Database.Migrations
                     b.Property<string>("Blacklist")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("EnableAgeRating")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
                     b.Property<bool>("EnableChapterCoverImage")
                         .HasColumnType("INTEGER");
 
@@ -1394,6 +1399,9 @@ namespace Kavita.Database.Migrations
                     b.Property<bool>("EnableLocalizedName")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("EnableName")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("EnableOpenLibrary")
                         .HasColumnType("INTEGER");
 
@@ -1415,19 +1423,43 @@ namespace Kavita.Database.Migrations
                     b.Property<bool>("EnableTags")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("EnableVolumeCoverImage")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("Enabled")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(true);
 
+                    b.Property<string>("ExternalAgeRatingMappings")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("FilterAboveWeight")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("FirstLastPeopleNaming")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("GlobalLocalizedNameLanguages")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("ja-Latn");
+
+                    b.Property<string>("GlobalNameLanguages")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("en");
 
                     b.Property<string>("GoogleBooksApiKey")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("HardcoverApiKey")
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("LibraryLanguageTitleOverrides")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("{}");
 
                     b.Property<string>("Overrides")
                         .HasColumnType("TEXT");
@@ -2282,6 +2314,9 @@ namespace Kavita.Database.Migrations
                     b.Property<long>("MalId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("MangaBakaEditionId")
+                        .HasColumnType("TEXT");
+
                     b.Property<long>("MangaBakaId")
                         .HasColumnType("INTEGER");
 
@@ -2297,10 +2332,16 @@ namespace Kavita.Database.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("NameLocked")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("NormalizedLocalizedName")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("NormalizedName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NormalizedOriginalName")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("OriginalName")
@@ -2329,8 +2370,14 @@ namespace Kavita.Database.Migrations
                     b.HasIndex("LibraryId")
                         .HasDatabaseName("IX_Series_LibraryId");
 
-                    b.HasIndex("NormalizedName")
-                        .HasDatabaseName("IX_Series_NormalizedName");
+                    b.HasIndex("LibraryId", "Format", "NormalizedLocalizedName")
+                        .HasDatabaseName("IX_Series_LibraryId_Format_NormalizedLocalizedName");
+
+                    b.HasIndex("LibraryId", "Format", "NormalizedName")
+                        .HasDatabaseName("IX_Series_LibraryId_Format_NormalizedName");
+
+                    b.HasIndex("LibraryId", "Format", "NormalizedOriginalName")
+                        .HasDatabaseName("IX_Series_LibraryId_Format_NormalizedOriginalName");
 
                     b.ToTable("Series");
                 });
@@ -3622,6 +3669,11 @@ namespace Kavita.Database.Migrations
 
                     b.Property<int>("HardcoverId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("KPlusOverrides")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("[]");
 
                     b.Property<DateTime>("LastModified")
                         .HasColumnType("TEXT");

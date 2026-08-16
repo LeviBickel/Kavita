@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+using Kavita.Models.DTOs.KavitaPlus.Metadata;
 using Kavita.Models.Entities.Enums;
+using Kavita.Models.Entities.Enums.KavitaPlus;
 
 namespace Kavita.Models.Entities.MetadataMatching;
 
@@ -30,6 +32,10 @@ public class MetadataSettings
     /// </summary>
     public bool EnablePublicationStatus { get; set; }
     /// <summary>
+    /// Allow Age Rating status to be derived and updated
+    /// </summary>
+    public bool EnableAgeRating { get; set; }
+    /// <summary>
     /// Allow Relationships between series to be set
     /// </summary>
     public bool EnableRelationships { get; set; }
@@ -45,6 +51,10 @@ public class MetadataSettings
     /// Allow setting the Localized name
     /// </summary>
     public bool EnableLocalizedName { get; set; }
+    /// <summary>
+    /// Allow setting the Series name
+    /// </summary>
+    public bool EnableName { get; set; }
     /// <summary>
     /// Allow setting the cover image
     /// </summary>
@@ -74,6 +84,13 @@ public class MetadataSettings
     public bool EnableChapterCoverImage { get; set; }
     #endregion
 
+    #region Volume Metadata
+    /// <summary>
+    /// Allow setting the cover image for the Volume
+    /// </summary>
+    public bool EnableVolumeCoverImage { get; set; }
+    #endregion
+
     // Need to handle the Genre/tags stuff
     public bool EnableGenres { get; set; } = true;
     public bool EnableTags { get; set; } = true;
@@ -82,6 +99,22 @@ public class MetadataSettings
     /// For Authors and Writers, how should names be stored (Exclusively applied for AniList). This does not affect Character names.
     /// </summary>
     public bool FirstLastPeopleNaming { get; set; }
+
+    /// <summary>
+    /// Server-wide semicolon separated list of BCP-47 language codes to prioritize for <c>Series.Name</c>
+    /// </summary>
+    public string GlobalNameLanguages { get; set; } = "en";
+
+    /// <summary>
+    /// Server-wide semicolon separated list of BCP-47 language codes to prioritize for <c>Series.LocalizedName</c>
+    /// </summary>
+    public string GlobalLocalizedNameLanguages { get; set; } = "ja-Latn";
+
+    /// <summary>
+    /// Per-library overrides of the global language priority, keyed by LibraryId.
+    /// </summary>
+    /// <remarks>An override fully replaces the global list for that library, it does not prepend to it.</remarks>
+    public Dictionary<int, SeriesNameLanguage> LibraryLanguageTitleOverrides { get; set; } = [];
 
     /// <summary>
     /// Any Genres or Tags that if present, will trigger an Age Rating Override. Highest rating will be prioritized for matching.
@@ -141,4 +174,15 @@ public class MetadataSettings
     public string HardcoverApiKey { get; set; } = string.Empty;
 
     #endregion
+
+    /// <summary>
+    /// Optional mappings of strings -> ComicInfo Age Ratings
+    /// </summary>
+    public Dictionary<string, AgeRating> ExternalAgeRatingMappings { get; set; } = [];
+    /// <summary>
+    /// Filter Tags above this level. This takes effect after tag mapping.
+    /// </summary>
+    /// <example>FilterAboveWeight = Recurrent, all tags with weight above Recurrent (incidental, unweighted) will be filtered out after tag mapping step</example>
+    /// <remarks>This is only applicable for <see cref="MetadataProvider.Mangabaka"/>. Tag weights are: Core, Defining, Recurrent, etc impact on the Series</remarks>
+    public TagWeight? FilterAboveWeight { get; set; }
 }

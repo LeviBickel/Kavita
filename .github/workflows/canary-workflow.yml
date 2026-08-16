@@ -16,12 +16,12 @@ jobs:
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/canary' }}
       steps:
           - name: Check Out Repo
-            uses: actions/checkout@v4
+            uses: actions/checkout@v5
             with:
                 ref: canary
 
           - name: NodeJS to Compile WebUI
-            uses: actions/setup-node@v4
+            uses: actions/setup-node@v5
             with:
                 node-version: 24
           - run: |
@@ -47,7 +47,7 @@ jobs:
             run: echo "${{steps.get-version.outputs.assembly-version}}"
 
           - name: Compile dotnet app
-            uses: actions/setup-dotnet@v4
+            uses: actions/setup-dotnet@v5
             with:
                 dotnet-version: 10.0.x
 

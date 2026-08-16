@@ -1,7 +1,8 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Kavita.Models.DTOs.Common;
 using Kavita.Models.Entities.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace Kavita.Models.DTOs.KavitaPlus;
 #nullable enable
@@ -19,6 +20,8 @@ public sealed record KavitaPlusAuditSeriesInfoDto : IUpdateExternalMetadataIds
     public string? ComicVineId { get; set; }
     public long? MangaBakaId { get; set; }
     public int? CbrId { get; set; }
+    public bool IsStandAlone { get; set; }
+    [EnumDataType(typeof(MetadataProvider))]
     public MetadataProvider? MetadataProvider { get; set; }
     public DateTime? NextRefreshUtc { get; init; }
     public DateTime? LastRefreshedUtc { get; init; }

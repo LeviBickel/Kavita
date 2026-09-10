@@ -33,14 +33,13 @@ This fork adds a native **Audiobook** library type. Audio files (MP3, M4B, FLAC,
 - **Audiobooks (MP3, M4B, FLAC, OGG, WAV) — added in this fork**
 - First class responsive readers that work great on any device (phone, tablet, desktop)
 - Customizable theming support: [Theme Repo](https://github.com/Kareadita/Themes) and [Documentation](https://wiki.kavitareader.com/guides/themes)
-- External metadata integration and scrobbling for read status, ratings, and reviews (available via [Kavita+](https://wiki.kavitareader.com/kavita+))
+- Ability to download metadata, reviews, ratings, recommendations, and more (scrobbling, smart collections, ...) (available via [Kavita+](https://wiki.kavitareader.com/kavita+))
 - Rich Metadata support with filtering, searching, and smart filters
 - Ways to group reading material: Collections, Reading Lists (CBL Import), Want to Read
 - Ability to manage users with rich Role-based management for age restrictions, abilities within the app, OIDC, etc
 - Rich web readers supporting webtoon, continuous reading mode (continue without leaving the reader), virtual pages (epub), etc
 - Ability to customize your dashboard and side nav with smart filters, custom order and visibility toggles
 - Full Localization Support ([Weblate](https://hosted.weblate.org/engage/kavita/))
-- Ability to download metadata, reviews, ratings, and more (available via [Kavita+](https://wiki.kavitareader.com/kavita+))
 - Epub-based Annotation/Highlight support
 
 
@@ -65,7 +64,6 @@ docker run -d \
   levibickel/kavita:nightly
 ```
 For full setup options, refer to the [upstream wiki](https://wiki.kavitareader.com/getting-started).
-
 
 ## Support
 

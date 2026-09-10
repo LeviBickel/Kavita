@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, Input, OnInit} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, Input, OnInit, signal} from '@angular/core';
 import {FormControl, FormGroup, FormsModule, ReactiveFormsModule} from "@angular/forms";
 import {NgbActiveModal} from "@ng-bootstrap/ng-bootstrap";
 import {TranslocoDirective} from "@jsverse/transloco";
@@ -26,7 +26,6 @@ import {DownloadEntityType} from '../../shared/_models/download-queue-item';
 import {LibraryType} from "../../_models/library/library";
 import {PersonRole} from "../../_models/metadata/person";
 import {concat} from "rxjs";
-import {MangaFormat} from 'src/app/_models/manga-format';
 import {MangaFile} from "../../_models/manga-file";
 import {BreakpointService} from "../../_services/breakpoint.service";
 import {ActionFactoryService} from "../../_services/action-factory.service";
@@ -37,10 +36,12 @@ import {VolumeService} from "../../_services/volume.service";
 import {UpdateVolume} from "../../_models/update-volume";
 import {Tabs} from "../../_models/tabs";
 import {
+  addMetadataIdControls,
   EditExternalMetadataFormComponent
 } from "../../shared/_components/edit-external-metadata-form/edit-external-metadata-form.component";
 import {EditModalShellComponent} from "../../shared/edit-modal-shell/edit-modal-shell.component";
 import {EditTabDirective} from "../../shared/_directive/edit-tab.directive";
+import {MangaFormat} from "../../_models/manga-format";
 
 
 @Component({
@@ -90,7 +91,7 @@ export class EditVolumeModalComponent implements OnInit {
   selectedCover: string = '';
   coverImageReset = false;
   coverImageDirty = false;
-  chooserConfig: CoverImageChooserConfig = {};
+  chooserConfig = signal<CoverImageChooserConfig>({});
 
   tasks = this.actionFactoryService.getActionablesForSettingsPage(this.actionFactoryService.getVolumeActions(this.seriesId, this.libraryId, this.libraryType), this.blacklist);
   /**
@@ -119,8 +120,9 @@ export class EditVolumeModalComponent implements OnInit {
     this.size = this.files.reduce((sum, v) => sum + v.bytes, 0);
 
     this.editForm.addControl('coverImageLocked', new FormControl(this.volume.coverImageLocked, []));
+    addMetadataIdControls(this.editForm, this.volume);
 
-    this.chooserConfig = this.coverChooserConfigFactory.forVolume(this.volume, this.libraryType);
+    this.chooserConfig.set(this.coverChooserConfigFactory.forVolume(this.volume, this.libraryType));
   }
 
   close() {
@@ -186,8 +188,7 @@ export class EditVolumeModalComponent implements OnInit {
   handleReset() {
     this.coverImageReset = true;
     this.editForm.patchValue({ coverImageLocked: false });
-    this.chooserConfig = { ...this.chooserConfig, isLocked: false };
-    this.cdRef.markForCheck();
+    this.chooserConfig.set({ ...this.chooserConfig(), isLocked: false });
   }
 
   changeTab(tab?: Tabs) {

@@ -3,7 +3,6 @@
         "title": "ลงชื่อเข้าใช้บัญชีของคุณ",
         "username": "{{common.username}}",
         "password": "{{common.password}}",
-        "password-validation": "{{validation.password-validation}}",
         "forgot-password": "ลืมรหัสผ่าน?",
         "submit": "เข้าสู่ระบบ"
     },
@@ -20,35 +19,12 @@
         "edit": "{{common.edit}}",
         "close": "{{common.close}}",
         "username": "{{common.username}}",
-        "required": "{{validation.required-field}}",
         "email": "{{common.email}}",
         "cancel": "{{common.cancel}}",
         "saving": "กำลังจัดเก็บ…",
         "update": "อัพเดท",
         "invalid-email-warning": "อีเมล์ที่ไม่ถูกต้องจะปิดกั้นบางฟังก์ชั่นของ Kavita",
         "account-detail-title": "รายละเอียดบัญชี"
-    },
-    "user-scrobble-history": {
-        "title": "ประวัติการทำ Scrobble",
-        "description": "ที่นี่คุณสามารถดูรายการ Scrobble ที่เกิดขึ้นภายใต้บัญชีคุณได้ โดยรายการจะเกิดขึ้นก็ต่อเมื่อคุณได้ตั้งค่า Scrobble เรียบร้อยแล้ว รายการต่างๆ จะถูกลบเมื่อผ่านไปหนึ่งเดือน ถ้ามีรายการที่ยังไม่ถูกประมวลผล นั่นหมายความว่าอาจเกิดปัญหาที่ต้นทาง กรุณาติดต่อผู้ดูแลระบบเพื่อแก้ไขปัญหานี้",
-        "filter-label": "{{common.filter}}",
-        "created-header": "สร้างเมื่อ",
-        "last-modified-header": "แก้ไขล่าสุด",
-        "type-header": "ประเภท",
-        "series-header": "เรื่อง",
-        "data-header": "ข้อมูล",
-        "is-processed-header": "กำลังดำเนินการ",
-        "no-data": "{{common.no-data}}",
-        "volume-and-chapter-num": "เล่มที่ {{v}} ตอนที่ {{n}}",
-        "volume-num": "เล่มที่ {{num}}",
-        "chapter-num": "ตอนที่ {{num}}",
-        "rating": "คะแนน {{r}}",
-        "not-applicable": "ไม่สามารถใช้ได้",
-        "processed": "ดำเนินการ",
-        "not-processed": "ยังไม่ได้ประมวลผล",
-        "special": "{{entity-title.special}}",
-        "select-all-label": "เลือกทั้งหมด",
-        "delete-selected-label": "ลบที่เลือก"
     },
     "scrobble-event-type-pipe": {
         "chapter-read": "ความคืบหน้าการอ่าน",
@@ -159,9 +135,7 @@
         "email-label": "{{common.email}}",
         "save": "{{common.save}}",
         "close": "{{common.close}}",
-        "cancel": "{{common.cancel}}",
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}"
+        "cancel": "{{common.cancel}}"
     },
     "change-password": {
         "password-label": "{{common.password}}",
@@ -170,7 +144,6 @@
         "confirm-password-label": "ยืนยันรหัสผ่าน",
         "reset": "{{common.reset}}",
         "save": "{{common.save}}",
-        "required-field": "{{validation.required-field}}",
         "passwords-must-match": "รหัสผ่านต้องตรงกัน",
         "permission-error": "คุณไม่ได้รับอนุญาตให้เปลี่ยนรหัสผ่านของคุณ ติดต่อผู้ดูแลระบบของเซิร์ฟเวอร์"
     },
@@ -183,8 +156,6 @@
         "setup-user-account": "ตั้งค่าบัญชีผู้ใช้",
         "invite-url-label": "URL เทียบเชิญ",
         "invite-url-tooltip": "คัดลอกสิ่งนี้และวางในแท็บใหม่",
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}",
         "reset": "{{common.reset}}",
         "save": "{{common.save}}"
     },
@@ -363,8 +334,6 @@
     "reset-password": {
         "title": "รีเซ็ตรหัสผ่าน",
         "email-label": "{{common.email}}",
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}",
         "submit": "{{common.submit}}"
     },
     "reset-password-modal": {
@@ -384,7 +353,6 @@
     "invite-user": {
         "close": "{{common.close}}",
         "email": "{{common.email}}",
-        "required-field": "{{common.required-field}}",
         "cancel": "{{common.cancel}}",
         "email-not-sent": "{{toasts.email-not-sent}}",
         "notice": "{{manage-settings.notice}}"
@@ -395,22 +363,18 @@
     },
     "book-line-overlay": {
         "close": "{{common.close}}",
-        "required-field": "{{common.required-field}}",
         "save": "{{common.save}}"
     },
     "confirm-email": {
         "username-label": "{{common.username}}",
         "password-label": "{{common.password}}",
         "email-label": "{{common.email}}",
-        "required-field": "{{common.required-field}}",
-        "valid-email": "{{common.valid-email}}",
         "password-validation": "{{validation.password-validation}}"
     },
     "confirm-reset-password": {
         "title": "รีเซ็ตรหัสผ่าน",
         "description": "ระบุรหัสผ่านใหม่",
         "password-label": "{{common.password}}",
-        "required-field": "{{validation.required-field}}",
         "submit": "{{common.submit}}",
         "password-validation": "{{validation.password-validation}}"
     },
@@ -418,8 +382,6 @@
         "username-label": "{{common.username}}",
         "email-label": "{{common.email}}",
         "password-label": "{{common.password}}",
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}",
         "password-validation": "{{validation.password-validation}}"
     },
     "series-detail": {
@@ -458,7 +420,6 @@
         "reset": "{{common.reset}}",
         "cancel": "{{common.cancel}}",
         "save": "{{common.save}}",
-        "required-field": "{{validation.required-field}}",
         "help": "{{common.help}}"
     },
     "reader-settings": {
@@ -568,7 +529,6 @@
         "save": "{{common.save}}"
     },
     "edit-collection-tags": {
-        "required-field": "{{validation.required-field}}",
         "save": "{{common.save}}",
         "close": "{{common.close}}",
         "cancel": "{{common.cancel}}",
@@ -631,8 +591,7 @@
     },
     "edit-reading-list-modal": {
         "close": "{{common.close}}",
-        "save": "{{common.save}}",
-        "required-field": "{{validation.required-field}}"
+        "save": "{{common.save}}"
     },
     "import-mal-collection-modal": {
         "close": "{{common.close}}",
@@ -683,7 +642,6 @@
         "location-label": "{{metadata-fields.locations-title}}",
         "language-label": "{{metadata-fields.language-title}}",
         "age-rating-label": "{{metadata-fields.age-rating-title}}",
-        "required-field": "{{validation.required-field}}",
         "close": "{{common.close}}",
         "release-year-label": "{{sort-field-pipe.release-year}}",
         "web-link-label": "{{tabs.weblink-tab}}",
@@ -787,8 +745,7 @@
         "save": "{{common.save}}",
         "edit": "{{common.edit}}",
         "cancel": "{{common.cancel}}",
-        "delete": "{{common.delete}}",
-        "required": "{{validation.required-field}}"
+        "delete": "{{common.delete}}"
     },
     "stream-pipe": {
         "on-deck": "{{dashboard.on-deck-title}}",

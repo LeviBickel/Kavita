@@ -1,22 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Kavita.Common.Helpers;
 #nullable enable
 
 /// <summary>
+/// A slug parsed out of a public hardcover.app url, and if that url pointed at a single book rather than a series
+/// </summary>
+public sealed record HardcoverUrlSlug(string Slug, bool IsStandAlone);
+
+/// <summary>
 /// Handles all things parsing of External Ids (weblinks, not set checks, anilist:X)
 /// </summary>
-public static class ExternalIdParser
+public static partial class ExternalIdParser
 {
     private const string AniListWeblinkWebsite = "https://anilist.co/manga/";
     private const string MalWeblinkWebsite = "https://myanimelist.net/manga/";
-    private const string MalStaffWebsite = "https://myanimelist.net/people/";
-    private const string MalCharacterWebsite = "https://myanimelist.net/character/";
-    private const string GoogleBooksWeblinkWebsite = "https://books.google.com/books?id=";
     private const string MangaDexWeblinkWebsite = "https://mangadex.org/title/";
     private const string AniListStaffWebsite = "https://anilist.co/staff/";
     private const string AniListCharacterWebsite = "https://anilist.co/character/";
@@ -24,6 +26,17 @@ public static class ExternalIdParser
     private const string HardcoverSeriesWebsite = "https://hardcover.app/id/series/";
     private const string HardcoverBookWebsite = "https://hardcover.app/id/book/";
     private const string MangaBakaWebsite = "https://mangabaka.org/";
+
+    /// <summary>
+    /// Hardcover's public, slug-based URLs (as pasted by a user), distinct from the internal numeric-id
+    /// <see cref="HardcoverSeriesWebsite"/>/<see cref="HardcoverBookWebsite"/> links Kavita generates itself.
+    /// The value is if the url points at a single book, rather than a series
+    /// </summary>
+    private static readonly Dictionary<string, bool> HardcoverPublicWebsites = new()
+    {
+        {"https://hardcover.app/books/", true},
+        {"https://hardcover.app/series/", false},
+    };
 
 
     /// <summary>
@@ -40,7 +53,6 @@ public static class ExternalIdParser
     {
         {AniListWeblinkWebsite, 0},
         {MalWeblinkWebsite, 0},
-        {GoogleBooksWeblinkWebsite, 0},
         {MangaDexWeblinkWebsite, 0},
         {AniListStaffWebsite, 0},
         {AniListCharacterWebsite, 0},
@@ -84,19 +96,14 @@ public static class ExternalIdParser
         return ExtractId<int?>(url, AniListStaffWebsite) ?? 0;
     }
 
-    public static string? GetGoogleBooksId(string? weblinks)
-    {
-        return ExtractId<string?>(weblinks, GoogleBooksWeblinkWebsite);
-    }
-
     public static string? GetMangaDexId(string? weblinks)
     {
         return ExtractId<string?>(weblinks, MangaDexWeblinkWebsite);
     }
 
-    public static long GetMangaBakaId(string? weblinks)
+    public static int GetMangaBakaId(string? weblinks)
     {
-        return ExtractId<long?>(weblinks, MangaBakaWebsite) ?? 0;
+        return ExtractId<int?>(weblinks, MangaBakaWebsite) ?? ExtractId<int?>(weblinks, MangaBakaWebsite, 1) ?? 0;
     }
 
     #region Header-based Parsing
@@ -146,13 +153,37 @@ public static class ExternalIdParser
         return ExtractId<int?>(weblinks, HardcoverBookWebsite) ?? 0;
     }
 
+    /// <summary>
+    /// Extracts the slug from a public hardcover.app book/series URL (e.g. https://hardcover.app/books/{slug}),
+    /// along with if the url pointed at a single book or at a series
+    /// </summary>
+    /// <remarks>Returns null for the numeric-id links Kavita generates itself, as those carry an id and not a slug</remarks>
+    public static HardcoverUrlSlug? GetHardcoverSlugFromUrl(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+
+        var trimmed = text.Trim();
+
+        var website = HardcoverPublicWebsites.Keys.FirstOrDefault(w => trimmed.StartsWith(w, StringComparison.OrdinalIgnoreCase));
+        if (website == null) return null;
+
+        var slug = trimmed[website.Length..].Split('/', '?', '#')[0];
+        if (string.IsNullOrEmpty(slug)) return null;
+
+        // The legacy https://hardcover.app/series/id/{id} links Kavita used to generate would otherwise be read as
+        // the slug "id". The current HardcoverSeriesWebsite layout doesn't start with a public url
+        if (slug.Equals("id", StringComparison.OrdinalIgnoreCase)) return null;
+
+        return new HardcoverUrlSlug(slug, HardcoverPublicWebsites[website]);
+    }
+
     public static string GetHardcoverStaffId(string? url)
     {
         try
         {
             return ExtractId<string?>(url, HardcoverStaffWebsite) ?? string.Empty;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return string.Empty;
         }
@@ -163,18 +194,25 @@ public static class ExternalIdParser
     /// </summary>
     /// <param name="webLinks"></param>
     /// <param name="website"></param>
+    /// <param name="indexOverride"></param>
     /// <returns></returns>
-    private static T? ExtractId<T>(string? webLinks, string website)
+    private static T? ExtractId<T>(string? webLinks, string website, int? indexOverride = null)
     {
         if (string.IsNullOrEmpty(webLinks)) return default;
 
-        var index = WeblinkExtractionMap[website];
+        var index = indexOverride ?? WeblinkExtractionMap[website];
         foreach (var webLink in webLinks.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             if (!webLink.StartsWith(website)) continue;
 
             var tokens = webLink.Split(website)[1].Split('/');
             var value = tokens[index];
+
+            // Clean any query params
+            if (QueryParamsRegex().IsMatch(value))
+            {
+                value = value.Split('?')[0];
+            }
 
             if (typeof(T) == typeof(int?))
             {
@@ -227,4 +265,7 @@ public static class ExternalIdParser
 
         throw new ArgumentException("Unsupported ID type. Supported types are int, long, and string.", nameof(id));
     }
+
+    [GeneratedRegex(".*?\\D+=.*")]
+    private static partial Regex QueryParamsRegex();
 }

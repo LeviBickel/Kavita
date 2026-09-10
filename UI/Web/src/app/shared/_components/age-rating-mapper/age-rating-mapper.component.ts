@@ -22,6 +22,8 @@ import {AgeRating} from "../../../_models/metadata/age-rating";
 import {AgeRatingDto} from "../../../_models/metadata/age-rating-dto";
 import {AgeRatingPipe} from "../../../_pipes/age-rating.pipe";
 import {MetadataService} from "../../../_services/metadata.service";
+import {FormFieldDirective} from "../../../_directives/form-field.directive";
+import {ValidationErrorsComponent} from "../validation-errors/validation-errors.component";
 
 let nextId = 0;
 
@@ -76,8 +78,7 @@ export function packAgeRatingMappings(rows: Array<AgeRatingMappingRow>): Record<
   imports: [
     AgeRatingPipe,
     FormsModule,
-    ReactiveFormsModule,
-  ],
+    ReactiveFormsModule, FormFieldDirective, ValidationErrorsComponent],
   templateUrl: './age-rating-mapper.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -94,6 +95,10 @@ export class AgeRatingMapperComponent implements OnInit {
   sourceLabel = input<string>('');
   /** Prefix for generated DOM ids, so multiple mappers on a page don't collide */
   idPrefix = input<string>(`age-rating-mapper-${nextId++}`);
+  /**
+   * If any values present replaces the input field with a dropdown with these options
+   */
+  strValues = input<string[]>([]);
 
   ageRatings = signal<Array<AgeRatingDto>>([]);
 

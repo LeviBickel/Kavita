@@ -3,7 +3,6 @@
         "title": "Увійдіть у свій обліковий запис",
         "username": "{{common.username}}",
         "password": "{{common.password}}",
-        "password-validation": "{{validation.password-validation}}",
         "forgot-password": "Забули пароль?",
         "submit": "Увійдіть",
         "oidc": "OpenID Connect"
@@ -21,7 +20,6 @@
         "edit": "{{common.edit}}",
         "close": "{{common.close}}",
         "username": "{{common.username}}",
-        "required": "{{validation.required-field}}",
         "email": "{{common.email}}",
         "cancel": "{{common.cancel}}",
         "saving": "Збереження…",
@@ -36,31 +34,6 @@
         "libraries-label": "{{common.libraries}}",
         "roles-label": "{{common.roles}}",
         "warning-read-only": "Облікові записи \"Тільки для читання\" мають обмежені дозволи"
-    },
-    "user-scrobble-history": {
-        "filter-label": "{{common.filter}}",
-        "created-header": "Створено",
-        "last-modified-header": "Останні Зміни",
-        "type-header": "Тип",
-        "series-header": "Серія",
-        "volume-and-chapter-num": "Том {{v}} Розділ {{n}}",
-        "rating": "Рейтинг {{r}}",
-        "special": "{{entity-title.special}}",
-        "not-applicable": "Незастосовно",
-        "volume-num": "Том",
-        "description": "Тут ви знайдете всі відстежені події вашого облікового запису. Щоб такі події зʼявилися, треба спершу налаштувати провайдера таких змін. Всі опрацьовані події зникають за місяць. Якщо ви бачите неопрацьовані події, імовірно, для них не знайшлося відповідних звʼязків. Звʼяжіться з адміністратором, щоб їх виправити.",
-        "not-read-warning": "Провайдери даних завжди зберігатимуть найбільшу кількість",
-        "title": "Історія відстежень",
-        "data-header": "Дані",
-        "is-processed-header": "На опрацюванні",
-        "no-data": "{{common.no-data}}",
-        "processed": "Опрацьовано",
-        "not-processed": "Не опрацьовано",
-        "chapter-num": "Розділ {{num}}",
-        "select-all-label": "Вибрати все",
-        "delete-selected-label": "Видалити вибране",
-        "token-expired": "Термін дії вашого токена AniList закінчився! Події скроблінгу не оброблятимуться, доки ви не поновите його на сторінці Облікові записи.",
-        "scrobbling-disabled": "Скроблінг вимкнено в налаштуваннях вашого облікового запису."
     },
     "review-card-modal": {
         "close": "{{common.close}}",
@@ -200,8 +173,6 @@
         "save": "{{common.save}}",
         "close": "{{common.close}}",
         "cancel": "{{common.cancel}}",
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}",
         "device-platform-label": "{{manage-devices.platform-label}}",
         "title": "Редагувати пристрій електронної пошти",
         "email-tooltip": "Ця скринька буде використовуватися для прийняття файлів через функцію \"Відправити\""
@@ -210,7 +181,6 @@
         "password-label": "{{common.password}}",
         "reset": "{{common.reset}}",
         "save": "{{common.save}}",
-        "required-field": "{{validation.required-field}}",
         "confirm-password-label": "Підтвердити пароль",
         "current-password-label": "Поточний пароль",
         "new-password-label": "Новий пароль",
@@ -219,8 +189,6 @@
     },
     "change-email": {
         "email-label": "Новий електронний лист",
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}",
         "reset": "{{common.reset}}",
         "save": "{{common.save}}",
         "email-title": "Електронна пошта",
@@ -324,8 +292,6 @@
     },
     "reset-password": {
         "email-label": "{{common.email}}",
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}",
         "submit": "{{common.submit}}",
         "title": "Скидання пароля",
         "description": "Введіть електронну адресу вашого облікового запису. Kavita надішле вам електронного листа, якщо у вас є дійсна адреса, інакше попросіть адміністратора скинути ваш пароль."
@@ -349,7 +315,6 @@
     "invite-user": {
         "close": "{{common.close}}",
         "email": "{{common.email}}",
-        "required-field": "{{common.required-field}}",
         "cancel": "{{common.cancel}}",
         "email-not-sent": "{{toasts.email-not-sent}}",
         "notice": "{{manage-settings.notice}}",
@@ -373,7 +338,6 @@
     },
     "book-line-overlay": {
         "close": "{{common.close}}",
-        "required-field": "{{common.required-field}}",
         "save": "{{common.save}}",
         "copy": "Копіювати",
         "bookmark": "Закладка",
@@ -401,8 +365,6 @@
         "username-label": "{{common.username}}",
         "password-label": "{{common.password}}",
         "email-label": "{{common.email}}",
-        "required-field": "{{common.required-field}}",
-        "valid-email": "{{common.valid-email}}",
         "password-validation": "{{validation.password-validation}}",
         "title": "Зареєструватися",
         "description": "Заповніть форму, щоб завершити реєстрацію",
@@ -411,7 +373,6 @@
     },
     "confirm-reset-password": {
         "password-label": "{{common.password}}",
-        "required-field": "{{validation.required-field}}",
         "submit": "{{common.submit}}",
         "password-validation": "{{validation.password-validation}}",
         "title": "Скидання пароля",
@@ -421,8 +382,6 @@
         "username-label": "{{common.username}}",
         "email-label": "{{common.email}}",
         "password-label": "{{common.password}}",
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}",
         "password-validation": "{{validation.password-validation}}",
         "title": "Зареєструватися",
         "description": "Заповніть форму, щоб зареєструвати обліковий запис адміністратора",
@@ -522,7 +481,6 @@
         "reset": "{{common.reset}}",
         "cancel": "{{common.cancel}}",
         "save": "{{common.save}}",
-        "required-field": "{{validation.required-field}}",
         "help": "{{common.help}}",
         "edit-title": "Редагувати {{name}}",
         "add-title": "Додати бібліотеку",
@@ -946,7 +904,6 @@
         "profile-link-alt": "Профіль"
     },
     "edit-collection-tags": {
-        "required-field": "{{validation.required-field}}",
         "save": "{{common.save}}",
         "close": "{{common.close}}",
         "cancel": "{{common.cancel}}",
@@ -1149,7 +1106,6 @@
     "edit-reading-list-modal": {
         "close": "{{common.close}}",
         "save": "{{common.save}}",
-        "required-field": "{{validation.required-field}}",
         "title": "Редагувати список для читання: {{name}}",
         "year-validation": "Має бути більше ніж 1000, 0 або порожнім",
         "month-validation": "Має бути від 1 до 12 або порожнім",
@@ -1294,7 +1250,6 @@
         "location-label": "{{metadata-fields.locations-title}}",
         "language-label": "{{metadata-fields.language-title}}",
         "age-rating-label": "{{metadata-fields.age-rating-title}}",
-        "required-field": "{{validation.required-field}}",
         "close": "{{common.close}}",
         "release-year-label": "{{sort-field-pipe.release-year}}",
         "web-link-label": "{{tabs.weblink-tab}}",
@@ -1509,7 +1464,6 @@
         "save": "{{common.save}}",
         "edit-smart-filter": "Редагувати {{name}}",
         "name-label": "Ім'я",
-        "required-field": "Розумним фільтрам потрібна назва",
         "filter-name-unique": "Назви смарт-фільтрів мають бути унікальними"
     },
     "edit-external-source-item": {
@@ -1517,7 +1471,6 @@
         "edit": "{{common.edit}}",
         "cancel": "{{common.cancel}}",
         "delete": "{{common.delete}}",
-        "required": "{{validation.required-field}}",
         "not-unique": "Зовнішнє джерело існує на цьому хості. Переконайтеся, що у вас немає дублікатів",
         "title": "Нове зовнішнє джерело",
         "host-label": "Хост",
@@ -1692,7 +1645,6 @@
         "provider-tooltip": "Налаштування постачальника вимагають ручного натискання кнопки «Зберегти». Kavita має бути налаштована як конфіденційний клієнт і потребує URL-адреси перенаправлення. Докладніше див. у <a href='https://wiki.kavitareader.com/guides/admin-settings/open-id-connect/' target='_blank' rel='noreferrer noopener'>вікі</a>.",
         "behavior-title": "Поведінка",
         "other-field-required": "{{validation.other-field-required}}",
-        "invalid-uri": "{{validation.invalid-uri}}",
         "manual-save-label": "Зміна налаштувань постачальника вимагає ручного збереження",
         "authority-label": "Авторитет",
         "authority-tooltip": "URL-адреса вашого постачальника OIDC, не включайте шлях .well-known/openid-configuration",
@@ -1750,8 +1702,7 @@
         "close": "{{common.close}}",
         "save": "{{common.save}}",
         "delete": "{{common.delete}}",
-        "min-length": "Відгук має містити щонайменше {{count}} символів",
-        "required": "{{validation.required-field}}"
+        "min-length": "Відгук має містити щонайменше {{count}} символів"
     },
     "api-key": {
         "copy": "{{book-line-overlay.copy}}"
@@ -2315,7 +2266,6 @@
         "asin-label": "ASIN",
         "asin-tooltip": "https://www.amazon.com/stores/J.K.-Rowling/author/{ASIN}",
         "description-label": "Опис",
-        "required-field": "{{validation.required-field}}",
         "cover-image-description": "{{edit-series-modal.cover-image-description}}",
         "cover-image-description-extra": "Або ж ви можете завантажити обкладинку з CoversDB, якщо така є.",
         "save": "{{common.save}}",
@@ -2324,8 +2274,7 @@
         "alias-overlap": "Цей псевдонім вже вказує на іншу особу або є іменем цієї особи, розгляньте можливість їх об'єднання.",
         "aliases-tooltip": "Коли серію позначено псевдонімом особи, ця особа призначається, а не створюється нова особа. Під час видалення псевдоніма вам доведеться повторно просканувати серію, щоб зміни відобразилися.",
         "mal-tooltip-character": "https://myanimelist.net/character/{MalId}/",
-        "anilist-tooltip-character": "https://anilist.co/character/{AniListId}/",
-        "invalid-amazon-code": "ASIN має починатися з B0 або BT"
+        "anilist-tooltip-character": "https://anilist.co/character/{AniListId}/"
     },
     "merge-person-modal": {
         "title": "{{personName}}",
@@ -2912,7 +2861,6 @@
         "name-label": "Ім'я",
         "key-length-label": "Довжина ключа",
         "expiration-label": "Термін дії",
-        "required-field": "{{validations.required-field}}",
         "total-key-length": "Загальна довжина ключа: {{length}}",
         "cancel": "{{common.cancel}}",
         "close": "{{common.close}}",

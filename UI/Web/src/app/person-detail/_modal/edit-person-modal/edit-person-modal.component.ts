@@ -1,4 +1,13 @@
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, Input, OnInit, ViewChild} from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  inject,
+  Input,
+  OnInit,
+  signal,
+  ViewChild
+} from '@angular/core';
 import {UtilityService} from "../../../shared/_services/utility.service";
 import {
   AbstractControl,
@@ -31,12 +40,13 @@ import {UploadService} from "../../../_services/upload.service";
 import {ImageService} from "../../../_services/image.service";
 import {SettingItemComponent} from "../../../settings/_components/setting-item/setting-item.component";
 import {AccountService} from "../../../_services/account.service";
-import {ToastrService} from "ngx-toastr";
+import {ToastrService} from '@openng/ngx-toastr';
 import {EditListComponent} from "../../../shared/edit-list/edit-list.component";
 import {BreakpointService} from "../../../_services/breakpoint.service";
 import {modalSaved} from "../../../_models/modal/modal-result";
 import {Tabs} from "../../../_models/tabs";
 import {TabTitlePipe} from "../../../_pipes/tab-title.pipe";
+import {FormFieldDirective} from "../../../_directives/form-field.directive";
 
 @Component({
   selector: 'app-edit-person-modal',
@@ -52,7 +62,8 @@ import {TabTitlePipe} from "../../../_pipes/tab-title.pipe";
     SettingItemComponent,
     NgbNavLink,
     EditListComponent,
-    TabTitlePipe
+    TabTitlePipe,
+    FormFieldDirective
   ],
   templateUrl: './edit-person-modal.component.html',
   styleUrl: './edit-person-modal.component.scss',
@@ -89,7 +100,7 @@ export class EditPersonModalComponent implements OnInit {
   selectedCover: string = '';
   coverImageReset = false;
   coverImageDirty = false;
-  chooserConfig: CoverImageChooserConfig = {};
+  chooserConfig = signal<CoverImageChooserConfig>({});
   fetchDisabled: boolean = false;
   /**
    * Suffix to include in the tooltip for external ids if they support characters
@@ -107,7 +118,7 @@ export class EditPersonModalComponent implements OnInit {
       this.editForm.get('hardcoverId')!.setValue(this.person.hardcoverId || '');
 
       this.editForm.addControl('coverImageLocked', new FormControl(this.person.coverImageLocked, []));
-      this.chooserConfig = this.coverChooserConfigFactory.forPerson(this.person);
+      this.chooserConfig.set(this.coverChooserConfigFactory.forPerson(this.person));
 
       const roles = (this.person.roles ?? []);
       if (roles.length === 1 && roles.includes(PersonRole.Character)) {
@@ -167,8 +178,7 @@ export class EditPersonModalComponent implements OnInit {
   handleReset() {
     this.coverImageReset = true;
     this.editForm.patchValue({ coverImageLocked: false });
-    this.chooserConfig = { ...this.chooserConfig, isLocked: false };
-    this.cdRef.markForCheck();
+    this.chooserConfig.set({ ...this.chooserConfig(), isLocked: false });
   }
 
   downloadCover() {

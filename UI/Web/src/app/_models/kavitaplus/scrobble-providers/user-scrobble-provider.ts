@@ -16,14 +16,14 @@ export class UserScrobbleProvider {
   get generateTokenLink(): string | null {
     switch (this.provider) {
       case ScrobbleProvider.Hardcover:
-        return "https://hardcover.app/account/api";
+        return "https://hardcover.app/account/api/keys/new?scope=read%3Acatalog+read%3Alibrary+read%3Ame%3Acontent+write%3Alibrary+write%3Areviews";
     }
 
     return null;
   }
 
   get supportsOAuthFlow() {
-    return ![ScrobbleProvider.Hardcover, ScrobbleProvider.Cbr, ScrobbleProvider.Kavita].includes(this.provider);
+    return ![ScrobbleProvider.Cbr, ScrobbleProvider.Kavita].includes(this.provider);
   }
 
   get oAuthUpStream() {
@@ -34,6 +34,8 @@ export class UserScrobbleProvider {
         return OAuthUpstream.MyAnimeList;
       case ScrobbleProvider.MangaBaka:
         return OAuthUpstream.MangaBaka;
+      case ScrobbleProvider.Hardcover:
+        return OAuthUpstream.Hardcover;
     }
 
     return null;

@@ -158,7 +158,14 @@
         "reset": "{{common.reset}}",
         "image-num": "Imagem {{num}}",
         "apply": "{{common.apply}}",
-        "applied": "{{theme-manager.applied}}"
+        "applied": "{{theme-manager.applied}}",
+        "cover-locked": "Capa está bloqueada",
+        "cover-not-locked": "Capa não está bloqueada",
+        "reset-tab": "Repor",
+        "no-images": "Nenhuma imagem disponível",
+        "loading": "{{common.loading}}",
+        "select-image-alt": "Selecione uma imagem",
+        "download-cover": "Descarregar Capa"
     },
     "download-indicator": {
         "completed": "Descarga completa",
@@ -250,10 +257,10 @@
         "admin-system": "Sistema",
         "admin-email-history": "Histórico de Emails",
         "admin-kavitaplus": "Licença",
-        "admin-matched-metadata": "Metadados com Correspondência",
-        "admin-manage-tokens": "Gerir Tokens de Utilizador",
-        "admin-metadata": "Gerir Metadados",
-        "admin-mappings-import": "Configurações de Metadados",
+        "admin-matched-metadata": "Série com Correspondência",
+        "admin-manage-tokens": "Tokens de Utilizador",
+        "admin-metadata": "Controlo dos Metadados",
+        "admin-mappings-import": "Controlos de Metadados",
         "scrobble-holds": "Pausas de Scrobble",
         "account": "Conta",
         "preferences": "Preferências",
@@ -267,8 +274,10 @@
         "customize": "Personalizar",
         "remap-rules": "Regras de remapeamento",
         "mal-stack-import": "Pilha MAL",
-        "admin-public-metadata": "Gerir Metadados",
-        "scrobble-settings": "Conexões"
+        "admin-public-metadata": "Controlos dos Metadados",
+        "scrobble-settings": "Conexões",
+        "my-activity": "A minha Atividade",
+        "admin-manage-kavitaplus-activity": "Atividade do Kavita+"
     },
     "cbl-manager": {
         "enter-an-url-pre-title": "{{font-manager.enter-an-url-pre-title}}",
@@ -393,7 +402,9 @@
         "cbl-number-label": "N.º CBL",
         "cbl-number-placeholder": "ex: 1",
         "kavita-chapter-label": "Capítulo do Kavita (opcional)",
-        "series-level": "Ao nível da série"
+        "series-level": "Ao nível da série",
+        "no-data": "{{common.no-data}}",
+        "no-data-description": "Não existe nenhuma regra de remapeamento."
     },
     "browse-cbl-repo-modal": {
         "loading": "{{common.loading}}",
@@ -459,7 +470,8 @@
         "no-data": "Nada para ver aqui",
         "left-to-process": "Por Processar: {{leftToProcess}} / {{totalToProcess}}",
         "download-in-queue": "{{num}} downloads em espera",
-        "reading-now": "{{num}} a ler agora"
+        "reading-now": "{{num}} a ler agora",
+        "not-connected": "Sem ligação, tente atualizar"
     },
     "download-queue-drawer": {
         "title": "Downloads",
@@ -520,7 +532,11 @@
         "double-click": "duplo clique",
         "close-reader": "Fechar leitor",
         "toggle-menu": "Abrir/Fechar Menu",
-        "offset-double-page": "{{keybind-setting-description-pipe.key-bind-title-offset-double-page}}"
+        "offset-double-page": "{{keybind-setting-description-pipe.key-bind-title-offset-double-page}}",
+        "previous-chapter": "{{keybind-setting-description-pipe.key-bind-title-previous-chapter}}",
+        "next-chapter": "{{keybind-setting-description-pipe.key-bind-title-next-chapter}}",
+        "first-page": "{{keybind-setting-description-pipe.key-bind-title-first-page}}",
+        "last-page": "{{keybind-setting-description-pipe.key-bind-title-last-page}}"
     },
     "edit-reading-list-modal": {
         "name-label": "{{edit-series-modal.name-label}}",
@@ -532,7 +548,6 @@
         "year-validation": "Tem de ser maior que 1000, 0 ou em branco",
         "month-validation": "Tem de estar entre 1 e 12 ou em branco",
         "name-unique-validation": "O nome tem de ser único",
-        "required-field": "{{validation.required-field}}",
         "summary-label": "Sumário",
         "year-label": "Ano",
         "month-label": "Mês",
@@ -664,7 +679,6 @@
         "language-label": "{{metadata-fields.language-title}}",
         "age-rating-label": "{{metadata-fields.age-rating-title}}",
         "publication-status-label": "Estado da Publicação",
-        "required-field": "{{validation.required-field}}",
         "close": "{{common.close}}",
         "name-label": "Nome",
         "sort-name-label": "Nome para Ordenação",
@@ -706,7 +720,11 @@
         "specials-volume": "Especiais",
         "release-year-validation": "{{validation.year-validation}}",
         "volumes-title": "{{tab.volumes-tab}}",
-        "no-data": "{{common.no-data}}"
+        "no-data": "{{common.no-data}}",
+        "align-sort-name": "Alterou o nome desta série, mas o nome de ordenação está bloqueado. Pretende atualizá-lo para corresponder ao novo nome?",
+        "metadata-provider-override-label": "Sobreposição do provedor de metadados",
+        "metadata-provider-override-tooltip": "Use um provedor de metadados diferente do padrão da biblioteca para esta série",
+        "metadata-provider-override-default": "Use o padrão da biblioteca"
     },
     "edit-chapter-modal": {
         "external-ids-tab": "{{tabs.external-ids-tab}}",
@@ -845,7 +863,6 @@
         "save": "{{common.save}}",
         "edit-smart-filter": "Editar {{name}}",
         "name-label": "Nome",
-        "required-field": "Os Filtros Inteligentes requerem um nome",
         "filter-name-unique": "Os nomes dos Filtros Inteligentes têm de ser únicos"
     },
     "edit-external-source-item": {
@@ -859,8 +876,7 @@
         "edit": "{{common.edit}}",
         "cancel": "{{common.cancel}}",
         "delete": "{{common.delete}}",
-        "pattern": "O Host tem de ter um url http(s):// válido",
-        "required": "{{validation.required-field}}"
+        "pattern": "O Host tem de ter um url http(s):// válido"
     },
     "filter-entity-type-pipe": {
         "series": "{{tabs.series-tab}}",
@@ -1248,7 +1264,8 @@
         "comicVineId-label": "Id Comic Vine",
         "metronId-label": "Id Metron",
         "not-set-label": "Não definido",
-        "isbn-label": "{{edit-chapter-modal.isbn-label}}"
+        "isbn-label": "{{edit-chapter-modal.isbn-label}}",
+        "cbrId-label": "ID do Comic Book Roundup"
     },
     "tabs": {
         "external-ids-tab": "Ids Externas",
@@ -1291,7 +1308,16 @@
         "overview-tab": "Visão Geral",
         "management-tab": "Gestão",
         "activity-tab": "Atividade",
-        "external-sources-tab": "Fontes externas"
+        "external-sources-tab": "Fontes externas",
+        "uploaded-tab": "Carregado",
+        "current-tab": "Atual",
+        "kavita-plus-tab": "Kavita+",
+        "other-tab": "Outro",
+        "all-tab": "Todas",
+        "scrobbles-tab": "Scrobbles",
+        "failed-tab": "Falhou",
+        "my-changes-tab": "As minhas Alterações",
+        "scrobble-holds-tab": "Scrobble Pausados"
     },
     "title": {
         "reading-list": "Listas de Leitura",
@@ -1310,7 +1336,6 @@
         "title": "Faça login na sua conta",
         "username": "{{common.username}}",
         "password": "{{common.password}}",
-        "password-validation": "{{validation.password-validation}}",
         "forgot-password": "Esqueceu a senha?",
         "submit": "Fazer login",
         "oidc": "OpenID Connect"
@@ -1343,7 +1368,6 @@
         "behavior-title": "Comportamento",
         "other-field-required": "{{validation.other-field-required}}",
         "other-field-invalid": "{{validation.other-field-invalid}}",
-        "invalid-uri": "{{validation.invalid-uri}}",
         "tls-required": "O provedor OIDC tem de usar tls (https)",
         "checking-authority": "A verificar se a autoridade é válida, aguarde por favor...",
         "manual-save-label": "Alterar as configurações do provedor requer gravar manualmente",
@@ -1400,7 +1424,9 @@
         "add-auth-key": "Nova",
         "description": "Uma chave de autenticação é como uma palavra passe. Ao alterna-la irá invalidar clientes existentes.",
         "copy-key": "{{common.copy}}",
-        "clients-opds-error": "Houve uma falha a carregar o url OPDS con a chave: {{key}}"
+        "clients-opds-error": "Houve uma falha a carregar o url OPDS con a chave: {{key}}",
+        "no-data": "{{common.no-data}}",
+        "no-data-description": "Ainda não tem chaves de autorização."
     },
     "create-auth-key": {
         "create-title": "Criar Chave de Autenticação",
@@ -1408,7 +1434,6 @@
         "name-label": "Nome",
         "key-length-label": "Comprimento da Chave",
         "expiration-label": "Validade",
-        "required-field": "{{validation.required-field}}",
         "total-key-length": "Comprimento Total da Chave: {{length}}",
         "cancel": "{{common.cancel}}",
         "close": "{{common.close}}",
@@ -1432,7 +1457,6 @@
         "edit": "{{common.edit}}",
         "close": "{{common.close}}",
         "username": "{{common.username}}",
-        "required": "{{validation.required-field}}",
         "email": "{{common.email}}",
         "invalid-email-warning": "Um email inválido bloqueará algumas funcionalidades do Kavita",
         "warning-read-only": "As contas apenas de leitura têm permissões limitadas",
@@ -1447,33 +1471,6 @@
         "identity-provider-tooltip": "Os utilizadores do Kavita nunca são sincronizados com contas OIDC.",
         "libraries-label": "{{common.libraries}}",
         "roles-label": "{{common.roles}}"
-    },
-    "user-scrobble-history": {
-        "title": "Histórico de Scrobble",
-        "description": "Aqui você encontrará todos os eventos scrobble vinculados à sua conta. Para que os eventos existam, você deve ter um provedor scrobble ativo configurado. Todos os eventos processados serão apagados após um mês. Se houver eventos não processados, é provável que eles não possam formar correspondências upstream. Entre em contato com seu administrador para corrigi-los.",
-        "not-read-warning": "Os provedores de upstream sempre manterão o maior número",
-        "filter-label": "{{common.filter}}",
-        "created-header": "Criado",
-        "last-modified-header": "Última alteração",
-        "type-header": "Tipo",
-        "series-header": "Séries",
-        "data-header": "Dados",
-        "is-processed-header": "Processado",
-        "select-all-label": "Selecionar tudo",
-        "delete-selected-label": "Apagar selecionado",
-        "no-data": "{{common.no-data}}",
-        "volume-and-chapter-num": "Volume {{v}} Capítulo {{n}}",
-        "volume-num": "{{entity-title.volume-num}}",
-        "chapter-num": "{{entity-title.chapter-num}}",
-        "rating": "Classificação {{r}}",
-        "not-applicable": "Não Aplicável",
-        "processed": "Processado",
-        "not-processed": "Não Processado",
-        "special": "{{entity-title.special}}",
-        "token-expired": "O token do AniList expirou! Os eventos de scrobbling não serão processados até que o token seja refrescado na página Contas.",
-        "scrobbling-disabled": "O scrobbling está desabilitado nas suas Definições de Conta.",
-        "provider-header": "Provedor",
-        "read-status-update": "Estado: {{estado}}"
     },
     "scrobble-event-type-pipe": {
         "chapter-read": "Leitura Efetuada",
@@ -1496,8 +1493,7 @@
         "close": "{{common.close}}",
         "save": "{{common.save}}",
         "delete": "{{common.delete}}",
-        "min-length": "A crítica tem de ter no mínimo {{count}} caracteres",
-        "required": "{{validation.required-field}}"
+        "min-length": "A crítica tem de ter no mínimo {{count}} caracteres"
     },
     "review-card-modal": {
         "close": "{{common.close}}",
@@ -1607,7 +1603,8 @@
         "no-data": "{{typeahead.no-data}}",
         "series-name-header": "{{manage-matched-metadata.series-name-header}}",
         "created-header": "{{manage-media-issues.created-header}}",
-        "delete-label": "{{common.remove}}"
+        "delete-label": "{{common.remove}}",
+        "no-data-description": "Não tem nenhuma série em espera. As séries que colocar em espera aparecerão aqui."
     },
     "theme-manager": {
         "description": "Kavita vem em muitas cores, encontrar um esquema de cores que atende às suas necessidades ou construir um você mesmo e compartilhá-lo. Temas podem ser aplicados para sua conta ou aplicados a todas as contas.",
@@ -1641,12 +1638,12 @@
         "drag-n-drop": "{{cover-image-chooser.drag-n-drop}}",
         "upload": "{{cover-image-chooser.upload}}",
         "upload-continued": "um ficheiro font",
-        "preview-default": "Suba a sua font através de um ficheiro ou url Google Font",
+        "preview-default": "Selecione uma família para a pré-visualizar ou adicione a sua própria fonte através de um ficheiro ou de um url do Google Fonts",
         "delete": "{{common.delete}}",
         "no-preview": "Não é possível pré-visualizar esta font. Irá ser usado o estilo por defeito do livro.",
         "brown-fox": "A raposa rápida e castanha salta por cima do cão preguiçoso",
         "filter-system-fonts-label": "Filtrar Fonts de Sistema",
-        "description": "O leitor de epubs do Kavita inclui algumas fonts, pode adicionar as suas fonts aqui. Suba um ficheiro, ou use um url de uma font google. Veja o <a href='{{wikiLink}}' target='_blank' rel='noreferrer noopener'>wiki</a> para mais informações.",
+        "description": "Fontes que pode usar no leitor de epubs. Estão agrupadas por família, o nome que escolhe enquanto lê. Cada família tem um ou mais ficheiros com pesos e estilos diferentes. Pode obter fontes em {{googleFontsLink}}, ou veja a {{wikiLink}} para mais informação. ",
         "wiki": "Wiki",
         "google-fonts": "Google Fonts",
         "add-font": "Adicionar fonte",
@@ -1659,7 +1656,20 @@
         "roman": "Roman",
         "italic": "Itálico",
         "weight-thin": "fino",
-        "weight-black": "preto"
+        "weight-black": "preto",
+        "custom-only": "Apenas personalizado",
+        "var": "VAR",
+        "in-this-family": "nesta família",
+        "styles-summary": "· {{styles}}",
+        "regular": "Normal",
+        "wght": "peso",
+        "alphabet": "ABCDEFGHIJKLM abcdefghijklm 0123456789",
+        "weight-axis": "Eixo do peso",
+        "weight-axis-hint": "arraste para pré-visualizar o intervalo completo",
+        "reading-sample": "Exemplo de leitura",
+        "reading-sample-text": "Ela virou a página lentamente. A luz do candeeiro iluminava cada letra. Histórias sussurradas de tinta e papel pareciam erguer-se da lombada, os cinco feiticeiros pugilistas saltam rapidamente, e a noite continuou a ler.",
+        "provider-note-system": "Incluída, sempre disponível",
+        "provider-note-custom": "Carregada por si"
     },
     "theme": {
         "theme-dark": "Escuro",
@@ -1690,11 +1700,12 @@
         "add": "{{common.add}}",
         "delete": "{{common.delete}}",
         "edit": "{{common.edit}}",
-        "no-data": "{{typeahead.no-data}}",
+        "no-data": "{{common.no-data}}",
         "actions-header": "{{manage-users.actions-header}}",
         "warning": "Aviso",
         "client-devices-header": "Dispositivos Clientes",
-        "sendto-device-header": "Dispositivos baseados em Email"
+        "sendto-device-header": "Dispositivos baseados em Email",
+        "no-data-description": "Ainda não tem nenhum dispositivo configurados através de email."
     },
     "server-devices": {
         "client-devices-header": "{{manage-devices.client-devices-header}}",
@@ -1710,9 +1721,7 @@
         "email-tooltip": "Este email será usado para aceitar o ficheiro através da funcionalidade Enviar Para",
         "save": "{{common.save}}",
         "close": "{{common.close}}",
-        "cancel": "{{common.cancel}}",
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}"
+        "cancel": "{{common.cancel}}"
     },
     "client-device-card": {
         "auth-type-label": "Tipo de Autenticação",
@@ -1733,7 +1742,6 @@
         "confirm-password-label": "Confirmar Palavra Passe",
         "reset": "{{common.reset}}",
         "save": "{{common.save}}",
-        "required-field": "{{validation.required-field}}",
         "passwords-must-match": "As palavras passe têm de ser iguais",
         "permission-error": "Não tem permissões para alterar a sua palavra passe. Contacte o administrador do servidor."
     },
@@ -1741,8 +1749,7 @@
         "username-label": "{{common.username}}",
         "new-username-label": "Novo Nome de Utilizador",
         "reset": "{{common.reset}}",
-        "save": "{{common.save}}",
-        "required-field": "{{validation.required-field}}"
+        "save": "{{common.save}}"
     },
     "change-email": {
         "email-title": "Email",
@@ -1756,8 +1763,6 @@
         "invite-url-label": "Url de Convite",
         "invite-url-tooltip": "Copie e cole o url numa nova aba",
         "has-invalid-email": "Parece que não tem um email válido definido. A alteração de email requere que o administrador lhe envie um link para completar esta acção.",
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}",
         "reset": "{{common.reset}}",
         "save": "{{common.save}}"
     },
@@ -1953,7 +1958,8 @@
         "spin-off": "Spin-Off",
         "parent": "Origem",
         "edition": "Edição",
-        "annual": "Anual"
+        "annual": "Anual",
+        "cameo": "Participação especial"
     },
     "publication-status-pipe": {
         "ongoing": "Em curso",
@@ -2022,8 +2028,6 @@
         "title": "Repor Palavra Passe",
         "description": "Introduza o endereço de email da sua conta. O Kavita irá enviar um email se encontrar um endereço válido em ficheiro, caso contrário peça ao administrador para reiniciar a sua palavra-chave.",
         "email-label": "{{common.email}}",
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}",
         "submit": "{{common.submit}}"
     },
     "reset-password-modal": {
@@ -2086,7 +2090,6 @@
         "close": "{{common.close}}",
         "description": "Convide um utilizador para o seu servidor a inserir o e-mail dele. Ele receberá um e-mail para criar uma conta. Para que isto funcione, é necessário que os campos Nome do Host e E-mail estejam configurados na guia <a href=\"/settings#admin-email\" rel=\"noopener noreferrer\" target=\"_blank\">E-mail</a>; caso contrário, uma ligação será apresentada para que o configure no nome do utilizador.<br/><br/>Não é obrigatório que o e-mail seja válido.",
         "email": "{{common.email}}",
-        "required-field": "{{common.required-field}}",
         "setup-user-title": "Utilizador convidado",
         "setup-user-description": "Pode usar o link que está em baixo, ou usar o botão copiar, para configurar a conta de utilizador. Poderá ser necessário terminar a sessão antes de o usar o link para registar o novo utilizador.",
         "setup-user-account": "Configurar conta de utilizador",
@@ -2123,7 +2126,9 @@
         "all-status-label": "Todos",
         "dont-match-label": "Não Corresponde",
         "no-data": "{{common.no-data}}",
-        "match-alt": "Corresponder {{seriesName}}"
+        "match-alt": "Corresponder {{seriesName}}",
+        "total-matched-label": "Correspondências Totais",
+        "total-count": "Total: {{count}}"
     },
     "manage-user-tokens": {
         "description": "Os utilizadores que têm tokens de scrobbling, podem ter de os renovar ocasionalmente. O Kavita irá enviar um email automaticamente, se o email estiver configurado e for válido.",
@@ -2135,12 +2140,12 @@
         "expires-label": "Expira: {{date}}"
     },
     "manage-metadata-settings": {
-        "k+-warning": "As configurações abaixo são partilhadas com as encontradas na página K+. Pode alterá-los em qualquer local",
+        "k+-warning": "As configurações abaixo são partilhadas com as encontradas na página K+. Pode alterá-los em qualquer local.",
         "export-settings": "Exportar",
-        "export-tooltip": "Exporte a sua lista negra e lista branca, classificação etária e mapeamentos de campo",
+        "export-tooltip": "Exporte a sua lista negra e lista branca, classificação etária e mapeamentos de campo.",
         "export-file-name": "Configurações de Metadados do Kavita Export.json",
         "import-settings": "Importar",
-        "import-tooltip": "Importe as suas configurações ou as de outra pessoa",
+        "import-tooltip": "Importe as suas configurações ou as de outra pessoa.",
         "description": "O Kavita+ tem a capacidade de descarregar e escrever alguns metadados na base de dados. Esta página permite selecionar o que está abrangido.",
         "enabled-label": "Permitir Descarregar Metadados",
         "enabled-tooltip": "Permitir que o Kavita descarregue metadados e os persista na sua base de dados.",
@@ -2199,14 +2204,46 @@
         "people-header": "Pessoas",
         "tags-header": "Etiquetas",
         "source-genre-tags-placeholder": "Fonte de gênero/etiqueta",
-        "dest-genre-tags-placeholder": "Destino do gênero/etiqueta"
+        "dest-genre-tags-placeholder": "Destino do gênero/etiqueta",
+        "run-metadata-mappings": "Executar mapeamentos de metadados",
+        "run-metadata-mappings-tooltip": "Processe as séries através dos seus mapeamentos de metadados. Esta operação poderá demorar algum tempo e consumir mais recursos.",
+        "name-label": "Nome da Série",
+        "name-tooltip": "Permite que o nome da série seja atualizado quando o campo estiver desbloqueado. O nome no disco continua a ser utilizado para manter a correspondência da série durante as análises.",
+        "volume-header": "Volume",
+        "enable-volume-cover-label": "Capa do Volume",
+        "enable-volume-cover-tooltip": "Permitir que o Kavita defina as capas dos Volumes",
+        "language-header": "Idioma",
+        "language-description": "Configure a ordem de prioridade dos idiomas que o Kavita utiliza ao definir o Nome da série/Nome localizado. Pode adicionar ordens específicas para determinadas bibliotecas. Tenha em atenção que o Nome localizado nem sempre será guardado se isso fizer com que uma série tenha dois nomes de ficheiro diferentes.",
+        "global-series-name-language-label": "Nome",
+        "global-series-name-language-tooltip": "Determina a ordem de prioridade dos nomes das séries. Separe os códigos de idioma BCP47 com um ponto e vírgula. Por exemplo: en;ja-Latn;ja. Utilize {Native} para o título original do fornecedor (no sistema de escrita original) ou {Romaji} para o título romanizado, independentemente do idioma.",
+        "global-series-name-localized-language-label": "Nome Localizado",
+        "global-series-name-localized-language-tooltip": "Determina a ordem de prioridade dos nomes localizados das séries. Separe os códigos de idioma BCP47 com um ponto e vírgula. Por exemplo: en;ja-Latn;ja. Utilize {Native} para o título original do fornecedor (no sistema de escrita original) ou {Romaji} para o título romanizado, independentemente do idioma.",
+        "native-title-token-label": "Título original (escrita original)",
+        "romaji-title-token-label": "Título romanizado",
+        "language-library-override-header": "Configurações específicas das bibliotecas",
+        "language-library-override-description": "Uma configuração específica de biblioteca substitui completamente a ordem global para essa biblioteca, não acrescenta à global.",
+        "language-library-override-empty": "Sem configurações específicas para as bibliotecas. Todas as bibliotecas utilizam a ordem global acima.",
+        "language-override-library-label": "Biblioteca",
+        "language-override-library-placeholder": "Selecione uma biblioteca",
+        "language-override-remove": "Remover configuração específica",
+        "language-code-malformed": "O seguinte não é um código de idioma válido: {{codes}}",
+        "language-code-unknown": "Código de idioma não reconhecido: {{codes}}. Verifique se está correto. Será guardado na mesma.",
+        "unsaved-changes-invalid": "As alterações não estão a ser guardadas. Corrija os campos destacados para continuar a guardar.",
+        "add": "{{common.add}}",
+        "enable-age-rating-label": "Classificação Etária",
+        "enable-age-rating-tooltip": "Permitir que a classificação etária seja guardada quando o campo estiver desbloqueado. O Kavita utilizará sempre a classificação mais elevada definida nos controlos de mapeamento.",
+        "external-age-rating-header": "Mapeamento da classificação etária do provedor",
+        "external-age-rating-description": "Mapeia uma classificação de conteúdo original de um fornecedor de metadados para uma classificação etária. O Kavita+ já fará este mapeamento por si. Este mapeamento é cumulativo: a classificação etária mais elevada terá sempre precedência.",
+        "external-age-rating-label": "Classificação de conteúdo do provedor",
+        "tag-weight-label": "Filtrar etiquetas por peso (apenas Mangabaka)",
+        "tag-weight-tooltip": "Selecione um nível de peso das etiquetas a partir do qual pretende filtrar após o mapeamento das etiquetas. Por exemplo, 'Recorrente' irá filtrar 'Incidental' e 'Sem peso'.",
+        "tag-weight-disabled": "Não filtrar etiquetas"
     },
     "book-line-overlay": {
         "copy": "Copiar",
         "bookmark": "Marcador",
         "annotate": "Anotar",
         "close": "{{common.close}}",
-        "required-field": "{{common.required-field}}",
         "bookmark-label": "Nome do Marcador",
         "save": "{{common.save}}"
     },
@@ -2268,8 +2305,6 @@
         "username-label": "{{common.username}}",
         "password-label": "{{common.password}}",
         "email-label": "{{common.email}}",
-        "required-field": "{{common.required-field}}",
-        "valid-email": "{{common.valid-email}}",
         "password-validation": "{{validation.password-validation}}",
         "register": "Registar",
         "error-label": "Erro:"
@@ -2284,7 +2319,6 @@
         "title": "Repor Palavra Passe",
         "description": "Introduza a nova palavra passe",
         "password-label": "{{common.password}}",
-        "required-field": "{{validation.required-field}}",
         "submit": "{{common.submit}}",
         "password-validation": "{{validation.password-validation}}"
     },
@@ -2295,8 +2329,6 @@
         "email-label": "{{common.email}}",
         "email-tooltip": "O e-mail não precisa ser um endereço real, mas fornece acesso à palavra-passe esquecida. Ele não é enviado para fora do servidor, a menos que Kavita lhe envie um e-mail.",
         "password-label": "{{common.password}}",
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}",
         "password-validation": "{{validation.password-validation}}",
         "register": "Registar"
     },
@@ -2333,10 +2365,11 @@
         "on": "{{reader-settings.on}}",
         "off": "{{reader-settings.off}}",
         "loading": "{{common.loading}}",
-        "read-count-tooltip": "Leituras Totais"
+        "read-count-tooltip": "Leituras Totais",
+        "kavitaplus-audit-alt": "Atividade Kavita+"
     },
     "match-series-modal": {
-        "description": "Selecione uma correspondência para reassociar os metadados do Kavita+ e regenerar os eventos de scrobble.",
+        "description": "Selecione uma correspondência para reassociar os metadados do Kavita+ e regenerar os eventos de scrobble. Clique numa edição para obter metadados ao nível do Volume/Capítulo (se aplicável).",
         "close": "{{common.close}}",
         "save": "{{common.save}}",
         "dont-match-label": "Não corresponde",
@@ -2360,18 +2393,26 @@
         "volume-count": "{{match-series-result-item.volume-count}}",
         "chapter-count": "{{match-series-result-item.chapter-count}}",
         "matched-to": "Atualmente correspondido a",
-        "searching-against": "A pesquisar em {{provider}}"
+        "searching-against": "A pesquisar em {{provider}}",
+        "special-count": "{{match-series-result-item.special-count}}",
+        "change-provider-help": "Escolha um provedor diferente para pesquisar esta série",
+        "is-standalone-label": "É uma obra independente",
+        "is-standalone-tooltip": "Ative esta opção se esta série representar um único livro e o Hardcover não tiver uma entrada de série para o mesmo",
+        "provider-switch-help": "Os resultados são do provedor {{provider}}. Ao aplicar uma correspondência, esta série irá mudar para {{provider}}"
     },
     "match-series-result-item": {
-        "volume-count": "Vol {{ num }}",
-        "chapter-count": "Cap. {{ num }}",
-        "issue-count": "Número {{ num }}",
+        "volume-count": "Vol {{num}}",
+        "chapter-count": "Cap. {{num}}",
+        "issue-count": "Número {{num}}",
         "matched-alt": "Correspondência alternativa:",
         "more": "mais",
         "matched-alt-count": "títulos alternativos correspondentes",
         "alt-titles": "Títulos alternativos",
         "more-titles": "+{{count}} a mais",
-        "selected-alt": "Selecionado"
+        "selected-alt": "Selecionado",
+        "special-count": "Especial n. {{num}}",
+        "edition-main-count": "Principal n. {{num}}",
+        "edition-extra-count": "+{{num}} extras"
     },
     "metadata-fields": {
         "collections-title": "{{side-nav.collections}}",
@@ -2524,13 +2565,14 @@
         "cancel": "{{common.cancel}}",
         "next": "Seguinte",
         "save": "{{common.save}}",
-        "required-field": "{{validation.required-field}}",
         "file-type-group-label": "Tipos de Ficheiros",
         "file-type-group-tooltip": "Os tipos de ficheiros que o Kavita pode procurar. Por exemplo, Arquivo irá incluir todos os ficheiros cb*, zip, rar, etc.",
         "exclude-patterns-label": "Padrões de Exclusão",
         "exclude-patterns-tooltip": "Configura um conjunto de padrões (sintaxe Glob) que o Kavita irá excluir dos resultados da analise de directorias.",
         "help": "{{common.help}}",
-        "files-at-root-warning": "Uma ou mais pastas contém ficheiros na raiz. Kavita não suporta isto."
+        "files-at-root-warning": "Uma ou mais pastas contém ficheiros na raiz. Kavita não suporta isto.",
+        "metadata-provider-label": "Fornecedor de metadados",
+        "metadata-provider-tooltip": "Selecione a origem dos metadados utilizada pelo Kavita."
     },
     "file-type-group-pipe": {
         "archive": "Arquivo",
@@ -2714,7 +2756,7 @@
     },
     "manage-scrobble-errors": {
         "title": "Erros de Scrobbling",
-        "description": "Esta tabela contém problemas encontrados durante o scrobbling. Pode-a limpar sempre que quiser e esperar pelo próximo scrobble para ver alterações. Se existir uma série desconhecida, o melhor é corrigir o nome da série, ou o nome localizado, ou adicionar um weblink para o fornecedor.",
+        "description": "Esta tabela contém questões encontradas durante a escrobação. Você pode limpá-lo a qualquer momento e esperar pelo próximo carregamento de scrobble para ver. Se houver uma série desconhecida, use o jogo para corrigir e enquear eventos novamente.",
         "filter-label": "{{common.filter}}",
         "clear-errors": "Limpar Erros",
         "series-header": "Séries",
@@ -2722,7 +2764,8 @@
         "comment-header": "Comentário",
         "edit-header": "Editar",
         "edit-item-alt": "Editar {{seriesName}}",
-        "no-data": "Sem problemas"
+        "no-data": "Sem problemas",
+        "generic": "Ocorreu um erro desconhecido"
     },
     "default-date-pipe": {
         "never": "Nunca"
@@ -2814,12 +2857,13 @@
         "all-libraries": "Todas as Bibliotecas",
         "too-many-libraries": "Muito",
         "sharing-header": "Partilhar",
-        "no-data": "Não existem outros utilizadores.",
+        "no-data": "{{common.no-data}}",
         "actions-header": "Ações",
         "pending-tooltip": "Este utilizador não validou o seu email",
         "identity-provider-oidc-tooltip": "OIDC",
         "identity-provider-native-tooltip": "Nativo",
-        "profile-link-alt": "Perfil"
+        "profile-link-alt": "Perfil",
+        "no-data-description": "Não existem outros utilizadores."
     },
     "role-localized-pipe": {
         "admin": "Administrador",
@@ -2833,7 +2877,6 @@
     },
     "edit-collection-tags": {
         "title": "Editar Coleção {{collectionName}}",
-        "required-field": "{{validation.required-field}}",
         "save": "{{common.save}}",
         "close": "{{common.close}}",
         "cancel": "{{common.cancel}}",
@@ -2849,7 +2892,9 @@
         "last-sync-tooltip": "O Kavita sincroniza diariamente com o provedor.",
         "source-url-title": "Url de Origem:",
         "total-series-title": "Total de Séries:",
-        "missing-series-title": "Séries em Falta:"
+        "missing-series-title": "Séries em Falta:",
+        "series-tab": "{{tabs.series-tab}}",
+        "matched-series": "Séries Correspondentes:"
     },
     "library-recommended": {
         "no-data": "Nada a mostrar. Adicione metadados à sua biblioteca, leia ou classifique algo. Esta biblioteca também pode ter as recomendações desligadas.",
@@ -2911,7 +2956,9 @@
         "key-bind-title-first-page": "Primeira página",
         "key-bind-tooltip-first-page": "Ir para a primeira página",
         "key-bind-title-last-page": "Ultima página",
-        "key-bind-tooltip-last-page": "Mover para ultima página"
+        "key-bind-tooltip-last-page": "Mover para ultima página",
+        "key-bind-title-navigate-home": "Ir para a página inicial",
+        "key-bind-tooltip-navigate-home": "Aceda ao painel de controlo a partir de qualquer local do Kavita"
     },
     "collection-detail": {
         "no-data": "Não existem itens. Tente adicionar uma série.",
@@ -3136,7 +3183,7 @@
         "unit-average-rating": "Kavita+ notação externa, percentagem",
         "unit-reading-progress": "Percentagem",
         "unit-user-rating": "0.0-5.0 Estrelas",
-        "unit-read-last": "Dias a partir de HOJE",
+        "unit-read-last": "Dias Atrás",
         "disclaimer-highlight-slots": "Quando este campo é usado, apenas as suas anotações serão visíveis",
         "unit-file-size": "GB, MB, KB, B",
         "disclaimer-file-size": "O tamanho do ficheiro tem de incluir a unidade"
@@ -3155,9 +3202,7 @@
         "hardcover-tooltip": "https://hardcover.app/authors/{HardcoverId}",
         "asin-label": "ASIN",
         "asin-tooltip": "https://www.amazon.com/stores/J.K.-Rowling/author/{ASIN}",
-        "invalid-amazon-code": "O ASIN deve começar com B0 ou BT",
         "description-label": "Descrição",
-        "required-field": "{{validation.required-field}}",
         "cover-image-description": "{{edit-series-modal.cover-image-description}}",
         "cover-image-description-extra": "Em alternativa pode descarregar uma capa a partir do CoversDB, se disponível.",
         "save": "{{common.save}}",
@@ -3176,7 +3221,7 @@
         "known-for-title": "Conhecido por"
     },
     "day-breakdown": {
-        "title": "Resumo do Dia",
+        "title": "Leitura por Dia",
         "no-data": "Sem progresso, comece a ler"
     },
     "file-breakdown-stats": {
@@ -3557,7 +3602,8 @@
         "read-date": "Data de Leitura",
         "read-last": "Último Lido",
         "average-rating": "Classificação média",
-        "file-size": "Tamanho do ficheiro"
+        "file-size": "Tamanho do ficheiro",
+        "collapse-series-relationships": "{{user-preferences.collapse-series-relationships-label}}"
     },
     "log-level-pipe": {
         "debug": "Debug",
@@ -3618,7 +3664,11 @@
         "chapter-summary": "Sumário (Capítulo)",
         "chapter-covers": "Capas (Capítulo)",
         "chapter-publisher": "{{person-role-pipe.publisher}} (Capítulo)",
-        "chapter-title": "Título (Capítulo)"
+        "chapter-title": "Título (Capítulo)",
+        "name": "{{edit-series-modal.name-label}}",
+        "chapter-age-rating": "Classificação etária (capítulo)",
+        "volume-covers": "Capas (Volume)",
+        "sort-name": "{{sort-field-pipe.sort-name}}"
     },
     "preferences": {
         "left-to-right": "Esquerda para Direita",
@@ -3779,7 +3829,6 @@
         "email-help": "Este é o e-mail cadastrado no Stripe",
         "license-help": "Para a sua segurança, a chave armazenada é criptografada no disco, digite-a novamente para atualizar.",
         "help-label": "{{common.help}}",
-        "required-field-validation": "{{validation.required-field}}",
         "license-length-validation": "A chave de licença deve ter 19 caracteres",
         "license-format-validation": "Espera-se que a licença seja formatada como: XXXX-XXXX-XXXX-XXXX",
         "discord-format-validation": "Espera-se que o Discord ID seja um ID de utilizador de 19 números",
@@ -3975,7 +4024,8 @@
         "step-2-of-2-label": "Passo 2 de 2",
         "skip-for-now-label": "Pular por enquanto",
         "go-to-dashboard-label": "Vá para o painel",
-        "footer-hint-label": "Pode conectar mais provedores posteriormente em Configurações → Kavita+ → Contas vinculadas."
+        "footer-hint-label": "Pode conectar mais provedores posteriormente em Configurações → Kavita+ → Contas vinculadas.",
+        "description": "Ligue os serviços para os quais faz scrobble. O Kavita+ irá importar o seu histórico de leitura existente e manter o progresso sincronizado (num único sentido) daqui em diante."
     },
     "license-api-stats": {
         "title": "Uso de API",
@@ -4064,17 +4114,50 @@
     "manage-kavitaplus-activity": {
         "filter-system": "Sistema",
         "next-scrobble": "Próximo Scrobble: {{date}}",
-        "filter-provider-label": "Provedor de Scrobble"
+        "filter-provider-label": "Provedor de Scrobble",
+        "description": "90 dias de metadados, correspondências, scrobble e eventos de sincronização. Faça a triagem das falhas e acione uma correspondência manual a partir daqui.",
+        "stats-events-label": "Eventos (24h)",
+        "stats-failures-label": "Falhas",
+        "stats-match-label": "Encontrados",
+        "stats-matched-label": "Encontrado {{percent}}%",
+        "stats-coverage-subtitle": "{{percent}}% de cobertura",
+        "stats-queue-label": "Fila",
+        "stats-unresolved": "{{count}} não resolvido",
+        "stats-stale-subtitle": "{{count}} desatualizados",
+        "stats-blacklisted-subtitle": "{{count}} sem correspondência",
+        "filter-all": "Tudo",
+        "filter-match": "Correspondência",
+        "filter-metadata": "Metadados",
+        "filter-scrobble": "Scrobble",
+        "filter-sync": "Sincronizar",
+        "filter-status-label": "Filtro de estado",
+        "today": "Hoje",
+        "yesterday": "Ontem",
+        "events-count": "{{count}} eventos",
+        "subject-label": "Assunto: {{subject}}",
+        "search-alt": "Pesquisar eventos",
+        "filter-subject-label": "Assunto",
+        "filter-user-label": "Utilizador",
+        "filter-timeframe-label": "Período de Tempo",
+        "filter-timeframe-24h": "Últimas 24 Horas",
+        "filter-timeframe-7d": "Últimos 7 Dias",
+        "filter-timeframe-30d": "Últimos 30 Dias",
+        "system": "Sistema"
     },
     "kavitaplus-timeline": {
         "empty-title": "Nada encontrado",
         "empty-description": "Tente um filtro diferente ou faça algumas correspondências/leituras para preencher",
-        "system": "{{manage-kavitaplus-activity.system}}"
+        "system": "{{manage-kavitaplus-activity.system}}",
+        "today": "Hoje",
+        "yesterday": "Ontem",
+        "events-count": "{{count}} eventos",
+        "load-more-label": "Carregar mais"
     },
     "kavita-plus-audit-entry": {
         "system": "{{manage-kavitaplus-activity.system}}",
         "retry": "Tentar Novamente",
-        "match": "Correspondência"
+        "match": "Correspondência",
+        "remove-error": "Remover Erro de Scrobble"
     },
     "metadata-fetch-trigger-title-pipe": {
         "series-added": "Ativar automaticamente ao adicionar",
@@ -4095,11 +4178,49 @@
         "system-token-refresh-success": "Atualizar os tokens de autenticação para {{provider}}. Eles são válidos até {{validUntil}}",
         "system-token-refresh-failure": "Falha ao atualizar os tokens de autenticação para {{provider}}",
         "system-provider-info-sync-success": "Informações sincronizadas com sucesso para {{provider}}. Vinculado à conta {{username}}",
-        "system-provider-info-sync-failure": "Falha ao sincronizar as informações da conta para {{provider}}"
+        "system-provider-info-sync-failure": "Falha ao sincronizar as informações da conta para {{provider}}",
+        "read-progress-sent": "{{chapter}}",
+        "rating-updated": "Avaliação atualizada: {{rating}}/5",
+        "add-want-to-read": "Adicionado a quero ler",
+        "remove-want-to-read": "Removido de quero ler",
+        "review-submitted": "Análise enviada",
+        "fields-updated": "{{count}} campos atualizados",
+        "chapter-cover-updated": "Capa atualizada: {{chapter}}",
+        "volume-cover-updated": "Capa do Volume atualizada: {{volume}}",
+        "series-cover-updated": "Capa da série atualizada",
+        "series-match-fixed": "Série correspondente a {{matchName}}",
+        "metadata-provider-changed": "O Provedor de Metadados mudou de {{previousProvider}} para {{newProvider}}"
     },
     "kavita-plus-event-type-pipe": {
         "system-provider-info-sync": "Sincronização de Informações do Provedor de Scrobble",
-        "system-token-refresh": "Atualização do Token do Provedor de Scrobble"
+        "system-token-refresh": "Atualização do Token do Provedor de Scrobble",
+        "series-matched": "Série associada",
+        "series-match-failed": "Falha na Correspondência",
+        "series-blacklisted": "Na lista negra",
+        "series-match-fixed": "Correspondência Corrigida",
+        "series-dont-match-set": "Não Corresponder Estabelecido",
+        "metadata-fetched": "Metadados Obtidos",
+        "metadata-updated": "Metadados Atualizados",
+        "cover-updated": "Capa Atualizada",
+        "chapter-metadata-updated": "Metadados do Capítulo Atualizados",
+        "chapter-cover-updated": "Capa do Capítulo Atualizada",
+        "volume-cover-updated": "Capa do Volume Atualizada",
+        "person-cover-updated": "Capa da Pessoa Atualizada",
+        "person-alias-added": "Apelido da Pessoa Adicionado",
+        "collection-synced": "Coleção Sincronizada",
+        "collection-item-added": "Elemento da Coleção Adicionado",
+        "scrobble-created": "Scrobble Criado",
+        "scrobble-updated": "Scrobble Atualizado",
+        "scrobble-sent": "Scrobble Enviado",
+        "scrobble-failed": "Scrobble Falhou",
+        "scrobble-rate-limit": "Limite de Taxa Atingido",
+        "scrobble-skipped": "Scrobble Ignorado",
+        "scrobble-hold-added": "Pausa no Scrobble Adicionada",
+        "scrobble-hold-removed": "Pausa no Scrobble Removida",
+        "sync-started": "Sincronização Iniciada",
+        "sync-completed": "Sincronização Completada",
+        "sync-failed": "Sincronização Falhou",
+        "series-metadata-provider-override-set": "Provedor de Metadados Alterado"
     },
     "metadata-provider-title-pipe": {
         "hardcover": "Hardcover",
@@ -4154,7 +4275,7 @@
         "dropped-series-rule-condition": "Se uma série/capítulo não foi lido há",
         "all-libraries-label": "Todas as bibliotecas",
         "all-libraries-tooltip": "Quando ativado, o scrobble é executado em todas as bibliotecas aplicáveis. Desative para restringi-lo a bibliotecas específicas usando a seleção abaixo.",
-        "confirm-delete": "Tem certeza que deseja desconectar {{provider}}",
+        "confirm-delete": "Tem a certeza de que deseja desconectar {{provider}}?",
         "inactive-series-rule-days-aria": "Limite de inatividade da série em dias",
         "inactive-series-rule-status-aria": "Estado de transição para séries inativas",
         "inactive-series-rule-excluded-publication-aria": "Estado de publicação excluídos da regra de séries inativas",
@@ -4184,7 +4305,9 @@
     },
     "scrobble-provider-description-pipe": {
         "my-anime-list": "Sincronização de Quero Ler e Pilhas para Mangás e Light Novels",
-        "hardcover": "Tudo sobre Livros, Mangás e Light Novels!"
+        "hardcover": "Tudo sobre Livros, Mangás e Light Novels!",
+        "anilist": "Tudo sobre Manga e Light Novels",
+        "mangabaka": "Tudo sobre Manga e Light Novels"
     },
     "review-scrobble-target-name-pipe": {
         "private": "Somente você",
@@ -4198,5 +4321,108 @@
         "unread": "Não lido",
         "dropped": "Abandonado",
         "on-hold": "Em Espera"
+    },
+    "register-license": {
+        "k+-already-registered-header": "Licença já registada",
+        "k+-license-overwrite": "Esta licença já está registada noutro servidor. Tem a certeza de que pretende registá-la neste servidor? Isto irá anular o registo do outro servidor.",
+        "overwrite": "Substituir",
+        "cancel": "{{common.cancel}}"
+    },
+    "kavitaplus-activity": {
+        "description": "Atividade de leitura do Kavita sincronizada com serviços externos automaticamente - progresso, avaliações e estado de leitura.",
+        "tab-select-label": "Filtrar atividade",
+        "stats-queue-label": "{{manage-kavitaplus-activity.stats-queue-label}}",
+        "next-scrobble": "{{manage-kavitaplus-activity.next-scrobble}}",
+        "stats-events-label": "{{manage-kavitaplus-activity.stats-events-label}}",
+        "stats-failures-label": "{{manage-kavitaplus-activity.stats-failures-label}}"
+    },
+    "kavitaplus-diff": {
+        "field-label": "Campo",
+        "before-label": "Antes",
+        "after-label": "Depois",
+        "null-value": "—",
+        "object-expanded": "expandido abaixo"
+    },
+    "scrobble-account-card": {
+        "provider-connected": "Conectado",
+        "provider-not-connected": "Não conectado",
+        "provider-expired": "Token expirado",
+        "provider-connect": "Conectar",
+        "provider-settings": "Configurações",
+        "provider-description": "Ligação para enviar o progresso",
+        "disabled": "{{cron-frequency-pipe.disabled}}"
+    },
+    "audit-status-title-pipe": {
+        "success": "Sucesso",
+        "failure": "Falha",
+        "info": "Info"
+    },
+    "audit-subject-title-pipe": {
+        "series": "Série",
+        "person": "Pessoa",
+        "collection": "Coleção",
+        "chapter": "Capítulo",
+        "volume": "Volume",
+        "global": "Global"
+    },
+    "metadata-field-change-kind-title-pipe": {
+        "relationships": "Relações",
+        "characters": "Personagens",
+        "artists": "Artistas",
+        "writers": "Escritores",
+        "tags": "Etiquetas",
+        "genres": "Géneros",
+        "publication-status": "Estado da Publicação",
+        "age-rating": "Classificação Etária",
+        "external-ids": "IDs Externos",
+        "summary": "Resumo",
+        "title": "Título",
+        "release-date": "Data de Lançamento",
+        "release-year": "Ano de Lançamento",
+        "localized-name": "Nome Localizado",
+        "name": "Nome da Série"
+    },
+    "audit-log-messages": {
+        "rate-limit-hit": "Taxa Limite Alcançada",
+        "invalid-token": "Token AniList Inválido",
+        "unknown-series": "Série Desconhecida",
+        "series-dont-match": "Série Marcada para Não Corresponder",
+        "scrobble-hold-active": "Série está Pausada",
+        "library-scrobbling-disabled": "Scrobbling da Biblioteca Desativado",
+        "token-expired": "Token do AniList Expirou",
+        "no-matches": "Não foram encontradas correspondências com um nível de confiança suficiente para serem selecionadas automaticamente",
+        "too-many-matches": "Foi encontrada mais do que uma correspondência com um elevado grau de confiança. É necessária intervenção manual",
+        "series-missing-required-ids": "Impossível fazer scrobble pois esta série não tem os identificadores externos necessários",
+        "chapter-missing-required-ids": "Impossível fazer scrobble pois este capítulo não tem os identificadores externos necessários"
+    },
+    "recommendation-source-pipe": {
+        "similar": "Semelhante",
+        "user-based": "Utilizadores Gostaram",
+        "personalized": "Para Si"
+    },
+    "epub-font-title-pipe": {
+        "user-font-suffix": "(Utilizador)"
+    },
+    "run-metadata-mappings-modal": {
+        "title": "Reexecutar mapeamentos",
+        "close": "{{common.close}}",
+        "cancel": "{{common.cancel}}",
+        "submit": "{{common.submit}}",
+        "saving": "{{common.saving}}",
+        "all-libraries-label": "Todas as bibliotecas",
+        "all-libraries-tooltip": "Quando esta opção está ativada, os mapeamentos de metadados são executados para todas as bibliotecas. Desative-a para incluir ou excluir bibliotecas específicas.",
+        "included-libraries-title": "Bibliotecas incluídas",
+        "included-libraries-tooltip": "Bibliotecas a processar se a opção para processar todas as bibliotecas não estiver ativada",
+        "excluded-libraries-title": "Bibliotecas excluídas",
+        "excluded-libraries-tooltip": "Bibliotecas para ignorar",
+        "queued-title": "Reexecução colocada em fila",
+        "queued-description": "O processamento vai começar em breve, por favor seja paciente."
+    },
+    "tag-weight-title-pipe": {
+        "core": "Central",
+        "defining": "Determinante",
+        "recurrent": "Recorrente",
+        "incidental": "Incidental",
+        "unweighted": "Sem peso"
     }
 }

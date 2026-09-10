@@ -25,8 +25,6 @@ import {LabelCardComponent} from '../label-card/label-card.component';
 import {TagBadgeComponent, TagBadgeCursor} from '../../shared/tag-badge/tag-badge.component';
 import {DefaultValuePipe} from '../../_pipes/default-value.pipe';
 import {BytesPipe} from '../../_pipes/bytes.pipe';
-import {TimeAgoPipe} from '../../_pipes/time-ago.pipe';
-import {DatePipe} from '@angular/common';
 import {PublicationStatus} from '../../_models/metadata/publication-status';
 import {PublicationStatusPipe} from '../../_pipes/publication-status.pipe';
 import {ReadTimePipe} from '../../_pipes/read-time.pipe';
@@ -34,6 +32,9 @@ import {IHasReadingTime} from '../../_models/common/i-has-reading-time';
 import {CompactNumberPipe} from "../../_pipes/compact-number.pipe";
 import {NgbTooltip} from "@ng-bootstrap/ng-bootstrap";
 import {MetadataService} from "../../_services/metadata.service";
+import {UtcToLocalTimePipe} from "../../_pipes/utc-to-local-time.pipe";
+import {DefaultDatePipe} from "../../_pipes/default-date.pipe";
+import {TimeDifferencePipe} from "../../_pipes/time-difference.pipe";
 
 export interface BasicMetadataInfo {
   readingTime?: IHasReadingTime | null;
@@ -63,12 +64,13 @@ export interface BasicMetadataInfo {
     TagBadgeComponent,
     DefaultValuePipe,
     BytesPipe,
-    TimeAgoPipe,
-    DatePipe,
     PublicationStatusPipe,
     ReadTimePipe,
     CompactNumberPipe,
     NgbTooltip,
+    UtcToLocalTimePipe,
+    DefaultDatePipe,
+    TimeDifferencePipe,
   ],
   templateUrl: './details-tab.component.html',
   styleUrl: './details-tab.component.scss',

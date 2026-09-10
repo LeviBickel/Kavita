@@ -1,7 +1,7 @@
 <ng-container *transloco="let t; prefix: 'library-settings-modal'">
   <div class="modal-header">
     <h4 class="modal-title" id="modal-basic-title">
-      @if (!isAddLibrary) {
+      @if (!isAddLibrary()) {
         {{t('edit-title', {name: library!.name | sentenceCase})}}
       } @else {
         {{t('add-title')}}
@@ -10,6 +10,7 @@
     <button type="button" class="btn-close" [attr.aria-label]="t('close')" (click)="close()"></button>
   </div>
   <form [formGroup]="libraryForm">
+
     <div class="modal-body scrollable-modal {{breakpointService.isMobile() ? '' : 'd-flex'}}">
       <ul ngbNav #nav="ngbNav" [(activeId)]="active" class="nav-pills"
           orientation="{{breakpointService.isMobile() ? 'horizontal' : 'vertical'}}" style="min-width: 8.4375rem;">
@@ -20,21 +21,12 @@
             <div class="mb-3">
               <label for="library-name" class="form-label">{{t('name-label')}}</label>
               @if (libraryForm.get('name'); as formControl) {
-                <input id="library-name" class="form-control" formControlName="name" type="text" [class.is-invalid]="formControl.invalid && !formControl.untouched">
-                @if (libraryForm.dirty || !libraryForm.untouched) {
-                  <div id="inviteForm-validations" class="invalid-feedback">
-                    @if (formControl.errors?.required) {
-                      <div>{{t('required-field')}}</div>
-                    }
+                <input id="library-name" class="form-control" formControlName="name" type="text" [appFormField]="formControl">
 
-                    @if (formControl.errors?.duplicateName) {
-                      <div>{{t('library-name-unique')}}</div>
-                    }
-                  </div>
-                }
-
+                <app-validation-errors inputId="library-name" [control]="formControl" [messages]="{
+                  duplicateName: t('library-name-unique')
+                }" />
               }
-
             </div>
 
             <div class="mb-3">
@@ -60,17 +52,17 @@
                 {{LibraryTypeValue | libraryTypeSubtitle}}
               </div>
             </div>
-            @if (!isAddLibrary) {
+            @if (!isAddLibrary()) {
               <div>
                 {{t('last-scanned-label')}}
-                <span>{{library?.lastScanned | date: 'short' | defaultDate}}</span>
+                <span>{{library?.lastScanned | utcToLocalTime: 'short' | defaultDate}}</span>
               </div>
             }
           </ng-template>
         </li>
 
 
-        <li [ngbNavItem]="Tabs.Folder" [disabled]="isAddLibrary && setupStep < 1">
+        <li [ngbNavItem]="Tabs.Folder" [disabled]="isAddLibrary() && setupStep < 1">
           <a ngbNavLink>{{Tabs.Folder | tabTitle}}</a>
           <ng-template ngbNavContent>
 
@@ -110,19 +102,19 @@
           </ng-template>
         </li>
 
-        <li [ngbNavItem]="Tabs.CoverImage" [disabled]="isAddLibrary && setupStep < 2">
+        <li [ngbNavItem]="Tabs.CoverImage" [disabled]="isAddLibrary() && setupStep < 2">
           <a ngbNavLink>{{Tabs.CoverImage | tabTitle}}</a>
           <ng-template ngbNavContent>
-            @if (isAddLibrary) {
+            @if (isAddLibrary()) {
               <p class="alert alert-warning" role="alert">{{t('cover-description')}}</p>
             }
 
             <p>{{t('cover-description-extra')}}</p>
-            <app-cover-image-chooser [config]="chooserConfig" (coverChanged)="handleCoverChanged($event)" />
+            <app-cover-image-chooser [config]="chooserConfig()" (coverChanged)="handleCoverChanged($event)" />
           </ng-template>
         </li>
 
-        <li [ngbNavItem]="Tabs.Advanced" [disabled]="isAddLibrary && setupStep < 3">
+        <li [ngbNavItem]="Tabs.Advanced" [disabled]="isAddLibrary() && setupStep < 3">
           <a ngbNavLink>{{Tabs.Advanced | tabTitle}}</a>
           <ng-template ngbNavContent>
             <div class="row g-0 mt-4 mb-4">
@@ -143,9 +135,9 @@
 
             <div class="row g-0 mt-4 mb-4">
               <app-setting-switch [title]="t('remove-prefix-for-sortname-label')" [subtitle]="t('remove-prefix-for-sortname-tooltip')">
-                <ng-template #switch>
+                <ng-template>
                   <div class="form-check form-switch float-end">
-                    <input type="checkbox" id="remove-prefix-for-sortname" role="switch" formControlName="removePrefixForSortName" class="form-check-input">
+                    <input type="checkbox" role="switch" formControlName="removePrefixForSortName" class="form-check-input">
                   </div>
                 </ng-template>
               </app-setting-switch>
@@ -153,9 +145,9 @@
 
             <div class="row g-0 mt-4 mb-4">
               <app-setting-switch [title]="t('enable-metadata-label')" [subtitle]="t('enable-metadata-tooltip')">
-                <ng-template #switch>
+                <ng-template>
                   <div class="form-check form-switch float-end">
-                    <input type="checkbox" id="enable-metadata" role="switch" formControlName="enableMetadata" class="form-check-input">
+                    <input type="checkbox" role="switch" formControlName="enableMetadata" class="form-check-input">
                   </div>
                 </ng-template>
               </app-setting-switch>
@@ -181,9 +173,9 @@
 
             <div class="row g-0 mt-4 mb-4">
               <app-setting-switch [title]="t('manage-collection-label')" [subtitle]="t('manage-collection-tooltip')">
-                <ng-template #switch>
+                <ng-template>
                   <div class="form-check form-switch float-end">
-                    <input type="checkbox" id="manage-collections" role="switch" formControlName="manageCollections" class="form-check-input">
+                    <input type="checkbox" role="switch" formControlName="manageCollections" class="form-check-input">
                   </div>
                 </ng-template>
               </app-setting-switch>
@@ -191,9 +183,9 @@
 
             <div class="row g-0 mt-4 mb-4">
               <app-setting-switch [title]="t('manage-reading-list-label')" [subtitle]="t('manage-reading-list-tooltip')">
-                <ng-template #switch>
+                <ng-template>
                   <div class="form-check form-switch float-end">
-                    <input type="checkbox" id="manage-readinglists" role="switch" formControlName="manageReadingLists" class="form-check-input">
+                    <input type="checkbox" role="switch" formControlName="manageReadingLists" class="form-check-input">
                   </div>
                 </ng-template>
               </app-setting-switch>
@@ -201,9 +193,9 @@
 
             <div class="row g-0 mt-4 mb-4">
               <app-setting-switch [title]="t('allow-scrobbling-label')" [subtitle]="t('allow-scrobbling-tooltip')">
-                <ng-template #switch>
+                <ng-template>
                   <div class="form-check form-switch float-end">
-                    <input type="checkbox" id="scrobbling" role="switch" formControlName="allowScrobbling" class="form-check-input">
+                    <input type="checkbox" role="switch" formControlName="allowScrobbling" class="form-check-input">
                   </div>
                 </ng-template>
               </app-setting-switch>
@@ -211,9 +203,9 @@
 
             <div class="row g-0 mt-4 mb-4">
               <app-setting-switch [title]="t('allow-metadata-matching-label')" [subtitle]="t('allow-metadata-matching-tooltip')">
-                <ng-template #switch>
+                <ng-template>
                   <div class="form-check form-switch float-end">
-                    <input type="checkbox" id="metadata-matching" role="switch" formControlName="allowMetadataMatching" class="form-check-input">
+                    <input type="checkbox" role="switch" formControlName="allowMetadataMatching" class="form-check-input">
                   </div>
                 </ng-template>
               </app-setting-switch>
@@ -221,9 +213,9 @@
 
             <div class="row g-0 mt-4 mb-4">
               <app-setting-switch [title]="t('folder-watching-label')" [subtitle]="t('folder-watching-tooltip')">
-                <ng-template #switch>
+                <ng-template>
                   <div class="form-check form-switch float-end">
-                    <input type="checkbox" id="lib-folder-watching" role="switch" formControlName="folderWatching" class="form-check-input">
+                    <input type="checkbox" role="switch" formControlName="folderWatching" class="form-check-input">
                   </div>
                 </ng-template>
               </app-setting-switch>
@@ -231,9 +223,9 @@
 
             <div class="row g-0 mt-4 mb-4">
               <app-setting-switch [title]="t('include-in-dashboard-label')" [subtitle]="t('include-in-dashboard-tooltip')">
-                <ng-template #switch>
+                <ng-template>
                   <div class="form-check form-switch float-end">
-                    <input type="checkbox" id="include-dashboard" role="switch" formControlName="includeInDashboard" class="form-check-input">
+                    <input type="checkbox" role="switch" formControlName="includeInDashboard" class="form-check-input">
                   </div>
                 </ng-template>
               </app-setting-switch>
@@ -242,9 +234,9 @@
 
             <div class="row g-0 mt-4 mb-4">
               <app-setting-switch [title]="t('include-in-search-label')" [subtitle]="t('include-in-search-tooltip')">
-                <ng-template #switch>
+                <ng-template>
                   <div class="form-check form-switch float-end">
-                    <input type="checkbox" id="include-search" role="switch" formControlName="includeInSearch" class="form-check-input">
+                    <input type="checkbox" role="switch" formControlName="includeInSearch" class="form-check-input">
                   </div>
                 </ng-template>
               </app-setting-switch>
@@ -252,9 +244,9 @@
 
             <div class="row g-0 mt-4 mb-4">
               <app-setting-switch [title]="t('inherit-web-links-label')" [subtitle]="t('inherit-web-links-tooltip')">
-                <ng-template #switch>
+                <ng-template>
                   <div class="form-check form-switch float-end">
-                    <input type="checkbox" id="inherit-web-links" role="switch" formControlName="inheritWebLinksFromFirstChapter" class="form-check-input">
+                    <input type="checkbox" role="switch" formControlName="inheritWebLinksFromFirstChapter" class="form-check-input">
                   </div>
                 </ng-template>
               </app-setting-switch>
@@ -263,8 +255,9 @@
             <div class="row g-0 mt-4 mb-4">
               <app-setting-item [title]="t('default-language-label')" [subtitle]="t('default-language-tooltip')" [toggleOnViewClick]="false" [showEdit]="false">
                 <ng-template #view>
-                  @if (languageSettings) {
-                    <app-typeahead (selectedData)="updateLanguage($event)" [settings]="languageSettings" [locked]="false">
+                  @let langConfig = languageSettings();
+                  @if (langConfig) {
+                    <app-typeahead (selectedData)="updateLanguage($event)" [settings]="langConfig" [locked]="false">
                       <ng-template #badgeItem let-item let-position="idx">
                         {{item.title}}
                       </ng-template>
@@ -292,7 +285,7 @@
         </li>
 
         <!-- Only show tasks on edit flow -->
-        @if (!isAddLibrary) {
+        @if (!isAddLibrary()) {
           <li [ngbNavItem]="Tabs.Tasks">
             <a ngbNavLink>{{Tabs.Tasks | tabTitle}}</a>
             <ng-template ngbNavContent>
@@ -320,7 +313,7 @@
     <button type="button" class="btn btn-light" (click)="reset()">{{t('reset')}}</button>
     <button type="button" class="btn btn-secondary" (click)="close()">{{t('cancel')}}</button>
 
-    @if (isAddLibrary && setupStep !== 3) {
+    @if (isAddLibrary() && setupStep !== 3) {
       <button type="button" class="btn btn-primary" (click)="nextStep()" [disabled]="isNextDisabled() || libraryForm.invalid">{{t('next')}}</button>
     } @else {
       <button type="button" class="btn btn-primary" [disabled]="isDisabled()" (click)="save()">{{t('save')}}</button>

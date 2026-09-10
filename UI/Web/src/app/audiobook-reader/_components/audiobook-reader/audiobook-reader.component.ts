@@ -11,7 +11,7 @@ import {
   viewChild
 } from '@angular/core';
 import {ActivatedRoute, Router} from '@angular/router';
-import {ToastrService} from 'ngx-toastr';
+import {ToastrService} from '@openng/ngx-toastr';
 import {CHAPTER_ID_DOESNT_EXIST, CHAPTER_ID_NOT_FETCHED, ReaderService} from '../../../_services/reader.service';
 import {AccountService} from '../../../_services/account.service';
 import {NavService} from '../../../_services/nav.service';

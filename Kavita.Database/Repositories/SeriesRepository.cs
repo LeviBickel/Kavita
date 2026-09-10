@@ -649,35 +649,20 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
     public async Task<SeriesDetailRequestV3Dto?> GetKavitaPlusSeriesDetailRequestV3Dto(int seriesId, CancellationToken ct = default)
     {
 
-        // I need to check Weblinks when AniListId/MalId is already set in ExternalSeries
-        // Updating stale data should prioritize ExternalSeriesMetadata before Weblinks, to prioritize prior matches
         var result = await context.Series
             .Where(s => s.Id == seriesId)
-            .Include(s => s.ExternalSeriesMetadata)
             .Select(series => new SeriesDetailRequestV3Dto
             {
-                Provider = series.Library.MetadataProvider,
+                Provider = series.MetadataProviderOverride ?? series.Library.MetadataProvider,
                 Format = series.Library.Type.ConvertToPlusMediaFormat(series.Format),
                 SeriesName = series.Name,
                 AlternativeNames = new List<string> { series.LocalizedName },
-                AniListId = series.AniListId != 0
-                    ? series.AniListId
-                    : series.ExternalSeriesMetadata.AniListId != 0
-                ? series.ExternalSeriesMetadata.AniListId
-                : ExternalIdParser.GetAniListId(series.Metadata.WebLinks),
-                MalId = series.MalId != 0
-                    ? series.MalId
-                    : series.ExternalSeriesMetadata.MalId != 0
-                ? series.ExternalSeriesMetadata.MalId
-                : ExternalIdParser.GetMalId(series.Metadata.WebLinks),
+                // No longer parsing from WebLinks as ExternalIds should always be set. This reduces confusion with users
+                // Ids are parsed from WebLinks during the scan loop and set as ExternalIds
+                AniListId = series.AniListId,
+                MalId = series.MalId,
                 CbrId = series.CbrId,
-                // TODO: Remove GoogleBooks and MangaDex, we don't use them anymore
-                GoogleBooksId = !string.IsNullOrEmpty(series.ExternalSeriesMetadata.GoogleBooksId)
-                    ? series.ExternalSeriesMetadata.GoogleBooksId
-                    : ExternalIdParser.GetGoogleBooksId(series.Metadata.WebLinks),
-                MangaDexId = ExternalIdParser.GetMangaDexId(series.Metadata.WebLinks),
-
-                MangabakaId = (int?) series.MangaBakaId,
+                MangabakaId = series.MangaBakaId,
                 MangaBakaEditionId = series.MangaBakaEditionId,
                 HardcoverId = series.HardcoverId,
                 IsStandAlone = series.IsStandAlone,
@@ -688,6 +673,14 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
             .FirstOrDefaultAsync(ct);
 
         return result;
+    }
+
+    public async Task<MetadataProvider?> GetEffectiveMetadataProviderAsync(int seriesId, CancellationToken ct = default)
+    {
+        return await context.Series
+            .Where(s => s.Id == seriesId)
+            .Select(s => (MetadataProvider?) (s.MetadataProviderOverride ?? s.Library.MetadataProvider))
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<string?> GetSeriesCoverImageAsync(int seriesId, CancellationToken ct = default)
@@ -1184,6 +1177,7 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
                     LibraryType = item.LibraryType,
                     SeriesId = item.SeriesId,
                     SeriesName = item.SeriesName,
+                    LocalizedSeriesName = item.LocalizedSeriesName,
                     Created = item.Created,
                     Id = index,
                     Format = item.Format,
@@ -1414,9 +1408,11 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
         return taken;
     }
 
-    public async Task<Series?> GetSeriesFromExternalMetadata(IList<string> seriesNames, IList<MangaFormat> formats,
+    public async Task<List<Series>> GetSeriesFromExternalMetadata(IList<string> seriesNames, IList<MangaFormat> formats,
         int userId, ExternalMetadataIdsDto? dto = null, SeriesIncludes includes = SeriesIncludes.None, CancellationToken ct = default)
     {
+        List<Series> matches = [];
+
         var libraryIds = context.AppUser.GetLibraryIdsForUser(userId);
 
         // Prioritize direct id matches
@@ -1429,7 +1425,6 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
         {
             var byId = await context.Series
                 .Where(s => libraryIds.Contains(s.LibraryId))
-                .Where(s => formats.Contains(s.Format))
                 .Where(s =>
                     (aniListId > 0 && s.AniListId == aniListId)
                     || (malId > 0 && s.MalId == malId)
@@ -1437,28 +1432,36 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
                     || (hardcoverId > 0 && s.HardcoverId == hardcoverId)
                     )
                 .Includes(includes)
-                .FirstOrDefaultAsync(ct);
+                .ToListAsync(ct);
 
-            if (byId != null) return byId;
+            matches.AddRange(byId);
         }
 
         // Fallback to a name lookup against series.Name, LocalizedName, OriginalName. Names are matched against the
         // normalized columns, which strip punctuation/whitespace - so "Series - Sub" and "Series: Sub" collapse to the
         // same value and match.
         var names = seriesNames.Where(s => !string.IsNullOrEmpty(s)).Distinct().ToList();
-        if (names.Count == 0) return null;
+        if (names.Count == 0) return matches;
 
         var normalizedNames = names.Select(s => s.ToNormalized()).ToList();
 
-        return await context.Series
+        // This has a low chance of false positives in a tagged library as external ids are not allowed to be wrong
+        // So we can always include this
+        var byName = await context.Series
             .Where(s => libraryIds.Contains(s.LibraryId))
             .Where(s => formats.Contains(s.Format))
             .Where(s =>
                 normalizedNames.Contains(s.NormalizedName)
                 || normalizedNames.Contains(s.NormalizedLocalizedName)
                 || normalizedNames.Contains(s.NormalizedOriginalName))
+            .WhereIf(aniListId > 0, s => s.AniListId == 0 || s.AniListId == aniListId)
+            .WhereIf(malId > 0, s => s.MalId == 0 || s.MalId == malId)
+            .WhereIf(mangaBakaId > 0, s => s.MangaBakaId == 0 || s.MangaBakaId == mangaBakaId)
+            .WhereIf(hardcoverId > 0, s => s.HardcoverId == 0 || s.HardcoverId == hardcoverId)
             .Includes(includes)
-            .FirstOrDefaultAsync(ct);
+            .ToListAsync(ct);
+
+        return matches.Concat(byName).ToList();
     }
 
     public async Task<IList<Series>> GetAllSeriesByAnyNameAsync(string seriesName, string localizedName, int libraryId,
@@ -1627,6 +1630,7 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
                 Created = c.Created,
                 SeriesId = c.Volume.Series.Id,
                 SeriesName = c.Volume.Series.Name,
+                LocalizedSeriesName = c.Volume.Series.LocalizedName,
                 VolumeId = c.VolumeId,
                 ChapterId = c.Id,
                 Format = c.Volume.Series.Format,

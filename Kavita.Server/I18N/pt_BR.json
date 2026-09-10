@@ -135,7 +135,7 @@
     "bad-copy-files-for-download": "Não foi possível copiar os arquivos para o diretório temporário de download do arquivo compactado.",
     "generic-create-temp-archive": "Ocorreu um problema ao criar o arquivo compactado temporário",
     "epub-malformed": "O arquivo está corrompido! Não é possível realizar a leitura.",
-    "epub-html-missing": "Não foi possível encontrar o HTML adequado para essa página",
+    "epub-html-missing": "Não foi possível encontrar o HTML apropriado para essa página",
     "collection-tag-title-required": "O título da coleção não pode estar vazio",
     "reading-list-title-required": "O título da lista de leitura não pode estar vazio",
     "collection-tag-duplicate": "Já existe uma coleção com este nome",
@@ -284,5 +284,8 @@
     "series-name-exists": "Já existe uma série com esse nome nesta biblioteca",
     "mappings-re-run-in-progress": "Uma solicitação de mapeamentos de reexecução de metadados está sendo processada no momento. Aguarde até que seja concluído para recolocar na fila",
     "mappings-re-run-no-libraries-selected": "Sua solicitação deve incluir pelo menos 1 biblioteca",
-    "mappings-re-run-libraries-overlap": "ExcludedLibraries e IncludedLibraries não podem conter as mesmas bibliotecas"
+    "mappings-re-run-libraries-overlap": "ExcludedLibraries e IncludedLibraries não podem conter as mesmas bibliotecas",
+    "series-name-orphans-files": "Alterar este nome dividiria arquivos que estão atualmente mesclados nesta série",
+    "series-localized-name-exists": "Outra série nesta biblioteca já usa esse nome",
+    "series-localized-name-orphans-files": "Alterar este nome localizado dividiria arquivos que estão atualmente mesclados nesta série"
 }

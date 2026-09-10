@@ -106,9 +106,18 @@ public class ScrobblingController(
         if (user == null) return Unauthorized();
 
         var scrobbleProvider = user.ScrobbleProviders[dto.Provider];
+        var hadAuthToken = !string.IsNullOrEmpty(scrobbleProvider.AuthenticationToken);
 
-        scrobbleProvider.AuthenticationToken = dto.AuthenticationToken.TrimPrefix("Bearer").Trim();
-        scrobbleProvider.RefreshToken = dto.RefreshToken.TrimPrefix("Bearer").Trim();
+        scrobbleProvider.AuthenticationToken = (dto.AuthenticationToken ?? string.Empty).TrimPrefix("Bearer").Trim();
+        scrobbleProvider.RefreshToken = (dto.RefreshToken ?? string.Empty).TrimPrefix("Bearer").Trim();
+
+        // When adding a fresh token for hardcover; assume the K+ redirect wasn't usable
+        // and set the default 7-day expiry
+        if (scrobbleProvider.AuthenticationToken.StartsWith("hc_at") && !hadAuthToken &&
+            dto.Provider == ScrobbleProvider.Hardcover)
+        {
+            scrobbleProvider.ValidUntilUtc = DateTime.UtcNow.AddDays(7) - TimeSpan.FromMinutes(30);
+        }
 
         unitOfWork.UserRepository.Update(user);
         await unitOfWork.CommitAsync(HttpContext.RequestAborted);
@@ -291,7 +300,7 @@ public class ScrobblingController(
             // When a hold is placed on a series, clear any pre-existing Scrobble Events
             await scrobblingService.ClearEventsForSeries(user.Id, seriesId);
             await kavitaPlusAuditService.LogScrobbleAsync(KavitaPlusEventType.ScrobbleHoldAdded, seriesId,
-                new AuditLogScrobbleParamsDto(), AuditStatus.Success, null, UserId, HttpContext.RequestAborted);
+                new AuditLogScrobbleParamsDto(), AuditStatus.Success, null, UserId, ct: HttpContext.RequestAborted);
             return Ok();
         }
         catch (DbUpdateConcurrencyException ex)
@@ -306,7 +315,7 @@ public class ScrobblingController(
             unitOfWork.UserRepository.Update(user);
             await unitOfWork.CommitAsync();
             await kavitaPlusAuditService.LogScrobbleAsync(KavitaPlusEventType.ScrobbleHoldAdded, seriesId,
-                new AuditLogScrobbleParamsDto(), AuditStatus.Success, null, UserId, HttpContext.RequestAborted);
+                new AuditLogScrobbleParamsDto(), AuditStatus.Success, null, UserId, ct: HttpContext.RequestAborted);
             return Ok();
         }
         catch (Exception ex)
@@ -336,7 +345,7 @@ public class ScrobblingController(
         await unitOfWork.CommitAsync(HttpContext.RequestAborted);
 
         await kavitaPlusAuditService.LogScrobbleAsync(KavitaPlusEventType.ScrobbleHoldRemoved, seriesId,
-            new AuditLogScrobbleParamsDto(), AuditStatus.Success, null, UserId, HttpContext.RequestAborted);
+            new AuditLogScrobbleParamsDto(), AuditStatus.Success, null, UserId, ct: HttpContext.RequestAborted);
 
         return Ok();
     }
@@ -356,6 +365,18 @@ public class ScrobblingController(
         return Ok();
     }
 
+    [HttpDelete("remove-error/{id:int}")]
+    [Authorize(Policy = PolicyGroups.AdminPolicy)]
+    public async Task<ActionResult> RemoveScrobbleError(int id)
+    {
+        var scrobbleError = await unitOfWork.ScrobbleRepository.GetScrobbleError(id, HttpContext.RequestAborted);
+        if (scrobbleError == null) return NotFound();
+
+        unitOfWork.ScrobbleRepository.Remove([scrobbleError]);
+        await unitOfWork.CommitAsync(HttpContext.RequestAborted);
+
+        return Ok();
+    }
 
     /// <summary>
     /// Attempts to retry Scrobble Events for the current authenticated user (or admin-allowed).
@@ -378,7 +399,6 @@ public class ScrobblingController(
     /// </summary>
     /// <returns></returns>
     [HttpGet("next-scrobble-time")]
-    [Authorize(Policy = PolicyGroups.AdminPolicy)]
     public ActionResult<DateTime?> GetNextScrobbleTime()
     {
         return Ok(TaskScheduler.GetNextRun(TaskSchedulerConstants.ProcessScrobblingEventsId));

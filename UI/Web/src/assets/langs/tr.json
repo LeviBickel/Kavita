@@ -3,7 +3,6 @@
         "title": "Hesabınızla oturum açın",
         "username": "{{common.username}}",
         "password": "{{common.password}}",
-        "password-validation": "{{validation.password-validation}}",
         "forgot-password": "Şifremi Unuttum?",
         "submit": "Oturum aç",
         "oidc": "OpenID Bağlantısı"
@@ -20,7 +19,6 @@
         "edit": "{{common.edit}}",
         "close": "{{common.close}}",
         "username": "{{common.username}}",
-        "required": "{{validation.required-field}}",
         "email": "{{common.email}}",
         "cancel": "{{common.cancel}}",
         "saving": "Kaydediliyor…",
@@ -35,31 +33,6 @@
         "out-of-sync": "Bu kullanıcı OIDC aracılığıyla oluşturulmuştur. SyncUsers ayarı etkinleştirilirse, bu hesapta yapılan tüm değişiklikler üzerine yazılabilir.",
         "oidc-managed": "Bu kullanıcı OIDC aracılığıyla yönetilmektedir. Herhangi bir değişiklik talebinde bulunmak için lütfen OIDC yöneticinize başvurun.",
         "identity-provider-tooltip": "Kavita kullanıcıları hiçbir zaman OIDC hesaplarıyla senkronize edilmez."
-    },
-    "user-scrobble-history": {
-        "title": "Arşiv geçmişi",
-        "filter-label": "{{common.filter}}",
-        "created-header": "Oluşturuldu",
-        "last-modified-header": "Son Değişiklik",
-        "type-header": "Tip",
-        "series-header": "Seriler",
-        "data-header": "Veri",
-        "no-data": "{{common.no-data}}",
-        "not-applicable": "Uygulanamaz",
-        "processed": "İşlendi",
-        "not-processed": "İşlenmemiş",
-        "special": "{{entity-title.special}}",
-        "select-all-label": "Tümünü seç",
-        "delete-selected-label": "Seçilenleri sil",
-        "chapter-num": "Bölüm {{num}}",
-        "volume-and-chapter-num": "Cilt {{v}} Bölüm {{n}}",
-        "volume-num": "Cilt {{num}}",
-        "description": "Burada, hesabınızla bağlantılı tüm scrobble etkinliklerini bulabilirsiniz. Etkinliklerin görünmesi için, aktif bir scrobble sağlayıcısı yapılandırmış olmanız gerekir. İşlenen tüm etkinlikler bir ay sonra silinir. İşlenmemiş etkinlikler varsa, bunlar muhtemelen yukarı akışta eşleşmeler oluşturamaz. Bunların düzeltilmesi için lütfen yöneticinize başvurun.",
-        "not-read-warning": "Yukarı akış sağlayıcılar her zaman en yüksek sayıyı koruyacaktır",
-        "is-processed-header": "İşlenmiştir",
-        "token-expired": "AniList jetonunuzun süresi doldu! Hesaplar sayfasında yenileme yapana kadar scrobbling etkinlikleri işlenmeyecektir.",
-        "rating": "Derecelendirme {{r}}",
-        "scrobbling-disabled": "Scrobbling, Hesap Ayarlarınızda devre dışı bırakılmıştır."
     },
     "scrobble-event-type-pipe": {
         "chapter-read": "Okuma İlerlemesi",
@@ -191,8 +164,6 @@
         "save": "{{common.save}}",
         "close": "{{common.close}}",
         "cancel": "{{common.cancel}}",
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}",
         "email-tooltip": "Bu e-posta, dosya göndermeyi kabul etmek için kullanılacaktır",
         "title": "E-posta Aygıtını Düzenle",
         "device-platform-label": "Aygıt Platformu"
@@ -201,15 +172,12 @@
         "password-label": "{{common.password}}",
         "reset": "{{common.reset}}",
         "save": "{{common.save}}",
-        "required-field": "{{validation.required-field}}",
         "confirm-password-label": "Parola onayı",
         "current-password-label": "Geçerli parola",
         "new-password-label": "Yeni parola",
         "passwords-must-match": "Şifreler eşleşmelidir"
     },
     "change-email": {
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}",
         "reset": "{{common.reset}}",
         "save": "{{common.save}}",
         "setup-user-account": "Kullanıcının hesabını kur",
@@ -293,8 +261,6 @@
     },
     "reset-password": {
         "email-label": "{{common.email}}",
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}",
         "submit": "{{common.submit}}",
         "title": "Parolayı Sıfırla"
     },
@@ -317,7 +283,6 @@
     "invite-user": {
         "close": "{{common.close}}",
         "email": "{{common.email}}",
-        "required-field": "{{common.required-field}}",
         "cancel": "{{common.cancel}}",
         "email-not-sent": "{{toasts.email-not-sent}}",
         "notice": "{{manage-settings.notice}}",
@@ -339,7 +304,6 @@
     },
     "book-line-overlay": {
         "close": "{{common.close}}",
-        "required-field": "{{common.required-field}}",
         "save": "{{common.save}}",
         "copy": "Kopyala",
         "bookmark": "Yer imi"
@@ -358,15 +322,12 @@
         "username-label": "{{common.username}}",
         "password-label": "{{common.password}}",
         "email-label": "{{common.email}}",
-        "required-field": "{{common.required-field}}",
-        "valid-email": "{{common.valid-email}}",
         "password-validation": "{{validation.password-validation}}",
         "title": "Kaydol",
         "register": "Kaydol"
     },
     "confirm-reset-password": {
         "password-label": "{{common.password}}",
-        "required-field": "{{validation.required-field}}",
         "submit": "{{common.submit}}",
         "password-validation": "{{validation.password-validation}}",
         "description": "Yeni parola girin",
@@ -376,8 +337,6 @@
         "username-label": "{{common.username}}",
         "email-label": "{{common.email}}",
         "password-label": "{{common.password}}",
-        "required-field": "{{validation.required-field}}",
-        "valid-email": "{{validation.valid-email}}",
         "password-validation": "{{validation.password-validation}}",
         "register": "Kaydol",
         "title": "Kaydol"
@@ -454,7 +413,6 @@
         "reset": "{{common.reset}}",
         "cancel": "{{common.cancel}}",
         "save": "{{common.save}}",
-        "required-field": "{{validation.required-field}}",
         "help": "{{common.help}}",
         "force-scan": "Taramaya zorla",
         "type-label": "Tip",
@@ -677,7 +635,6 @@
         "sharing-header": "Paylaşım"
     },
     "edit-collection-tags": {
-        "required-field": "{{validation.required-field}}",
         "save": "{{common.save}}",
         "close": "{{common.close}}",
         "cancel": "{{common.cancel}}",
@@ -827,7 +784,6 @@
     "edit-reading-list-modal": {
         "close": "{{common.close}}",
         "save": "{{common.save}}",
-        "required-field": "{{validation.required-field}}",
         "year-label": "Yıl",
         "name-unique-validation": "İsim benzersiz olmalıdır",
         "summary-label": "Özet",
@@ -907,7 +863,6 @@
         "location-label": "{{metadata-fields.locations-title}}",
         "language-label": "{{metadata-fields.language-title}}",
         "age-rating-label": "{{metadata-fields.age-rating-title}}",
-        "required-field": "{{validation.required-field}}",
         "close": "{{common.close}}",
         "release-year-label": "{{sort-field-pipe.release-year}}",
         "web-link-label": "{{tabs.weblink-tab}}",
@@ -1084,7 +1039,6 @@
         "edit": "{{common.edit}}",
         "cancel": "{{common.cancel}}",
         "delete": "{{common.delete}}",
-        "required": "{{validation.required-field}}",
         "name-label": "İsim",
         "host-label": "Ana Bilgisayar"
     },
@@ -1414,7 +1368,6 @@
         "save": "{{common.save}}",
         "other-field-required": "{{validation.other-field-required}}",
         "other-field-invalid": "{{validation.other-field-invalid}}",
-        "invalid-uri": "{{validation.invalid-uri}}",
         "no-restriction": "{{restriction-selector.no-restriction}}",
         "reset-label": "Kimlikleri sıfırla",
         "reset-tooltip": "Tüm kullanıcıların harici kimliklerini sıfırlayın, bunu Kavita ve kimlik sağlayıcınız arasındaki bağlantıları sıfırlamak için kullanın",
@@ -1583,7 +1536,6 @@
         "never": "Asla",
         "name-label": "İsim",
         "total-key-length": "Toplam Anahtar Uzunluğu: {{length}}",
-        "required-field": "{{validations.required-field}}",
         "cancel": "{{common.cancel}}",
         "close": "{{common.close}}",
         "save": "{{common.save}}",
@@ -1886,7 +1838,6 @@
     },
     "review-modal": {
         "delete": "{{common.delete}}",
-        "required": "{{validation.required-field}}",
         "title": "Değerlendirmeyi Düzenle",
         "review-label": "Değerlendirme",
         "close": "{{common.close}}",
@@ -1908,7 +1859,6 @@
         "all-roles": "{{common.roles}}"
     },
     "edit-person-modal": {
-        "required-field": "{{validation.required-field}}",
         "cover-image-description": "{{edit-series-modal.cover-image-description}}",
         "save": "{{common.save}}",
         "description-label": "Açıklama"

@@ -3,6 +3,7 @@ import {FormControl, FormGroup, FormsModule, ReactiveFormsModule} from "@angular
 import {IHasMetadataIds} from "../../../_models/common/i-has-metadata-ids";
 import {TranslocoDirective} from "@jsverse/transloco";
 import {SettingItemComponent} from "../../../settings/_components/setting-item/setting-item.component";
+import {FormFieldDirective} from "../../../_directives/form-field.directive";
 
 export const HAS_METADATA_DEFAULTS: Required<IHasMetadataIds> = {
   aniListId: 0,
@@ -14,14 +15,23 @@ export const HAS_METADATA_DEFAULTS: Required<IHasMetadataIds> = {
   cbrId: 0
 };
 
+export function addMetadataIdControls(form: FormGroup, metadata: IHasMetadataIds): void {
+  form.addControl('aniListId', new FormControl(metadata.aniListId, []));
+  form.addControl('malId', new FormControl(metadata.malId, []));
+  form.addControl('hardcoverId', new FormControl(metadata.hardcoverId, []));
+  form.addControl('metronId', new FormControl(metadata.metronId, []));
+  form.addControl('comicVineId', new FormControl(metadata.comicVineId, []));
+  form.addControl('mangaBakaId', new FormControl(metadata.mangaBakaId, []));
+  form.addControl('cbrId', new FormControl(metadata.cbrId, []));
+}
+
 @Component({
   selector: 'app-edit-external-metadata-form',
   imports: [
     TranslocoDirective,
     SettingItemComponent,
     FormsModule,
-    ReactiveFormsModule
-  ],
+    ReactiveFormsModule, FormFieldDirective],
   templateUrl: './edit-external-metadata-form.component.html',
   styleUrl: './edit-external-metadata-form.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -1,11 +1,12 @@
-import {ChangeDetectionStrategy, Component, computed, inject, input, OnInit, signal} from '@angular/core';
+import {ChangeDetectionStrategy, Component, computed, inject, input, OnInit} from '@angular/core';
 import {TranslocoDirective} from "@jsverse/transloco";
 import {FormControl, FormGroup, ReactiveFormsModule, Validators} from "@angular/forms";
 import {NgbActiveModal} from "@ng-bootstrap/ng-bootstrap";
 import {SettingItemComponent} from "../../../settings/_components/setting-item/setting-item.component";
-import {DatePipe} from "@angular/common";
 import {AccountService} from "../../../_services/account.service";
 import {AuthKey} from "../../../_models/user/auth-key";
+import {UtcToLocalTimePipe} from "../../../_pipes/utc-to-local-time.pipe";
+import {FormFieldDirective} from "../../../_directives/form-field.directive";
 
 @Component({
   selector: 'app-create-auth-key',
@@ -13,8 +14,8 @@ import {AuthKey} from "../../../_models/user/auth-key";
     TranslocoDirective,
     ReactiveFormsModule,
     SettingItemComponent,
-    DatePipe
-  ],
+    UtcToLocalTimePipe,
+    FormFieldDirective],
   templateUrl: './create-auth-key.component.html',
   styleUrl: './create-auth-key.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

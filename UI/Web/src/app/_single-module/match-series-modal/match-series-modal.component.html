@@ -21,6 +21,11 @@
           <div class="d-flex flex-column gap-0">
             <div class="in-kavita-label text-uppercase">{{ t('in-kavita') }}</div>
             <div class="in-kavita-name fw-bold">{{ series().name }}</div>
+            @if (peopleHint(); as hint) {
+              <div class="in-kavita-meta text-muted small">
+                {{hint}}
+              </div>
+            }
             <div class="in-kavita-meta text-muted small">
               @if (kavitaVolumeCount() > 0) {
                 {{ t('volume-count', {num: kavitaVolumeCount()}) }}
@@ -32,8 +37,8 @@
                 {{ t('special-count', {num: kavitaSpecialCount()}) }}
               }
               <app-series-format [format]="series().format" [useTitle]="false" />
-              @if (seriesDetail(); as seriesDetail) {
-                {{seriesDetail.libraryType | libraryType}}
+              @if (match) {
+                {{match.libraryType | libraryType}}
               }
             </div>
           </div>
@@ -47,7 +52,7 @@
             @if (match.isLegacy) {
               <app-scrobble-provider-tag-badge [provider]="ScrobbleProvider.AniList" [id]="match.aniListId" />
             } @else {
-              @switch (match.matchedProvider) {
+              @switch (match.metadataProvider) {
                 @case (MetadataProvider.Mangabaka) {
                   <app-scrobble-provider-tag-badge [provider]="ScrobbleProvider.MangaBaka" [id]="match.mangaBakaId" />
                 }
@@ -71,19 +76,30 @@
           <i class="fas fa-database" aria-hidden="true"></i>
         </div>
 
-        <div class="flex-grow-1 min-w-0">
+        <div class="flex-grow-1 min-w-0" [formGroup]="formGroup">
           <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="fw-semibold small text-truncate">
-              {{t('searching-against', {provider: match.primaryProvider! | metadataProviderTitle })}}
+              {{t('searching-against', {provider: activeProvider()! | metadataProviderTitle })}}
             </span>
           </div>
 
-          <div class="small text-muted">
-            {{t('change-provider-help')}}
+          <div class="small text-muted mb-1">
+            @if (isProviderSwitched()) {
+              {{t('provider-switch-help', {provider: activeProvider()! | metadataProviderTitle })}}
+            } @else {
+              {{t('change-provider-help')}}
+            }
           </div>
+
+          <select class="form-select form-select-sm w-auto" formControlName="provider"
+                  [attr.aria-label]="t('change-provider-help')">
+            @for (provider of allMetadataProviders; track provider) {
+              <option [ngValue]="provider">{{ provider | metadataProviderTitle }}</option>
+            }
+          </select>
         </div>
 
-        @if (match.primaryProvider === MetadataProvider.Hardcover) {
+        @if (activeProvider() === MetadataProvider.Hardcover) {
           <form [formGroup]="formGroup">
             <div class="form-check form-switch mb-0">
               <input type="checkbox" class="form-check-input" formControlName="isStandAlone"
@@ -182,7 +198,7 @@
           <app-empty-state [isError]="true"
                            [titleKey]="'no-results-title'"
                            [descriptionKey]="'no-results-description'"
-                           [descriptionParams]="{ query: lastQuery() }"
+                           [descriptionParams]="{ query: lastQuery() ?? series().name }"
                            [i18nPrefix]="'match-series-modal'">
             <i icon class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i>
           </app-empty-state>
@@ -218,6 +234,10 @@
       </a>
       <a class="btn btn-link phone-hidden" rel="noreferrer noopener" target="_blank" [href]="hardcoverSearchUrl()">
         Hardcover
+        <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+      </a>
+      <a class="btn btn-link phone-hidden" rel="noreferrer noopener" target="_blank" [href]="cbrSearchUrl()">
+        Comic Book Roundup
         <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
       </a>
 

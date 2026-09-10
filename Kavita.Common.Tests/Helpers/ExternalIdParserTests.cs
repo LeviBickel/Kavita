@@ -29,6 +29,10 @@ public class ExternalIdParserTests
 
     [Theory]
     [InlineData("https://mangabaka.org/3391", 3391)]
+    [InlineData("https://mangabaka.org/3391/Some-Slug/", 3391)]
+    [InlineData("https://mangabaka.org/3391?q=Something+Something", 3391)]
+    [InlineData("https://mangabaka.org/novel/84752/Spice-Wolf", 84752)]
+    [InlineData("https://mangabaka.org/manga/10803/Spice-Wolf", 10803)]
     public void CanParseWeblink_MangaBaka(string link, long expectedId)
     {
         Assert.Equal(ExternalIdParser.GetMangaBakaId(link), expectedId);
@@ -72,5 +76,29 @@ public class ExternalIdParserTests
         var result = ExternalIdParser.TryParseHardcoverHeader(text, out var id);
         Assert.Equal(expectedResult, result);
         Assert.Equal(expectedId, id);
+    }
+
+    [Theory]
+    [InlineData("https://hardcover.app/books/wicked-town-1", "wicked-town-1", true)]
+    [InlineData("https://hardcover.app/books/wicked-town-1/", "wicked-town-1", true)]
+    [InlineData("https://hardcover.app/books/wicked-town-1/editions/12345", "wicked-town-1", true)]
+    // A series url is not standalone, even if the user ticked the toggle
+    [InlineData("https://hardcover.app/series/the-expanse", "the-expanse", false)]
+    [InlineData("https://HARDCOVER.app/books/wicked-town-1", "wicked-town-1", true)]
+    // The numeric-id links Kavita generates itself are not slugs, both current and legacy
+    [InlineData("https://hardcover.app/id/series/12345", null, false)]
+    [InlineData("https://hardcover.app/id/book/12345", null, false)]
+    [InlineData("https://hardcover.app/series/id/12345", null, false)]
+    [InlineData("https://hardcover.app/books/id/12345", null, false)]
+    [InlineData("https://mangabaka.org/3391", null, false)]
+    [InlineData("hardcover:61176", null, false)]
+    [InlineData("", null, false)]
+    [InlineData(null, null, false)]
+    public void GetHardcoverSlugFromUrl_ExtractsSlugAndStandAlone(string? text, string? expectedSlug, bool expectedIsStandAlone)
+    {
+        var result = ExternalIdParser.GetHardcoverSlugFromUrl(text);
+
+        Assert.Equal(expectedSlug, result?.Slug);
+        Assert.Equal(expectedIsStandAlone, result?.IsStandAlone ?? false);
     }
 }

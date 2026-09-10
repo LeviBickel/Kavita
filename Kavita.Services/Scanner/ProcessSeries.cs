@@ -25,6 +25,7 @@ using Kavita.Models.DTOs.SignalR;
 using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
 using Kavita.Models.Entities.Enums.Audit;
+using Kavita.Models.Entities.Metadata;
 using Kavita.Models.Entities.Person;
 using Kavita.Models.Metadata;
 using Kavita.Models.Parser;
@@ -382,7 +383,10 @@ public class ProcessSeries(
             series.Metadata.ReleaseYear = chapters.MinimumReleaseYear();
         }
 
-        DeterminePublicationStatus(series, chapters);
+        if (!series.Metadata.PublicationStatusLocked)
+        {
+            DeterminePublicationStatus(series, chapters);
+        }
 
         if (!series.Metadata.SummaryLocked)
         {
@@ -474,6 +478,23 @@ public class ProcessSeries(
         }
 
         #endregion
+
+        // Set the AgeRating as highest in all the comicInfos
+        if (!series.Metadata.AgeRatingLocked)
+        {
+            series.Metadata.AgeRating = chapters.Max(chapter => chapter.AgeRating);
+
+            if (settings.EnableExtendedMetadataProcessing)
+            {
+                var allTags = series.Metadata.Tags.Select(t => t.Title).Concat(series.Metadata.Genres.Select(g => g.Title));
+                var updatedRating = ExternalMetadataService.DetermineAgeRating(allTags, settings.AgeRatingMappings);
+                if (updatedRating > series.Metadata.AgeRating)
+                {
+                    series.Metadata.AgeRating = updatedRating;
+                }
+            }
+
+        }
 
     }
 
@@ -603,6 +624,12 @@ public class ProcessSeries(
         }
     }
 
+    /// <summary>
+    /// Sets <see cref="SeriesMetadata.PublicationStatus"/>, <see cref="SeriesMetadata.MaxCount"/>, and <see cref="SeriesMetadata.TotalCount"/>
+    /// Only call if <see cref="SeriesMetadata.PublicationStatusLocked"/> is false
+    /// </summary>
+    /// <param name="series"></param>
+    /// <param name="chapters"></param>
     private void DeterminePublicationStatus(Series series, List<Chapter> chapters)
     {
         try
@@ -620,7 +647,7 @@ public class ProcessSeries(
             var maxChapter = (int)chapters.Max(c => c.MaxNumber);
 
             // Single books usually don't have a number in their Range (filename)
-            if (series.Format == MangaFormat.Epub || series.Format == MangaFormat.Pdf && chapters.Count == 1)
+            if (series.Format is MangaFormat.Epub or MangaFormat.Pdf && chapters.Count == 1)
             {
                 series.Metadata.MaxCount = 1;
             }
@@ -643,17 +670,14 @@ public class ProcessSeries(
                 series.Metadata.MaxCount = maxChapter;
             }
 
-            if (!series.Metadata.PublicationStatusLocked)
+            series.Metadata.PublicationStatus = PublicationStatus.OnGoing;
+            if (series.Metadata.MaxCount == series.Metadata.TotalCount && series.Metadata.TotalCount > 0)
             {
-                series.Metadata.PublicationStatus = PublicationStatus.OnGoing;
-                if (series.Metadata.MaxCount == series.Metadata.TotalCount && series.Metadata.TotalCount > 0)
-                {
-                    series.Metadata.PublicationStatus = PublicationStatus.Completed;
-                }
-                else if (series.Metadata.TotalCount > 0 && series.Metadata.MaxCount > 0)
-                {
-                    series.Metadata.PublicationStatus = PublicationStatus.Ended;
-                }
+                series.Metadata.PublicationStatus = PublicationStatus.Completed;
+            }
+            else if (series.Metadata.TotalCount > 0 && series.Metadata.MaxCount > 0)
+            {
+                series.Metadata.PublicationStatus = PublicationStatus.Ended;
             }
         }
         catch (Exception ex)
@@ -694,7 +718,12 @@ public class ProcessSeries(
             volume.LookupName = volumeNumber;
             volume.Name = volume.GetNumberTitle();
 
-            var infos = parsedInfos.Where(p => p.Volumes == volumeNumber).ToArray();
+            var minNumber = Parser.MinNumberFromRange(volumeNumber);
+            var maxNumber = Parser.MaxNumberFromRange(volumeNumber);
+            var infos = parsedInfos
+                .Where(p => Parser.MinNumberFromRange(p.Volumes).Is(minNumber)
+                            && Parser.MaxNumberFromRange(p.Volumes).Is(maxNumber))
+                .ToArray();
 
             await UpdateChapters(new UpdateChapterArgs
             {
@@ -947,10 +976,6 @@ public class ProcessSeries(
             cacheHelper.IsFileUnmodifiedSinceCreationOrLastScan(chapter, args.ForceUpdate, firstFile)) return;
 
         var sw = Stopwatch.StartNew();
-        if (!chapter.AgeRatingLocked)
-        {
-            chapter.AgeRating = ComicInfo.ConvertAgeRatingToEnum(comicInfo.AgeRating);
-        }
 
         if (!chapter.TitleNameLocked)
         {
@@ -1011,11 +1036,11 @@ public class ProcessSeries(
             PersonHelper.UpdateChapterPeople(args.DatabasePeople, chapter, comicInfoPeople, personRole);
         }
 
+        var genres = comicInfo.Genre.SplitBy(',');
+        var tags = comicInfo.Tags.SplitBy(',');
+
         if (!chapter.GenresLocked || !chapter.TagsLocked)
         {
-            var genres = comicInfo.Genre.SplitBy(',');
-            var tags = comicInfo.Tags.SplitBy(',');
-
             ExternalMetadataService.GenerateExternalGenreAndTagsList(genres, tags, args.Settings,
                 out var finalTags, out var finalGenres);
 
@@ -1029,7 +1054,21 @@ public class ProcessSeries(
                 await UpdateChapterTags(chapter, finalTags);
             }
 
+        }
 
+        if (!chapter.AgeRatingLocked)
+        {
+            chapter.AgeRating = ComicInfo.ConvertAgeRatingToEnum(comicInfo.AgeRating);
+
+            if (args.Settings.EnableExtendedMetadataProcessing)
+            {
+                var allTags = genres.Concat(tags).Distinct().ToList();
+                var updatedRating = ExternalMetadataService.DetermineAgeRating(allTags, args.Settings.AgeRatingMappings);
+                if (updatedRating > chapter.AgeRating)
+                {
+                    chapter.AgeRating = updatedRating;
+                }
+            }
         }
 
         logger.LogTrace("[TIME] Kavita took {Time} ms to create/update Chapter: {File}", sw.ElapsedMilliseconds, chapter.Files.First().FileName);

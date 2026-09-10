@@ -2,7 +2,6 @@ import {HttpClient, HttpParams} from '@angular/common/http';
 import {inject, Injectable} from '@angular/core';
 import {Observable} from 'rxjs';
 import {map} from 'rxjs/operators';
-import {environment} from 'src/environments/environment';
 import {UtilityService} from '../shared/_services/utility.service';
 import {Chapter} from '../_models/chapter';
 import {PaginatedResult} from '../_models/pagination';
@@ -19,9 +18,11 @@ import {Recommendation} from "../_models/series-detail/recommendation";
 import {ExternalEditionDto, ExternalSeriesDetail} from "../_models/series-detail/external-series-detail";
 import {NextExpectedChapter} from "../_models/series-detail/next-expected-chapter";
 import {QueryContext} from "../_models/metadata/v2/query-context";
-import {ExternalSeriesMatch} from "../_models/series-detail/external-series-match";
+import {MatchSeriesResult} from "../_models/series-detail/match-series-result";
 import {SeriesFilterField} from "../_models/metadata/v2/series-filter-field";
 import {MatchSeriesInfo} from "../_models/kavitaplus/match-series-info";
+import {MetadataProvider} from "../_models/kavitaplus/metadata-provider.enum";
+import {environment} from "../../environments/environment";
 
 @Injectable({
   providedIn: 'root'
@@ -35,7 +36,7 @@ export class SeriesService {
   paginatedResults: PaginatedResult<Series[]> = new PaginatedResult<Series[]>();
   paginatedSeriesForTagsResults: PaginatedResult<Series[]> = new PaginatedResult<Series[]>();
 
-  getAllSeriesV2(pageNum?: number, itemsPerPage?: number, filter?: FilterV2<SeriesFilterField>, context: QueryContext = QueryContext.None, userId?: number) {
+  getAllSeriesV2(pageNum?: number, itemsPerPage?: number, filter?: FilterV2<SeriesFilterField>, context: QueryContext = QueryContext.None, userId?: number): Observable<PaginatedResult<Series[]>> {
     let params = new HttpParams();
     params = this.utilityService.addPaginationIfExists(params, pageNum, itemsPerPage);
 
@@ -239,8 +240,8 @@ export class SeriesService {
     return this.httpClient.post(this.baseUrl + 'series/remove-from-on-deck?seriesId=' + seriesId, {});
   }
 
-  getExternalSeriesDetails(aniListId?: number, malId?: number, mangaBakaId?: number, seriesId?: number) {
-    return this.httpClient.get<ExternalSeriesDetail>(this.baseUrl + 'series/external-series-detail?aniListId=' + (aniListId || 0) + '&malId=' + (malId || 0) + '&mangaBakaId=' + (mangaBakaId || 0) + '&seriesId=' + (seriesId || 0));
+  getExternalSeriesDetails(seriesId: number, aniListId?: number, malId?: number, mangaBakaId?: number, hardcoverId?: number, recommendedSeriesId?: number) {
+    return this.httpClient.get<ExternalSeriesDetail>(this.baseUrl + `series/external-series-detail?seriesId=${seriesId}&aniListId=` + (aniListId || 0) + '&malId=' + (malId || 0) + '&mangaBakaId=' + (mangaBakaId || 0) + '&hardcoverId=' + (hardcoverId || 0) + '&recommendedSeriesId=' + (recommendedSeriesId || 0));
   }
 
   getNextExpectedChapterDate(seriesId: number) {
@@ -248,10 +249,10 @@ export class SeriesService {
   }
 
   matchSeries(model: any) {
-    return this.httpClient.post<Array<ExternalSeriesMatch>>(this.baseUrl + 'series/match', model);
+    return this.httpClient.post<MatchSeriesResult>(this.baseUrl + 'series/match', model);
   }
 
-  updateMatch(seriesId: number, series: ExternalSeriesDetail, edition: ExternalEditionDto | null) {
+  updateMatch(seriesId: number, series: ExternalSeriesDetail, edition: ExternalEditionDto | null, provider: MetadataProvider | null) {
     const ids = {
       aniListId: series.aniListId ?? null,
       malId: series.malId ?? null,
@@ -261,7 +262,13 @@ export class SeriesService {
       hardcoverId: series.hardcoverId ?? null,
       isStandAlone: series.isStandAlone,
     };
-    return this.httpClient.post<string>(this.baseUrl + `series/update-match?seriesId=${seriesId}`, ids, TextResonse);
+
+    let url = this.baseUrl + `series/update-match?seriesId=${seriesId}`;
+    if (provider !== null) {
+      url += `&provider=${provider}`;
+    }
+
+    return this.httpClient.post<string>(url, ids, TextResonse);
   }
 
   updateDontMatch(seriesId: number, dontMatch: boolean) {

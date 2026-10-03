@@ -13,7 +13,7 @@ import {Chapter} from '../../../_models/chapter';
 import {CblService} from '../../../_services/cbl.service';
 import {SearchService} from '../../../_services/search.service';
 import {ToastrService} from '@openng/ngx-toastr';
-import {TypeaheadSettings} from '../../../typeahead/_models/typeahead-settings';
+import {TypeaheadConfig} from '../../../typeahead/_models/typeahead-config';
 import {SearchResult} from '../../../_models/search/search-result';
 import {TypeaheadComponent} from '../../../typeahead/_components/typeahead.component';
 import {LoadingComponent} from '../../../shared/loading/loading.component';
@@ -35,7 +35,7 @@ import {EntityTitleComponent} from '../../../cards/entity-title/entity-title.com
 import {modalSaved} from "../../../_models/modal/modal-result";
 import {WikiLink} from "../../../_models/wiki";
 import {AccountService} from "../../../_services/account.service";
-import {TypeaheadSettingsFactoryService} from "../../../typeahead-settings-factory.service";
+import {TypeaheadConfigFactoryService} from "../../../typeahead-config-factory.service";
 
 export interface CblIssueRow {
   result: CblBookResult;
@@ -73,7 +73,7 @@ export class ImportCblModalComponent implements OnInit {
   private readonly toastr = inject(ToastrService);
   private readonly libraryService = inject(LibraryService);
   private readonly accountService = inject(AccountService);
-  private readonly typeaheadSettingsFactory = inject(TypeaheadSettingsFactoryService);
+  private readonly typeaheadSettingsFactory = inject(TypeaheadConfigFactoryService);
   protected readonly imageService = inject(ImageService);
 
   savedFiles = input.required<CblSavedFile[]>();
@@ -87,12 +87,6 @@ export class ImportCblModalComponent implements OnInit {
 
   /** All rows (matched + issues) for the unified table */
   allRows = signal<CblIssueRow[]>([]);
-  classifiedRows = computed(() =>
-    this.allRows().map(r => ({
-      ...r,
-      category: this.classifyRow(r)
-    }))
-  );
   libraryNames = signal<Record<number, string>>({});
 
   showMatched = signal(true);
@@ -105,20 +99,20 @@ export class ImportCblModalComponent implements OnInit {
     if (this.showUnmatched()) active.add('unmatched');
 
     if (active.size === 0) return [];
-    if (active.size === 3) return this.classifiedRows();
+    if (active.size === 3) return this.allRows();
 
-    return this.classifiedRows().filter(r => active.has(r.category));
+    return this.allRows().filter(r => active.has(this.classifyRow(r)));
   });
 
-  matchedCount = computed(() => this.classifiedRows().filter(r => r.category === 'matched').length);
-  issueCount = computed(() => this.classifiedRows().filter(r => r.category === 'issue').length);
-  unmatchedCount = computed(() => this.classifiedRows().filter(r => r.category === 'unmatched').length);
+  matchedCount = computed(() => this.allRows().filter(r => this.classifyRow(r) === 'matched').length);
+  issueCount = computed(() => this.allRows().filter(r => this.classifyRow(r) === 'issue').length);
+  unmatchedCount = computed(() => this.allRows().filter(r => this.classifyRow(r) === 'unmatched').length);
   isCurrentFileUpdate = computed(() => this.currentSummary()?.isUpdate ?? false);
 
   /** Lazy typeahead state, only one row can be resolving at a time */
   activeRow = signal<CblIssueRow | null>(null);
-  activeSeriesTypeahead = signal<TypeaheadSettings<SearchResult> | null>(null);
-  activeChapterTypeahead = signal<TypeaheadSettings<Chapter> | null>(null);
+  activeSeriesTypeahead = signal<TypeaheadConfig<SearchResult> | null>(null);
+  activeChapterTypeahead = signal<TypeaheadConfig<Chapter> | null>(null);
 
   defaultPromotionState = this.accountService.hasAdminRole;
 
@@ -465,7 +459,7 @@ export class ImportCblModalComponent implements OnInit {
   }
 
 
-  private createChapterTypeahead(seriesId: number): TypeaheadSettings<Chapter> {
+  private createChapterTypeahead(seriesId: number): TypeaheadConfig<Chapter> {
     return this.typeaheadSettingsFactory.forChapter({id: `cbl-chapter-${seriesId}`, seriesId, overrides: {
         dropdownPosition: 'body',
         overlayMinWidth: 280

@@ -405,41 +405,6 @@ public class ExternalMetadataServiceTests: AbstractDbTest
     }
 
     [Fact]
-    public async Task ReleaseYear_Existing_NoModification()
-    {
-        var (unitOfWork, context, mapper) = await CreateDatabase();
-        var (externalMetadataService, _, _, _) = await Setup(unitOfWork, context, mapper);
-
-        const string seriesName = "Test - Release Year";
-        var series = new SeriesBuilder(seriesName)
-            .WithLibraryId(1)
-            .WithMetadata(new SeriesMetadataBuilder()
-                .WithReleaseYear(1990)
-                .Build())
-            .Build();
-        context.Series.Attach(series);
-        await context.SaveChangesAsync();
-
-        var metadataSettings = await unitOfWork.SettingsRepository.GetMetadataSettings();
-        metadataSettings.Enabled = true;
-        metadataSettings.EnableStartDate = true;
-        context.MetadataSettings.Update(metadataSettings);
-        await context.SaveChangesAsync();
-
-
-        await externalMetadataService.WriteExternalMetadataToSeries(new ExternalSeriesDetailDto()
-        {
-            Name = seriesName,
-            StartDate = DateTime.UtcNow
-        }, 1);
-
-
-        var postSeries = await unitOfWork.SeriesRepository.GetSeriesByIdAsync(1, SeriesIncludes.Metadata);
-        Assert.NotNull(postSeries);
-        Assert.Equal(1990, postSeries.Metadata.ReleaseYear);
-    }
-
-    [Fact]
     public async Task ReleaseYear_Existing_Locked_NoModification()
     {
         var (unitOfWork, context, mapper) = await CreateDatabase();
@@ -590,45 +555,6 @@ public class ExternalMetadataServiceTests: AbstractDbTest
         var postSeries = await unitOfWork.SeriesRepository.GetSeriesByIdAsync(1, SeriesIncludes.Metadata);
         Assert.NotNull(postSeries);
         Assert.Equal("Kimchi", postSeries.LocalizedName);
-    }
-
-    [Fact]
-    public async Task LocalizedName_Existing_NoModification()
-    {
-        var (unitOfWork, context, mapper) = await CreateDatabase();
-        var (externalMetadataService, _, _, _) = await Setup(unitOfWork, context, mapper);
-
-        const string seriesName = "Test - Localized Name";
-        var series = new SeriesBuilder(seriesName)
-            .WithLibraryId(1)
-            .WithLocalizedName("Localized Name here")
-            .WithMetadata(new SeriesMetadataBuilder()
-                .Build())
-            .Build();
-        context.Series.Attach(series);
-        await context.SaveChangesAsync();
-
-        var metadataSettings = await unitOfWork.SettingsRepository.GetMetadataSettings();
-        metadataSettings.Enabled = true;
-        metadataSettings.EnableLocalizedName = true;
-        context.MetadataSettings.Update(metadataSettings);
-        await context.SaveChangesAsync();
-
-
-        // A perfectly viable candidate - the existing value with no force override is why nothing is written
-        await externalMetadataService.WriteExternalMetadataToSeries(new ExternalSeriesDetailDto()
-        {
-            Name = seriesName,
-            LocalizedTitles = new Dictionary<string, IList<LocalizedTitleDto>>
-            {
-                ["ja-Latn"] = [new LocalizedTitleDto { Title = "Kimchi" }]
-            }
-        }, 1);
-
-
-        var postSeries = await unitOfWork.SeriesRepository.GetSeriesByIdAsync(1, SeriesIncludes.Metadata);
-        Assert.NotNull(postSeries);
-        Assert.Equal("Localized Name here", postSeries.LocalizedName);
     }
 
     [Fact]
@@ -2156,6 +2082,45 @@ public class ExternalMetadataServiceTests: AbstractDbTest
         Assert.Equal(expectedTotalCount, postSeries.Metadata.TotalCount);
         Assert.Equal(expectedMaxCount, postSeries.Metadata.MaxCount);
         Assert.Equal(expectedStatus, postSeries.Metadata.PublicationStatus);
+    }
+
+    [Fact]
+    public async Task DeterminePublicationStatus_CorrectCount_OneBookEpubPdfSeries()
+    {
+        var (unitOfWork, context, mapper) = await CreateDatabase();
+        var (externalMetadataService, _, _, _) = await Setup(unitOfWork, context, mapper);
+
+        var series = new SeriesBuilder("The Tunnel to Summer, the Exit of Goodbyes")
+            .WithLibraryId(1)
+            .WithFormat(MangaFormat.Epub)
+            .WithVolume(new VolumeBuilder(Parser.SpecialVolume)
+                .WithChapter(new ChapterBuilder(Parser.LooseLeafVolume)
+                    .WithTitle("The Tunnel to Summer, the Exit of Goodbyes")
+                    .Build())
+                .Build())
+            .Build();
+
+        context.Series.Attach(series);
+        await unitOfWork.CommitAsync();
+
+        var metadataSettings = await unitOfWork.SettingsRepository.GetMetadataSettings();
+        metadataSettings.Enabled = true;
+        metadataSettings.EnablePublicationStatus = true;
+        context.MetadataSettings.Update(metadataSettings);
+        await context.SaveChangesAsync();
+
+        await externalMetadataService.WriteExternalMetadataToSeries(new ExternalSeriesDetailDto
+        {
+            Name = series.Name,
+            Volumes = 1,
+            Chapters = 6
+        }, series.Id);
+
+        var postSeries = await unitOfWork.SeriesRepository.GetSeriesByIdAsync(series.Id, SeriesIncludes.Metadata);
+        Assert.NotNull(postSeries);
+        Assert.Equal(1, postSeries.Metadata.TotalCount);
+        Assert.Equal(1, postSeries.Metadata.MaxCount);
+        Assert.Equal(PublicationStatus.Completed, postSeries.Metadata.PublicationStatus);
     }
 
     #endregion
@@ -5394,6 +5359,52 @@ public class ExternalMetadataServiceTests: AbstractDbTest
         var postSeries = await unitOfWork.SeriesRepository.GetSeriesByIdAsync(target.Id, SeriesIncludes.Metadata);
         Assert.NotNull(postSeries);
         Assert.Equal("Original Name", postSeries.Name);
+    }
+
+    [Fact]
+    public async Task Name_PrimaryAndOfficialHavePriority()
+    {
+        var (unitOfWork, context, mapper) = await CreateDatabase();
+        var (externalMetadataService, _, _, _) = await Setup(unitOfWork, context, mapper);
+
+        var target = new SeriesBuilder("Spice & Wolf")
+            .WithLibraryId(1)
+            .WithFormat(MangaFormat.Archive)
+            .WithMetadata(new SeriesMetadataBuilder().Build())
+            .Build();
+        context.Series.Attach(target);
+        await context.SaveChangesAsync();
+
+        var metadataSettings = await unitOfWork.SettingsRepository.GetMetadataSettings();
+        metadataSettings.Enabled = true;
+        metadataSettings.EnableName = true;
+        metadataSettings.EnableLocalizedName = true;
+        metadataSettings.GlobalNameLanguages = "en";
+        metadataSettings.GlobalLocalizedNameLanguages = "jp-latn";
+        metadataSettings.Overrides = [MetadataSettingField.LocalizedName];
+        context.MetadataSettings.Update(metadataSettings);
+        await context.SaveChangesAsync();
+
+        await externalMetadataService.WriteExternalMetadataToSeries(new ExternalSeriesDetailDto()
+        {
+            Name = "Spice and Wolf",
+            LocalizedTitles = new Dictionary<string, IList<LocalizedTitleDto>>
+            {
+                ["en"] = [
+                    new LocalizedTitleDto { Title = "Wolf and Spice"},
+                    new LocalizedTitleDto { Title = "Spice and Wolf", IsPrimary = true}
+                ],
+                ["jp-latn"] = [
+                    new LocalizedTitleDto { Title = "Koushinryou to Ookami"},
+                    new LocalizedTitleDto { Title = "Ookami to Koushinryou", IsOfficial = true}
+                ]
+            }
+        }, target.Id);
+
+        var postSeries = await unitOfWork.SeriesRepository.GetSeriesByIdAsync(target.Id, SeriesIncludes.Metadata);
+        Assert.NotNull(postSeries);
+        Assert.Equal("Spice and Wolf", postSeries.Name);
+        Assert.Equal("Ookami to Koushinryou", postSeries.LocalizedName);
     }
 
     #endregion

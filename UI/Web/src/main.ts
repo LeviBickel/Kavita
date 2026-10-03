@@ -2,8 +2,11 @@ import {
   ApplicationConfig,
   importProvidersFrom,
   inject,
+  isDevMode,
   provideAppInitializer,
-  provideZoneChangeDetection,
+  provideBrowserGlobalErrorListeners,
+  provideCheckNoChangesConfig,
+  provideZonelessChangeDetection,
 } from '@angular/core';
 import {routes} from './app/app-routing.module';
 import {bootstrapApplication, BrowserModule, Title} from '@angular/platform-browser';
@@ -34,6 +37,7 @@ import {KavitaTitleStrategy} from "./app/_services/kavita-title.strategy";
 import {routingErrorHandler} from "./app/_interceptors/routing-error.handler";
 import {NgbModalConfig, NgbRatingConfig} from "@ng-bootstrap/ng-bootstrap";
 import {DefaultModalOptions} from "./app/_models/modal/modal-options";
+import {ActivityStoreService} from './app/_services/activity-store.service';
 import {MessageHubService} from "./app/_services/message-hub.service";
 import {DownloadService} from "./app/shared/_services/download.service";
 import {LibraryService} from "./app/_services/library.service";
@@ -130,6 +134,8 @@ function bootstrapUser() {
   const downloadService = inject(DownloadService);
   const libraryService = inject(LibraryService);
   const transloco = inject(TranslocoService);
+  // Created before the hub connects so no message is missed
+  inject(ActivityStoreService);
 
   // Load user from localStorage so refreshAccount() and locale loading can proceed
   const localUser = accountService.getUserFromLocalStorage();
@@ -198,7 +204,8 @@ bootstrapApplication(AppComponent, {
         },
         provideHttpClient(withInterceptors([jwtInterceptor, errorInterceptor, clientInfoInterceptor])),
         provideAppInitializer(() => bootstrapUser()),
-        provideZoneChangeDetection(),
+        provideZonelessChangeDetection(),
+        provideBrowserGlobalErrorListeners(),
         {
           provide: NgbModalConfig,
           useFactory: () => Object.assign(new NgbModalConfig(), DefaultModalOptions) satisfies Partial<NgbModalConfig>
@@ -209,7 +216,8 @@ bootstrapApplication(AppComponent, {
             max: 5,
             resettable: true,
           } satisfies Partial<NgbRatingConfig>)
-        }
+        },
+      ...(isDevMode() ? [provideCheckNoChangesConfig({exhaustive: true, interval: 3000})] : [])
     ]
 } as ApplicationConfig)
 .catch(err => console.error(err));

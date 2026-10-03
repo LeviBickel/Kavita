@@ -42,7 +42,6 @@ import {ImageComponent} from '../../../shared/image/image.component';
 import {translate, TranslocoDirective} from "@jsverse/transloco";
 import {CardActionablesComponent} from "../../../_single-module/card-actionables/card-actionables.component";
 import {FormControl, FormGroup, ReactiveFormsModule} from "@angular/forms";
-import {VirtualScrollerModule} from "@iharbeck/ngx-virtual-scroller";
 import {PromotedIconComponent} from "../../../shared/_components/promoted-icon/promoted-icon.component";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {DetailsTabComponent} from "../../../_single-module/details-tab/details-tab.component";
@@ -72,6 +71,7 @@ import {MangaFormat} from "../../../_models/manga-format";
 import {LibraryType} from "../../../_models/library/library";
 import {LibraryService} from "../../../_services/library.service";
 import {ReaderService} from "../../../_services/reader.service";
+import {disabled, form, FormField} from "@angular/forms/signals";
 
 
 @Component({
@@ -84,8 +84,8 @@ import {ReaderService} from "../../../_services/reader.service";
     LoadingComponent, DraggableOrderedListComponent,
     ReadingListItemComponent, NgClass, DecimalPipe, TranslocoDirective, ReactiveFormsModule,
     NgbNav, NgbNavContent, NgbNavLink, NgbTooltip,
-    RouterLink, VirtualScrollerModule, NgStyle, NgbNavOutlet, NgbNavItem,
-    PromotedIconComponent, DetailsTabComponent, TabTitlePipe]
+    RouterLink, NgStyle, NgbNavOutlet, NgbNavItem,
+    PromotedIconComponent, DetailsTabComponent, TabTitlePipe, FormField]
 })
 export class ReadingListDetailComponent implements OnInit {
   private readonly document = inject<Document>(DOCUMENT);
@@ -107,9 +107,7 @@ export class ReadingListDetailComponent implements OnInit {
   private readonly colorscapeService = inject(ColorscapeService);
   private readonly filterUtilityService = inject(FilterUtilitiesService);
 
-  protected readonly MangaFormat = MangaFormat;
-  protected readonly Tabs = Tabs;
-  protected readonly encodeURIComponent = encodeURIComponent;
+
   private readonly dateYearRangePipe = new DateYearRangePipe();
 
   scrollingBlock = viewChild<ElementRef<HTMLDivElement>>('scrollingBlock');
@@ -145,8 +143,7 @@ export class ReadingListDetailComponent implements OnInit {
     .filter(action => this.readingListService.actionListFilter(action, this.readingList(), this.isAdmin())));
   isAdmin = this.accountService.hasAdminRole;
   isLoading = signal(false);
-  accessibilityMode = signal(false);
-  editMode = signal(false);
+  accessibilityMode = computed(() => this.formGroup.accessibilityMode().value() || this.breakpointService.isMobile());
   missingItems = computed(() => {
     const rl = this.readingList();
     if (rl.totalItemsAtImport === 0) return 0;
@@ -188,9 +185,8 @@ export class ReadingListDetailComponent implements OnInit {
     writers: []
   });
 
-  filterText = signal('');
   filterFn = computed<((item: ReadingListItem) => boolean) | null>(() => {
-    const text = this.filterText();
+    const text = this.formGroup.filter().value();
     if (!text) return null;
     return (item: ReadingListItem) => {
       return !!(item.title?.toLowerCase().includes(text)
@@ -203,10 +199,13 @@ export class ReadingListDetailComponent implements OnInit {
     };
   });
 
-  formGroup = new FormGroup({
-    'edit': new FormControl(false, []),
-    'accessibilityMode': new FormControl(false, []),
-    'filter': new FormControl('', []),
+  formModel = signal({
+    edit: false,
+    accessibilityMode: false,
+    filter: ''
+  });
+  formGroup = form(this.formModel, path => {
+    disabled(path.accessibilityMode, { when: () => this.breakpointService.isMobile()})
   });
 
   trackByIdentity: TrackByFunction<ReadingListItem> = (index, item) => `${item.order}_${item.title}_${item.summary?.length}_${item.pagesRead}_${item.chapterId}`;
@@ -221,36 +220,7 @@ export class ReadingListDetailComponent implements OnInit {
     return 'calc(var(--vh)*100 - ' + totalHeight + 'px)';
   }
 
-  constructor() {
-    // Form subscriptions
-    this.formGroup.get('edit')!.valueChanges.pipe(
-      takeUntilDestroyed(this.destroyRef),
-      startWith(false),
-      tap(mode => {
-        this.editMode.set(mode || false);
-      })
-    ).subscribe();
-
-    this.formGroup.get('accessibilityMode')!.valueChanges.pipe(
-      takeUntilDestroyed(this.destroyRef),
-      startWith(this.breakpointService.isMobile()),
-      tap(mode => {
-        this.accessibilityMode.set(mode || this.breakpointService.isMobile());
-      })
-    ).subscribe();
-
-    this.formGroup.get('filter')!.valueChanges.pipe(
-      takeUntilDestroyed(this.destroyRef),
-      tap(val => this.filterText.set((val || '').trim().toLowerCase()))
-    ).subscribe();
-
-    if (this.breakpointService.isMobile()) {
-      this.formGroup.get('accessibilityMode')?.disable();
-    }
-
-    this.accessibilityMode.set(this.breakpointService.isMobile());
-
-    // Fetch libraries
+  ngOnInit() {
     this.libraryService.getLibraries().pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(libraries => {
@@ -260,9 +230,7 @@ export class ReadingListDetailComponent implements OnInit {
       });
       this.libraryTypes.set(types);
     });
-  }
 
-  ngOnInit() {
     const id = this.readingListId();
 
     if (this.readingList().coverImage) {
@@ -397,7 +365,7 @@ export class ReadingListDetailComponent implements OnInit {
   }
 
   toggleReorder() {
-    this.formGroup.get('edit')?.setValue(!this.formGroup.get('edit')!.value);
+    this.formGroup.edit().value.update(x => !x);
   }
 
 
@@ -427,4 +395,7 @@ export class ReadingListDetailComponent implements OnInit {
 
   protected readonly Breakpoint = Breakpoint;
   protected readonly ReadingListFilterField = ReadingListFilterField;
+  protected readonly MangaFormat = MangaFormat;
+  protected readonly Tabs = Tabs;
+  protected readonly encodeURIComponent = encodeURIComponent;
 }

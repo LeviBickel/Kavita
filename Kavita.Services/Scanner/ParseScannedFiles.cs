@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -91,17 +92,34 @@ public partial class ParseScannedFiles
             .ToList();
 
         var processedDirs = new HashSet<string>();
+        var total = allDirectories.Count;
+        var timings = new DirectoryScanTimings();
+        var loopSw = Stopwatch.StartNew();
 
-        _logger.LogDebug("[ScannerService] Step 1.C Found {DirectoryCount} directories to process for {FolderPath}", allDirectories.Count, folderPath);
-        foreach (var directory in allDirectories)
+        _logger.LogDebug("[ScannerService] Step 1.C Found {DirectoryCount} directories to process for {FolderPath}", total, folderPath);
+        for (var i = 0; i < total; i++)
         {
+            var directory = allDirectories[i];
+
+            timings.Events.Start();
+            await _eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
+                MessageFactory.FileScanProgressEvent(directory, library.Id, library.Name, ProgressEventType.Updated,
+                    MessageEventCode.ScanListingFolders, i + 1, total));
+            timings.Events.Stop();
+
             // Don't process any folders where we've already scanned everything below
             if (processedDirs.Any(d => d.StartsWith(directory + Path.AltDirectorySeparatorChar) || d.Equals(directory)))
             {
+                timings.ParentCount++;
+                timings.ParentChangeCheck.Start();
                 var hasChanged = !HasSeriesFolderNotChangedSinceLastScan(library, seriesPaths, directory, forceCheck);
+                timings.ParentChangeCheck.Stop();
+
                 // Skip this directory as we've already processed a parent unless there are loose files at that directory
                 // and they have changes
+                timings.ParentSurfaceFiles.Start();
                 CheckSurfaceFiles(result, directory, folderPath, fileExtensions, matcher, hasChanged);
+                timings.ParentSurfaceFiles.Stop();
                 continue;
             }
 
@@ -112,9 +130,6 @@ public partial class ParseScannedFiles
                 _logger.LogDebug("Skipping {Directory} as it ends with 'Specials'", directory);
                 continue;
             }
-
-            await _eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
-                MessageFactory.FileScanProgressEvent(directory, library.Name, ProgressEventType.Updated));
 
             if (HasSeriesFolderNotChangedSinceLastScan(library, seriesPaths, directory, forceCheck))
             {
@@ -128,7 +143,20 @@ public partial class ParseScannedFiles
             processedDirs.Add(directory);
         }
 
+        _logger.LogDebug("[ScannerService] Walked {DirectoryCount} folders in {ElapsedMs}ms, {ParentCount} parent checks took {ChangeCheckMs}ms + {SurfaceFilesMs}ms loose files, events {EventsMs}ms",
+            total, loopSw.ElapsedMilliseconds, timings.ParentCount,
+            timings.ParentChangeCheck.ElapsedMilliseconds, timings.ParentSurfaceFiles.ElapsedMilliseconds,
+            timings.Events.ElapsedMilliseconds);
+
         return result;
+    }
+
+    private sealed class DirectoryScanTimings
+    {
+        public int ParentCount;
+        public readonly Stopwatch ParentChangeCheck = new();
+        public readonly Stopwatch ParentSurfaceFiles = new();
+        public readonly Stopwatch Events = new();
     }
 
     /// <summary>
@@ -259,7 +287,8 @@ public partial class ParseScannedFiles
             folderPath;
 
         await _eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
-            MessageFactory.FileScanProgressEvent(normalizedPath, library.Name, ProgressEventType.Updated));
+            MessageFactory.FileScanProgressEvent(normalizedPath, library.Id, library.Name, ProgressEventType.Updated,
+                MessageEventCode.ScanListingFolders, 1, 1));
 
         if (HasSeriesFolderNotChangedSinceLastScan(library, seriesPaths, normalizedPath, forceCheck))
         {
@@ -484,7 +513,7 @@ public partial class ParseScannedFiles
         IDictionary<string, IList<SeriesModified>> seriesPaths, bool forceCheck = false)
     {
         await _eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
-            MessageFactory.FileScanProgressEvent("File Scan Starting", library.Name, ProgressEventType.Started));
+            MessageFactory.FileScanProgressEvent("File Scan Starting", library.Id, library.Name, ProgressEventType.Started));
 
         _logger.LogDebug("[ScannerService] Library {LibraryName} Step 1.A: Process {FolderCount} folders", library.Name, folders.Count);
         var processedScannedSeries = new ConcurrentBag<ScannedSeriesResult>();
@@ -502,7 +531,7 @@ public partial class ParseScannedFiles
         }
 
         await _eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
-            MessageFactory.FileScanProgressEvent("File Scan Done", library.Name, ProgressEventType.Ended));
+            MessageFactory.FileScanProgressEvent("File Scan Done", library.Id, library.Name, ProgressEventType.Ended));
 
         return processedScannedSeries.ToList();
     }
@@ -527,10 +556,14 @@ public partial class ParseScannedFiles
         var scannedSeries = new ConcurrentDictionary<ParsedSeries, List<ParserInfo>>();
 
         _logger.LogDebug("\t[ScannerService] Library {LibraryName} Step 1.C: Process files in {Folder}", library.Name, folderPath);
-        foreach (var scanResult in scanResults)
+        for (var i = 0; i < scanResults.Count; i++)
         {
-            await ParseFiles(scanResult, seriesPaths, library);
+            await ParseFiles(scanResults[i], seriesPaths, library, i + 1, scanResults.Count);
         }
+
+        await _eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
+            MessageFactory.FileScanProgressEvent(folderPath, library.Id, library.Name, ProgressEventType.Updated,
+                MessageEventCode.ScanGroupingSeries));
 
         _logger.LogDebug("\t[ScannerService] Library {LibraryName} Step 1.D: Merge any localized series with series {Folder}", library.Name, folderPath);
         scanResults = MergeLocalizedSeriesAcrossScanResults(scanResults);
@@ -734,7 +767,8 @@ public partial class ParseScannedFiles
     /// <param name="result"></param>
     /// <param name="seriesPaths"></param>
     /// <param name="library"></param>
-    private async Task ParseFiles(ScanResult result, IDictionary<string, IList<SeriesModified>> seriesPaths, Library library)
+    private async Task ParseFiles(ScanResult result, IDictionary<string, IList<SeriesModified>> seriesPaths, Library library,
+        int current, int total)
     {
         var normalizedFolder = Parser.NormalizePath(result.Folder);
 
@@ -742,7 +776,7 @@ public partial class ParseScannedFiles
         if (!result.HasChanged)
         {
             result.ParserInfos = seriesPaths[normalizedFolder]
-                .Select(fp => new ParserInfo { Series = fp.SeriesName, Format = fp.Format })
+                .Select(fp => new ParserInfo { Series = fp.SeriesName, Format = fp.Format, UnchangedFolderPath = normalizedFolder })
                 .ToList();
 
             // // We are certain TryGetSeriesList will return a valid result here, if the series wasn't present yet. It will have been changed.
@@ -752,7 +786,8 @@ public partial class ParseScannedFiles
 
             _logger.LogDebug("[ScannerService] Skipped File Scan for {Folder} as it hasn't changed", normalizedFolder);
             await _eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
-                MessageFactory.FileScanProgressEvent($"Skipped {normalizedFolder}", library.Name, ProgressEventType.Updated));
+                MessageFactory.FileScanProgressEvent($"Skipped {normalizedFolder}", library.Id, library.Name, ProgressEventType.Updated,
+                    MessageEventCode.ScanReadingFiles, current, total));
             return;
         }
 
@@ -768,7 +803,8 @@ public partial class ParseScannedFiles
 
         _logger.LogDebug("[ScannerService] Found {Count} files for {Folder}", files.Count, normalizedFolder);
         await _eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
-            MessageFactory.FileScanProgressEvent($"{fileCount} files in {normalizedFolder}", library.Name, ProgressEventType.Updated));
+            MessageFactory.FileScanProgressEvent($"{fileCount} files in {normalizedFolder}", library.Id, library.Name, ProgressEventType.Updated,
+                MessageEventCode.ScanReadingFiles, current, total));
 
         // Parse files into ParserInfos
         if (fileCount < 100)
@@ -786,27 +822,19 @@ public partial class ParseScannedFiles
             // and health checks become unresponsive during scans otherwise).
             // Matches the scanner's existing parallelism convention (see ScannerService).
             var maxConcurrency = Math.Max(1, Environment.ProcessorCount / 2);
-            using var throttler = new SemaphoreSlim(maxConcurrency);
 
-            var tasks = files.Select(async file =>
-            {
-                await throttler.WaitAsync();
+            // Written by index rather than collected, as downstream series mapping relies on file order
+            var infos = new ParserInfo?[fileCount];
 
-                try
+            await Parallel.ForEachAsync(Enumerable.Range(0, fileCount),
+                new ParallelOptions { MaxDegreeOfParallelism = maxConcurrency },
+                (i, _) =>
                 {
-                    // Task.Run keeps the synchronous parser work off the enumerating thread
-                    // while the semaphore bounds how many parses run at once.
-                    return await Task.Run(() =>
-                        _readingItemService.ParseFile(file, normalizedFolder, result.LibraryRoot, library.Type, library.EnableMetadata));
-                }
-                finally
-                {
-                    throttler.Release();
-                }
-            });
+                    infos[i] = _readingItemService.ParseFile(files[i], normalizedFolder, result.LibraryRoot,
+                        library.Type, library.EnableMetadata);
+                    return ValueTask.CompletedTask;
+                });
 
-            // Task.WhenAll preserves input (file) order, which downstream series mapping relies on
-            var infos = await Task.WhenAll(tasks);
             result.ParserInfos = infos.Where(info => info != null).ToList()!;
         }
     }
@@ -814,11 +842,14 @@ public partial class ParseScannedFiles
 
     public static void UpdateSortOrder(ConcurrentDictionary<ParsedSeries, List<ParserInfo>> scannedSeries, ParsedSeries series)
     {
+        // Placeholders from skipped folders don't map to a chapter, so they have nothing to sort
+        var fileInfos = scannedSeries[series].Where(info => string.IsNullOrEmpty(info.UnchangedFolderPath)).ToList();
+
         // Set the Sort order per Volume
-        var volumes = scannedSeries[series].GroupBy(info => info.Volumes);
+        var volumes = fileInfos.GroupBy(info => info.Volumes);
         foreach (var volume in volumes)
         {
-            var infos = scannedSeries[series].Where(info => info.Volumes == volume.Key).ToList();
+            var infos = fileInfos.Where(info => info.Volumes == volume.Key).ToList();
             IList<ParserInfo> chapters;
             var specialTreatment = infos.TrueForAll(info => info.IsSpecial);
             var hasAnySpMarker = infos.Exists(info => info.SpecialIndex > 0);

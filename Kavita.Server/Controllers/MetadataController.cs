@@ -21,6 +21,7 @@ using Kavita.Models.DTOs.SeriesDetail;
 using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
 using Kavita.Models.Entities.Enums.Audit;
+using Kavita.Server.Attributes;
 using Kavita.Server.Extensions;
 using Kavita.Services.Helpers;
 using Microsoft.AspNetCore.Authorization;
@@ -41,11 +42,12 @@ public class MetadataController(IUnitOfWork unitOfWork, IExternalMetadataService
     [ResponseCache(CacheProfileName = ResponseCacheProfiles.FiveMinute, VaryByQueryKeys = ["libraryIds", "context"])]
     public async Task<ActionResult<IList<GenreTagDto>>> GetAllGenres(string? libraryIds, QueryContext context = QueryContext.None)
     {
+        var ct = HttpContext.RequestAborted;
         var ids = libraryIds?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
             .Select(int.Parse)
             .ToList();
 
-        return Ok(await unitOfWork.GenreRepository.GetAllGenreDtosForLibrariesAsync(UserId, ids, context));
+        return Ok(await unitOfWork.GenreRepository.GetAllGenreDtosForLibrariesAsync(UserId, ids, context, ct));
     }
 
     /// <summary>
@@ -55,9 +57,10 @@ public class MetadataController(IUnitOfWork unitOfWork, IExternalMetadataService
     [HttpPost("genres-with-counts")]
     public async Task<ActionResult<PagedList<BrowseGenreDto>>> GetBrowseGenres(UserParams? userParams = null)
     {
+        var ct = HttpContext.RequestAborted;
         userParams ??= UserParams.Default;
 
-        var list = await unitOfWork.GenreRepository.GetBrowseableGenre(UserId, userParams);
+        var list = await unitOfWork.GenreRepository.GetBrowseableGenre(UserId, userParams, ct);
         Response.AddPaginationHeader(list.CurrentPage, list.PageSize, list.TotalCount, list.TotalPages);
 
         return Ok(list);
@@ -72,9 +75,10 @@ public class MetadataController(IUnitOfWork unitOfWork, IExternalMetadataService
     [ResponseCache(CacheProfileName = ResponseCacheProfiles.Minute, VaryByQueryKeys = ["role"])]
     public async Task<ActionResult<IList<PersonDto>>> GetAllPeople(PersonRole? role)
     {
+        var ct = HttpContext.RequestAborted;
         return role.HasValue ?
-            Ok(await unitOfWork.PersonRepository.GetAllPersonDtosByRoleAsync(UserId, role.Value)) :
-            Ok(await unitOfWork.PersonRepository.GetAllPersonDtosAsync(UserId));
+            Ok(await unitOfWork.PersonRepository.GetAllPersonDtosByRoleAsync(UserId, role.Value, ct: ct)) :
+            Ok(await unitOfWork.PersonRepository.GetAllPersonDtosAsync(UserId, ct: ct));
     }
 
     /// <summary>
@@ -86,13 +90,14 @@ public class MetadataController(IUnitOfWork unitOfWork, IExternalMetadataService
     [ResponseCache(CacheProfileName = ResponseCacheProfiles.Minute, VaryByQueryKeys = ["libraryIds"])]
     public async Task<ActionResult<IList<PersonDto>>> GetAllPeople(string? libraryIds)
     {
+        var ct = HttpContext.RequestAborted;
         var ids = libraryIds?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
         if (ids is {Count: > 0})
         {
-            return Ok(await unitOfWork.PersonRepository.GetAllPeopleDtosForLibrariesAsync(UserId, ids));
+            return Ok(await unitOfWork.PersonRepository.GetAllPeopleDtosForLibrariesAsync(UserId, ids, ct: ct));
         }
 
-        return Ok(await unitOfWork.PersonRepository.GetAllPeopleDtosForLibrariesAsync(UserId));
+        return Ok(await unitOfWork.PersonRepository.GetAllPeopleDtosForLibrariesAsync(UserId, ct: ct));
     }
 
     /// <summary>
@@ -104,12 +109,13 @@ public class MetadataController(IUnitOfWork unitOfWork, IExternalMetadataService
     [ResponseCache(CacheProfileName = ResponseCacheProfiles.Minute, VaryByQueryKeys = ["libraryIds"])]
     public async Task<ActionResult<IList<TagDto>>> GetAllTags(string? libraryIds)
     {
+        var ct = HttpContext.RequestAborted;
         var ids = libraryIds?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
         if (ids is {Count: > 0})
         {
-            return Ok(await unitOfWork.TagRepository.GetAllTagDtosForLibrariesAsync(UserId, ids));
+            return Ok(await unitOfWork.TagRepository.GetAllTagDtosForLibrariesAsync(UserId, ids, ct));
         }
-        return Ok(await unitOfWork.TagRepository.GetAllTagDtosForLibrariesAsync(UserId));
+        return Ok(await unitOfWork.TagRepository.GetAllTagDtosForLibrariesAsync(UserId, ct: ct));
     }
 
 
@@ -118,7 +124,7 @@ public class MetadataController(IUnitOfWork unitOfWork, IExternalMetadataService
     /// </summary>
     /// <returns></returns>
     [HttpGet("readinglist-tags")]
-    [ResponseCache(CacheProfileName = ResponseCacheProfiles.FiveMinute)]
+    [ResponseCache(CacheProfileName = ResponseCacheProfiles.Minute)]
     public async Task<ActionResult<IList<ReadingListTagDto>>> GetAllReadingListTags()
     {
         return Ok(await unitOfWork.ReadingListRepository.GetAllReadingListTagDtosAsync(UserId, HttpContext.RequestAborted));
@@ -131,9 +137,10 @@ public class MetadataController(IUnitOfWork unitOfWork, IExternalMetadataService
     [HttpPost("tags-with-counts")]
     public async Task<ActionResult<PagedList<BrowseTagDto>>> GetBrowseTags(UserParams? userParams = null)
     {
+        var ct = HttpContext.RequestAborted;
         userParams ??= UserParams.Default;
 
-        var list = await unitOfWork.TagRepository.GetBrowseableTag(UserId, userParams);
+        var list = await unitOfWork.TagRepository.GetBrowseableTag(UserId, userParams, ct);
         Response.AddPaginationHeader(list.CurrentPage, list.PageSize, list.TotalCount, list.TotalPages);
 
         return Ok(list);
@@ -149,10 +156,11 @@ public class MetadataController(IUnitOfWork unitOfWork, IExternalMetadataService
     [ResponseCache(CacheProfileName = ResponseCacheProfiles.FiveMinute, VaryByQueryKeys = ["libraryIds"])]
     public async Task<ActionResult<IList<AgeRatingDto>>> GetAllAgeRatings(string? libraryIds)
     {
-        var ids = libraryIds?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
+        var ct = HttpContext.RequestAborted;
+        var ids = await GetRequestedUserLibraryIds(libraryIds, ct);
         if (ids is {Count: > 0})
         {
-            return Ok(await unitOfWork.LibraryRepository.GetAllAgeRatingsDtosForLibrariesAsync(ids));
+            return Ok(await unitOfWork.LibraryRepository.GetAllAgeRatingsDtosForLibrariesAsync(ids, ct));
         }
 
         return Ok(Enum.GetValues<AgeRating>().Select(t => new AgeRatingDto()
@@ -170,9 +178,10 @@ public class MetadataController(IUnitOfWork unitOfWork, IExternalMetadataService
     /// <returns></returns>
     [HttpGet("publication-status")]
     [ResponseCache(CacheProfileName = ResponseCacheProfiles.FiveMinute, VaryByQueryKeys = ["libraryIds"])]
-    public ActionResult<IList<AgeRatingDto>> GetAllPublicationStatus(string? libraryIds)
+    public async Task<ActionResult<IList<AgeRatingDto>>> GetAllPublicationStatus(string? libraryIds)
     {
-        var ids = libraryIds?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
+        var ct = HttpContext.RequestAborted;
+        var ids = await GetRequestedUserLibraryIds(libraryIds, ct);
         if (ids is {Count: > 0})
         {
             return Ok(unitOfWork.LibraryRepository.GetAllPublicationStatusesDtosForLibrariesAsync(ids));
@@ -195,8 +204,24 @@ public class MetadataController(IUnitOfWork unitOfWork, IExternalMetadataService
     [ResponseCache(CacheProfileName = ResponseCacheProfiles.FiveMinute, VaryByQueryKeys = ["libraryIds"])]
     public async Task<ActionResult<IList<LanguageDto>>> GetAllLanguages(string? libraryIds)
     {
-        var ids = libraryIds?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
-        return Ok(await unitOfWork.LibraryRepository.GetAllLanguagesForLibrariesAsync(ids));
+        var ct = HttpContext.RequestAborted;
+        var ids = await GetRequestedUserLibraryIds(libraryIds, ct);
+        if (ids.Count == 0)
+        {
+            ids = (await unitOfWork.LibraryRepository.GetLibraryIdsForUserIdAsync(UserId, ct: ct)).ToList();
+            if (ids.Count == 0) return Ok(new List<LanguageDto>());
+        }
+
+        return Ok(await unitOfWork.LibraryRepository.GetAllLanguagesForLibrariesAsync(ids, ct));
+    }
+
+    private async Task<List<int>> GetRequestedUserLibraryIds(string? libraryIds, CancellationToken ct)
+    {
+        var requested = libraryIds?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
+        if (requested is not {Count: > 0}) return [];
+
+        var userLibraryIds = await unitOfWork.LibraryRepository.GetLibraryIdsForUserIdAsync(UserId, ct: ct);
+        return requested.Intersect(userLibraryIds).ToList();
     }
 
     /// <summary>
@@ -261,9 +286,11 @@ public class MetadataController(IUnitOfWork unitOfWork, IExternalMetadataService
     /// <param name="libraryType">Library Type</param>
     /// <returns></returns>
     [HttpGet("series-detail-plus")]
+    [SeriesAccess]
     public async Task<ActionResult<SeriesDetailPlusDto>> GetKavitaPlusSeriesDetailData(int seriesId, LibraryType libraryType)
     {
-        var userReviews = (await unitOfWork.UserRepository.GetUserRatingDtosForSeriesAsync(seriesId, UserId))
+        var ct = HttpContext.RequestAborted;
+        var userReviews = (await unitOfWork.UserRepository.GetUserRatingDtosForSeriesAsync(seriesId, UserId, ct))
             .Where(r => !string.IsNullOrEmpty(r.Body))
             .OrderByDescending(review => review.Username.Equals(Username!) ? 1 : 0)
             .ToList();

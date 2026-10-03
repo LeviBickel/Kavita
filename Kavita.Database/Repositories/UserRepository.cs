@@ -7,7 +7,6 @@ using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Kavita.API.Repositories;
 using Kavita.Common.Extensions;
-using Kavita.Common.Helpers;
 using Kavita.Database.Extensions;
 using Kavita.Models.Constants;
 using Kavita.Models.DTOs;
@@ -15,7 +14,6 @@ using Kavita.Models.DTOs.Account;
 using Kavita.Models.DTOs.Dashboard;
 using Kavita.Models.DTOs.Filtering.v2;
 using Kavita.Models.DTOs.Filtering.v2.Requests;
-using Kavita.Models.DTOs.KavitaPlus.Account;
 using Kavita.Models.DTOs.Reader;
 using Kavita.Models.DTOs.Scrobbling;
 using Kavita.Models.DTOs.SeriesDetail;
@@ -178,11 +176,11 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
     /// <param name="bookmarkIds"></param>
     /// <param name="ct"></param>
     /// <returns></returns>
-    public async Task<IList<AppUserBookmark>> GetAllBookmarksByIds(int seriesId, IList<int> bookmarkIds,
+    public async Task<IList<AppUserBookmark>> GetAllBookmarksByIds(int userId, int seriesId, IList<int> bookmarkIds,
         CancellationToken ct = default)
     {
         return await context.AppUserBookmark
-            .Where(b => bookmarkIds.Contains(b.Id) && b.SeriesId == seriesId)
+            .Where(b => b.AppUserId == userId && bookmarkIds.Contains(b.Id) && b.SeriesId == seriesId)
             .OrderBy(b => b.Created)
             .ToListAsync(ct);
     }
@@ -211,6 +209,19 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
             .Include(l => l.AppUsers)
             .AsSplitQuery()
             .AnyAsync(library => library.AppUsers.Any(user => user.Id == userId) && library.Id == libraryId, ct);
+    }
+
+    public async Task<bool> HasAccessToSeries(int userId, IEnumerable<int> seriesIds, CancellationToken ct = default)
+    {
+        var userRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
+
+        var accessibleCount = await context.Series
+            .Where(s => seriesIds.Contains(s.Id))
+            .Where(s => s.Library.AppUsers.Any(user => user.Id == userId))
+            .RestrictAgainstAgeRestriction(userRating)
+            .CountAsync(ct);
+
+        return accessibleCount == seriesIds.Distinct().Count();
     }
 
     /// <summary>
@@ -253,6 +264,37 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
             .RestrictAgainstAgeRestriction(userRating)
             .AsSplitQuery()
             .AnyAsync(c => c.Id == chapterId, ct);
+    }
+
+    public async Task<bool> HasAccessToAllVolumes(int userId, IEnumerable<int> volumeIds, CancellationToken ct = default)
+    {
+        var distinctIds = volumeIds.Distinct().ToList();
+        if (distinctIds.Count == 0) return true;
+
+        var userRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
+        var accessibleCount = await context.Volume
+            .Where(v => distinctIds.Contains(v.Id))
+            .Where(v => v.Series.Library.AppUsers.Any(user => user.Id == userId))
+            .Select(v => v.Series)
+            .RestrictAgainstAgeRestriction(userRating)
+            .CountAsync(ct);
+
+        return accessibleCount == distinctIds.Count;
+    }
+
+    public async Task<bool> HasAccessToAllChapters(int userId, IEnumerable<int> chapterIds, CancellationToken ct = default)
+    {
+        var distinctIds = chapterIds.Distinct().ToList();
+        if (distinctIds.Count == 0) return true;
+
+        var userRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
+        var accessibleCount = await context.Chapter
+            .Where(c => distinctIds.Contains(c.Id))
+            .Where(c => c.Volume.Series.Library.AppUsers.Any(user => user.Id == userId))
+            .RestrictAgainstAgeRestriction(userRating)
+            .CountAsync(ct);
+
+        return accessibleCount == distinctIds.Count;
     }
 
     public async Task<bool> HasAccessToPerson(int userId, int personId, CancellationToken ct = default)
@@ -540,6 +582,16 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
             .Where(u => u.OidcId == oidcId)
             .Includes(includes)
             .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<UserRatingAndReviewDto> GetMyRatingAndReviewForSeries(int userId, int seriesId, CancellationToken ct = default)
+    {
+        var ret = await context.AppUserRating
+            .Where(r => r.AppUserId == userId && r.SeriesId == seriesId)
+            .ProjectTo<UserRatingAndReviewDto>(mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync(cancellationToken: ct);
+
+        return ret ?? new UserRatingAndReviewDto() { Rating = 0, Review = string.Empty, HasBeenRated = false };
     }
 
     public async Task<AnnotationDto?> GetAnnotationDtoById(int userId, int annotationId, CancellationToken ct = default)

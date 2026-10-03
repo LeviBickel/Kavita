@@ -93,11 +93,13 @@ export class ReaderService {
   }
 
   closeShortCutModal() {
+    const isOpen = !!this.shortCutModalRef;
     if (this.shortCutModalRef) {
       this.shortCutModalRef.dismiss();
       this.shortCutModalRef = undefined;
     }
     this.shortCutModalOpen.set(false);
+    return isOpen;
   }
 
 
@@ -351,6 +353,18 @@ export class ReaderService {
     }
 
     return false;
+  }
+
+  setFullscreen(fullscreen: boolean) {
+    if (!screenfull.isEnabled) return;
+
+    if (fullscreen && !screenfull.isFullscreen) {
+      screenfull.toggle().catch(console.error);
+      return;
+    }
+    if (!fullscreen && screenfull.isFullscreen) {
+      screenfull.toggle().catch(console.error);
+    }
   }
 
   exitFullscreen() {

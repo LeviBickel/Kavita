@@ -39,16 +39,17 @@ public class WantToReadController(
     [ProfilePrivacy(allowMissingUserId: true)]
     public async Task<ActionResult<PagedList<SeriesDto>>> GetWantToReadV2([FromQuery] UserParams? userParams, SeriesFilterV2Dto seriesFilterDto, [FromQuery] int? userId = null)
     {
+        var ct = HttpContext.RequestAborted;
         var wantToReadForUser = userId ?? UserId;
         userParams ??= new UserParams();
 
         // Add profile privacy filter
-        foreach (var stmt in await seriesService.GetProfilePrivacyStatements(wantToReadForUser, UserId))
+        foreach (var stmt in await seriesService.GetProfilePrivacyStatements(wantToReadForUser, UserId, ct))
         {
             seriesFilterDto.Statements.Add(stmt);
         }
 
-        var pagedList = await unitOfWork.SeriesRepository.GetWantToReadDtosForUserAsync(wantToReadForUser, userParams, seriesFilterDto);
+        var pagedList = await unitOfWork.SeriesRepository.GetWantToReadDtosForUserAsync(wantToReadForUser, userParams, seriesFilterDto, ct);
         Response.AddPaginationHeader(pagedList.CurrentPage, pagedList.PageSize, pagedList.TotalCount, pagedList.TotalPages);
 
         return Ok(pagedList);
@@ -58,7 +59,8 @@ public class WantToReadController(
     [SeriesAccess]
     public async Task<ActionResult<bool>> IsSeriesInWantToRead([FromQuery] int seriesId)
     {
-        return Ok(await unitOfWork.SeriesRepository.IsSeriesInWantToRead(UserId, seriesId));
+        var ct = HttpContext.RequestAborted;
+        return Ok(await unitOfWork.SeriesRepository.IsSeriesInWantToRead(UserId, seriesId, ct));
     }
 
     /// <summary>
@@ -69,9 +71,11 @@ public class WantToReadController(
     [HttpPost("add-series")]
     public async Task<ActionResult> AddSeries(UpdateWantToReadDto dto)
     {
+        var ct = HttpContext.RequestAborted;
         var user = await unitOfWork.UserRepository.GetUserByUsernameAsync(Username!,
-            AppUserIncludes.WantToRead);
+            AppUserIncludes.WantToRead, ct);
         if (user == null) return Unauthorized();
+        if (!await unitOfWork.UserRepository.HasAccessToSeries(user.Id, dto.SeriesIds, ct)) return NotFound();
 
         var existingIds = user.WantToRead.Select(s => s.SeriesId).ToList();
         var idsToAdd = dto.SeriesIds.Except(existingIds);
@@ -85,11 +89,11 @@ public class WantToReadController(
         }
 
         if (!unitOfWork.HasChanges()) return Ok();
-        if (await unitOfWork.CommitAsync())
+        if (await unitOfWork.CommitAsync(ct))
         {
             foreach (var sId in dto.SeriesIds)
             {
-                BackgroundJob.Enqueue(() => scrobblingService.ScrobbleWantToReadUpdate(user.Id, sId, true));
+                BackgroundJob.Enqueue(() => scrobblingService.ScrobbleWantToReadUpdate(user.Id, sId, true, ct));
             }
             return Ok();
         }
@@ -105,20 +109,25 @@ public class WantToReadController(
     [HttpPost("remove-series")]
     public async Task<ActionResult> RemoveSeries(UpdateWantToReadDto dto)
     {
+        var ct = HttpContext.RequestAborted;
         var user = await unitOfWork.UserRepository.GetUserByUsernameAsync(Username!,
-            AppUserIncludes.WantToRead);
+            AppUserIncludes.WantToRead, ct);
         if (user == null) return Unauthorized();
 
+        var removedSeriesIds = user.WantToRead
+            .Where(s => dto.SeriesIds.Contains(s.SeriesId))
+            .Select(s => s.SeriesId)
+            .ToList();
         user.WantToRead = user.WantToRead
             .Where(s => !dto.SeriesIds.Contains(s.SeriesId))
             .ToList();
 
         if (!unitOfWork.HasChanges()) return Ok();
-        if (await unitOfWork.CommitAsync())
+        if (await unitOfWork.CommitAsync(ct))
         {
-            foreach (var sId in dto.SeriesIds)
+            foreach (var sId in removedSeriesIds)
             {
-                BackgroundJob.Enqueue(() => scrobblingService.ScrobbleWantToReadUpdate(user.Id, sId, false));
+                BackgroundJob.Enqueue(() => scrobblingService.ScrobbleWantToReadUpdate(user.Id, sId, false, ct));
             }
 
             return Ok();

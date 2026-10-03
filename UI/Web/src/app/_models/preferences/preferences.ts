@@ -18,6 +18,8 @@ export interface Preferences {
   colorScapeEnabled: boolean;
   dataSaver: boolean;
   promptForRereadsAfter: number;
+  onDeckProgressDays: number;
+  onDeckUpdateDays: number;
   customKeyBinds: Partial<Record<KeyBindTarget, KeyBind[]>>;
 
   // Kavita+
@@ -58,6 +60,7 @@ export enum KeyBindTarget {
   NavigateToSettings = 'NavigateToSettings',
   OpenSearch = 'OpenSearch',
   NavigateToScrobbling = 'NavigateToScrobbling',
+  OpenEventWidget = 'OpenEventWidget',
 
   ToggleFullScreen = 'ToggleFullScreen',
   BookmarkPage = 'BookmarkPage',

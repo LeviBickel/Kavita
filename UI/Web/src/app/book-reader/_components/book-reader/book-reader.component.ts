@@ -1,4 +1,5 @@
 import {
+  AfterViewChecked,
   AfterViewInit,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -8,12 +9,12 @@ import {
   effect,
   ElementRef,
   EventEmitter,
-  inject,
+  inject, Injector,
   OnDestroy,
   OnInit,
   Renderer2,
   RendererStyleFlags2,
-  resource,
+  resource, SecurityContext,
   signal,
   Signal,
   viewChild,
@@ -25,6 +26,7 @@ import {ToastrService} from '@openng/ngx-toastr';
 import {firstValueFrom, forkJoin, fromEvent, merge, of, switchMap} from 'rxjs';
 import {catchError, debounceTime, distinctUntilChanged, filter, take, tap} from 'rxjs/operators';
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
+import { Tooltip } from 'bootstrap';
 import {NgbTooltip} from '@ng-bootstrap/ng-bootstrap';
 import {BookLineOverlayComponent} from "../book-line-overlay/book-line-overlay.component";
 import {translate, TranslocoDirective} from "@jsverse/transloco";
@@ -137,7 +139,7 @@ const KEYBIND_TARGETS = [
     WritingStyleClassPipe, ReadTimeLeftPipe, PercentPipe, NgxSliderModule],
   providers: [EpubReaderSettingsService, LayoutMeasurementService],
 })
-export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
+export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy, AfterViewChecked {
 
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -167,6 +169,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly keyBindService = inject(KeyBindService);
   protected readonly breakpointService = inject(BreakpointService);
   private readonly entityTitleService = inject(EntityTitleService);
+  private readonly injector = inject(Injector);
 
   libraryId!: number;
   seriesId!: number;
@@ -360,9 +363,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   firstLoad: boolean = true;
 
   /**
-   * Injects information to help debug issues
+   * Injects information to help debug issues. Change the boolean to true to enable
+   * NOTE: Enabling this causes ExpressionChangedAfterItHasBeenCheckedError errors on paging (scroll)
    */
-  debugMode = signal<boolean>(!environment.production && true);
+  debugMode = signal<boolean>(!environment.production && false);
 
   /**
    * Will be set to true if this.scroll(...) is called but the actual scroll is still delayed
@@ -685,12 +689,13 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
           case KeyBindTarget.PageRight:
             this.movePage(this.readingDirection() === ReadingDirection.LeftToRight ? PAGING_DIRECTION.FORWARD : PAGING_DIRECTION.BACKWARDS);
             break;
-          case KeyBindTarget.Escape:
+          case KeyBindTarget.Escape: {
             const isHighlighting = window.getSelection()?.toString() != '';
             if (isHighlighting && this.isLineOverlayOpen()) return;
 
             this.closeReader();
             break;
+          }
           case KeyBindTarget.GoTo:
             await this.goToPage();
             break;
@@ -775,6 +780,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       ).subscribe();
   }
 
+  ngAfterViewChecked() {
+    this.setupNoteRefs();
+  }
+
   private setupObservers() {
     this.layoutService.observeElement(
       this.bookContentElemRef().nativeElement,
@@ -785,6 +794,44 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       this.readingSectionElemRef().nativeElement,
       'readingSection'
     );
+  }
+
+  private setupNoteRefs() {
+    const anchors = this.bookContainerElemRef().nativeElement
+      .querySelectorAll<HTMLAnchorElement>('a[epub\\:type="noteref"]');
+
+    anchors.forEach(a => {
+      if (a.dataset['tooltipReady']) return;
+      a.dataset['tooltipReady'] = '1';
+
+      const id = a.getAttribute('kavita-note-ref') ?? '';
+      if (!id) return;
+
+      const cssSelector = `#${CSS.escape(id.slice(1))}`;
+      const target = this.bookContainerElemRef().nativeElement.querySelector(cssSelector);
+      if (!target) return;
+
+      const clone = target.cloneNode(true) as HTMLElement;
+      clone.removeAttribute('id');
+      clone.classList.remove('visually-hidden');
+      // Epubs can have a lot of bad HTML
+      clone.querySelectorAll(cssSelector).forEach(el => {
+        el.removeAttribute('id');
+        el.classList.remove('visually-hidden');
+      });
+
+      const safeHtml = this.domSanitizer.sanitize(SecurityContext.HTML, clone.outerHTML);
+      if (!safeHtml) return;
+
+      new Tooltip(a, {
+        title: safeHtml,
+        html: true,
+        sanitize: false,
+        placement: 'top',
+        trigger: 'hover focus',
+        customClass: 'book-content'
+      });
+    });
   }
 
   /**
@@ -962,11 +1009,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
       await this.readerSettingsService.initialize(this.libraryId, this.seriesId, this.readingProfile);
 
-      // Ensure any changes in the reader settings are applied to the reader
-      this.readerSettingsService.settingUpdates$.pipe(
-        takeUntilDestroyed(this.destroyRef),
-        tap((update) => this.handleReaderSettingsUpdate(update))
-      ).subscribe();
+      this.setupReaderSettingEffects(this.injector);
 
       forkJoin({
         chapter: this.seriesService.getChapter(this.chapterId),
@@ -1203,11 +1246,17 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     links.forEach((link: any) => {
       link.addEventListener('click', (e: any) => {
         e.stopPropagation();
-        let targetElem = e.target;
-        if (e.target.nodeName !== 'A' && e.target.parentNode.nodeName === 'A') {
-          // Certain combos like <a><sup>text</sup></a> can cause the target to be the sup tag and not the anchor
-          targetElem = e.target.parentNode;
+
+        const href = link.getAttribute('href') ?? '';
+        if (href.startsWith('#')) {
+          e.preventDefault();
+          this.scrollTo(href);
+          return;
         }
+
+        const targetElem = e.target.closest?.('a[kavita-page]');
+        if (!targetElem) return;
+
         if (!targetElem.attributes.hasOwnProperty('kavita-page')) { return; }
         const page = parseInt(targetElem.attributes['kavita-page'].value, 10);
         if (this.adhocPageHistory.peek()?.page !== this.pageNum()) {
@@ -1309,7 +1358,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
    * We can't use a wrapper due to potential for styling issues.
    */
   injectImageBookmarkIndicators(forceRefresh = false) {
-    if (this.readingProfile.bookReaderDisableBookmarkIcon) return;
+    if (this.readerSettingsService.getSettingsForm().bookReaderDisableBookmarkIcon().value()) return;
 
     const imgs = Array.from(this.readingSectionElemRef().nativeElement.querySelectorAll('img') ?? []);
 
@@ -1422,8 +1471,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
         maxHeight = `${height}px`;
         maxWidth = `${this.getVerticalPageWidth()}px`;
         break
-
-      case BookPageLayoutMode.Column2:
+      case BookPageLayoutMode.Column2: {
         maxWidth = `${this.getVerticalPageWidth()}px`;
         if (isVerticalWritingStyle && !this.isSingleImagePage)  {
           maxHeight = `${height / 2}px`;
@@ -1432,7 +1480,9 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         maxWidth = `${(this.getVerticalPageWidth() / 2) - (COLUMN_GAP / 2)}px`;
         break
+      }
     }
+
     this.document.documentElement.style.setProperty('--book-reader-content-max-height', maxHeight);
     this.document.documentElement.style.setProperty('--book-reader-content-max-width', maxWidth);
   }
@@ -2091,36 +2141,40 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdRef.markForCheck();
   }
 
-  handleReaderSettingsUpdate(res: ReaderSettingUpdate) {
-    switch (res.setting) {
-      case "pageStyle":
-        this.applyPageStyles(res.object as PageStyle);
-        break;
-      case "clickToPaginate":
-        this.showPaginationOverlay(res.object as boolean);
-        break;
-      case "fullscreen":
-        this.toggleFullscreen();
-        break;
-      case "writingStyle":
-        this.applyWritingStyle();
-        break;
-      case "layoutMode":
-        this.applyLayoutMode(res.object as BookPageLayoutMode, true);
-        break;
-      case "readingDirection":
-        // No extra functionality needs to be done
-        break;
-      case "immersiveMode":
-        this.applyImmersiveMode(res.object as boolean);
-        break;
-      case 'theme':
-        this.applyColorTheme(res.object as BookTheme);
-        break;
-      case "bookReaderDisableBookmarkIcon":
-        this.applyBookmarkIcons(!(res.object as boolean));
-        break;
-    }
+  private hasSetupReaderEffects = false;
+  setupReaderSettingEffects(injector: Injector) {
+    if (this.hasSetupReaderEffects) return;
+
+    this.hasSetupReaderEffects = true;
+
+    effect(() => {
+      this.applyPageStyles(this.readerSettingsService.pageStyles());
+    }, { injector: injector });
+    effect(() => {
+      this.showPaginationOverlay(this.readerSettingsService.clickToPaginate());
+    }, { injector: injector });
+    effect(() => {
+      this.readerService.setFullscreen(this.readerSettingsService.isFullscreen());
+    }, { injector: injector });
+    effect(() => {
+      this.readerSettingsService.writingStyle();
+      this.applyWritingStyle();
+    }, { injector: injector });
+    effect(() => {
+      this.applyLayoutMode(this.readerSettingsService.layoutMode(), true);
+    }, { injector: injector });
+    effect(() => {
+      this.applyImmersiveMode(this.readerSettingsService.immersiveMode());
+    }, { injector: injector });
+    effect(() => {
+      const bookTheme = this.readerSettingsService.activeTheme();
+      if (bookTheme) {
+        this.applyColorTheme(bookTheme);
+      }
+    }, { injector: injector });
+    effect(() => {
+      this.applyBookmarkIcons(!this.readerSettingsService.getSettingsForm().bookReaderDisableBookmarkIcon().value());
+    }, { injector: injector });
   }
 
   toggleDrawer() {
@@ -2478,7 +2532,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const visibleBoundingBox = this.bookContentElemRef().nativeElement.getBoundingClientRect();
 
     let bookContentPadding = 20;
-    let bookPadding = getComputedStyle(this.bookContentElemRef()?.nativeElement!).paddingTop;
+    const bookPadding = getComputedStyle(this.bookContentElemRef()?.nativeElement!).paddingTop;
     if (bookPadding) {
       bookContentPadding = parseInt(bookPadding.toString().replace('px', ''), 10);
     }

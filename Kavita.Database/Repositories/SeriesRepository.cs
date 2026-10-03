@@ -216,6 +216,12 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
         var searchQuery = dto.Query;
         var hasQuery = !string.IsNullOrEmpty(searchQuery);
         var searchQueryNormalized = searchQuery.ToNormalized();
+        // Do not search on empty queries as it matches everything
+        if (string.IsNullOrEmpty(searchQueryNormalized))
+        {
+            searchQueryNormalized = searchQuery;
+        }
+
         var userRating = await context.AppUser.GetUserAgeRestriction(userId, ct: ct);
 
         var aniListId = dto.AniListId ?? 0;
@@ -683,6 +689,14 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
             .FirstOrDefaultAsync(ct);
     }
 
+    public Task<PublicationStatus?> GetPublicationStatusAsync(int seriesId, CancellationToken ct = default)
+    {
+        return context.Series
+            .Where(s => s.Id == seriesId)
+            .Select(s => (PublicationStatus?) s.Metadata.PublicationStatus)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<string?> GetSeriesCoverImageAsync(int seriesId, CancellationToken ct = default)
     {
         return await context.Series
@@ -717,14 +731,13 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
     /// <returns></returns>
     public async Task<PagedList<SeriesDto>> GetOnDeckAsync(int userId, int libraryId, UserParams userParams, CancellationToken ct = default)
     {
-        var settings = await context.ServerSetting
-            .Select(x => x)
-            .AsNoTracking()
-            .ToListAsync(ct);
-        var serverSettings = mapper.Map<ServerSettingDto>(settings);
+        var x = await context.AppUserPreferences
+            .Where(p => p.AppUserId == userId)
+            .Select(p => new {p.OnDeckProgressDays, p.OnDeckUpdateDays})
+            .FirstAsync(ct);
 
-        var cutoffProgressPoint = DateTime.Now - TimeSpan.FromDays(serverSettings.OnDeckProgressDays);
-        var cutoffLastAddedPoint = DateTime.Now - TimeSpan.FromDays(serverSettings.OnDeckUpdateDays);
+        var cutoffProgressPoint = DateTime.Now - TimeSpan.FromDays(x.OnDeckProgressDays);
+        var cutoffLastAddedPoint = DateTime.Now - TimeSpan.FromDays(x.OnDeckUpdateDays);
 
         var libraryIds = context.AppUser.GetLibraryIdsForUser(userId, libraryId, QueryContext.Dashboard)
             .Where(id => libraryId == 0 || id == libraryId);
@@ -1789,9 +1802,10 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
     public async Task RemoveFromOnDeckAsync(int seriesId, int userId, CancellationToken ct = default)
     {
         var existingEntry = await context.AppUserOnDeckRemoval
-            .Where(u => u.Id == userId && u.SeriesId == seriesId)
+            .Where(u => u.AppUserId == userId && u.SeriesId == seriesId)
             .AnyAsync(ct);
         if (existingEntry) return;
+
         context.AppUserOnDeckRemoval.Add(new AppUserOnDeckRemoval()
         {
             SeriesId = seriesId,

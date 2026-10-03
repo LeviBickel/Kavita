@@ -125,7 +125,7 @@ export class ManageUsersComponent implements OnInit {
 
   async deleteUser(member: Member) {
     if (await this.confirmService.confirm(this.translocoService.translate('toasts.confirm-delete-user'))) {
-      this.memberService.deleteMember(member.username).subscribe(() => {
+      this.memberService.deleteMember(member.id).subscribe(() => {
         setTimeout(() => {
           this.loadMembers();
           this.toastr.success(this.translocoService.translate('toasts.user-deleted', {user: member.username}));
@@ -170,7 +170,7 @@ export class ManageUsersComponent implements OnInit {
   }
 
   getRoles(member: Member) {
-    return member.roles.filter(item => item != 'Pleb');
+    return member.roles.filter(item => String(item) != 'Pleb');
   }
 
   protected readonly IdentityProvider = IdentityProvider;

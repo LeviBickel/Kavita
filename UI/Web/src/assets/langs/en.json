@@ -127,7 +127,8 @@
         "cancel": "{{common.cancel}}",
         "close": "{{common.close}}",
         "save": "{{common.save}}",
-        "never": "Never"
+        "never": "Never",
+        "duplicate-name-validation": "Auth Key Name must be unique"
     },
 
     "identity-provider-pipe": {
@@ -256,6 +257,10 @@
         "data-saver-tooltip": "Minimizes data usage by preventing automatic prefetching (e.g., PDF reader)",
         "prompt-for-rereads-after-label": "Prompt for Re-Reads",
         "prompt-for-rereads-after-tooltip": "Show the Re-Read Prompt if no progress since X days ago. 0 disables the prompt entirely.",
+        "ondeck-progress-days-label": "On Deck Last Progress (days)",
+        "ondeck-progress-days-tooltip": "The number of days since last progress before kicking something off On Deck.",
+        "ondeck-update-days-label": "On Deck Last Chapter Add (days)",
+        "ondeck-update-days-tooltip": "The number of days since last chapter was added to include something On Deck.",
 
         "kavitaplus-settings-title": "Kavita+",
         "anilist-scrobbling-label": "AniList Scrobbling",
@@ -543,7 +548,14 @@
         "loading": "{{common.loading}}",
         "add-item": "Add {{item}}…",
         "no-data": "{{common.no-data}}",
-        "add-custom-item": ", type to add a custom item"
+        "add-custom-item": ", type to add a custom item",
+        "toggle-lock-alt": "Lock field",
+        "remove-alt": "Remove {{title}}",
+        "remove-item-alt": "Remove item",
+        "clear-selections-alt": "Clear all selections",
+        "selected-items-alt": "Selected items",
+        "results-available-alt": "{{count}} results available",
+        "no-results-alt": "No results available"
     },
 
     "generic-list-modal": {
@@ -2468,10 +2480,6 @@
         "logging-level-tooltip": "Use debug to help identify issues. Debug can eat up a lot of disk space.",
         "cache-size-label": "Cache Size",
         "cache-size-tooltip": "The amount of memory allowed for caching heavy APIs. Default is 75MB.",
-        "on-deck-last-progress-label": "On Deck Last Progress (days)",
-        "on-deck-last-progress-tooltip": "The number of days since last progress before kicking something off On Deck.",
-        "on-deck-last-chapter-add-label": "On Deck Last Chapter Add (days)",
-        "on-deck-last-chapter-add-tooltip": "The number of days since last chapter was added to include something On Deck.",
         "allow-stats-label": "Allow Anonymous Usage Collection",
         "allow-stats-tooltip-part-1": "Send anonymous usage data to Kavita's servers. This includes information on certain features used, number of files, OS version, Kavita install version, CPU, and memory. We will use this information to prioritize features, bug fixes, and performance tuning. Requires restart to take effect. See the ",
         "allow-stats-tooltip-part-2": "for what is collected.",
@@ -2624,7 +2632,6 @@
         "title": "Edit {{collectionName}} Collection",
         "save": "{{common.save}}",
         "close": "{{common.close}}",
-        "cancel": "{{common.cancel}}",
         "name-label": "Name",
         "name-validation": "Name must be unique",
         "promote-label": "Promote",
@@ -2808,6 +2815,8 @@
     "keybind-setting-description-pipe": {
         "key-bind-title-navigate-to-settings": "Open settings",
         "key-bind-tooltip-navigate-to-settings": "Open settings while not in a reader",
+        "key-bind-title-open-event-widget": "Open Event Widget",
+        "key-bind-tooltip-open-event-widget": "Opens event widget popover",
         "key-bind-title-open-search": "Open search",
         "key-bind-tooltip-open-search": "Open the top search bar",
         "key-bind-title-navigate-to-scrobbling": "Open My Activity",
@@ -3081,19 +3090,133 @@
 
     "events-widget": {
         "title-alt": "Activity",
-        "dismiss-all": "Dismiss All",
-        "update-available": "Update available",
-        "downloading-item": "Downloading {{item}}",
-        "more-info": "Click for more information",
-        "close": "{{common.close}}",
-        "users-online-count": "{{num}} Users online",
-        "active-events-title": "Active Events:",
-        "no-data": "Not much going on here",
-        "left-to-process": "Left to Process: {{leftToProcess}} / {{totalToProcess}}",
-        "download-in-queue": "{{num}} downloads in Queue",
         "reading-now": "{{num}} reading now",
-        "downloads-active": "{{count}} download(s) in progress",
-        "not-connected": "Not connected, try refreshing"
+        "filter-all-label": "All",
+        "filter-attention-label": "Needs attention",
+        "filter-jobs-label": "Jobs",
+        "clear-finished-label": "Clear finished",
+        "dismiss-alt": "Dismiss",
+        "now-label": "now",
+        "no-data-description": "Nothing is running and nothing needs you.",
+        "filter-empty-label": "Nothing here right now.",
+        "server-unreachable-label": "Can’t reach the server. Retrying...",
+        "view-activity-label": "View activity",
+        "restoring-alt": "Restoring activity from before the refresh",
+        "scan-summary-label": "Added: {{added}}, removed: {{removed}}",
+        "finished-while-away-label": "Finished while you were away",
+        "finishing-up-label": "Finishing up",
+        "interrupted-label": "Stopped by a server restart",
+        "failed-label": "Stopped before finishing",
+        "schedule-lost-label": "Was set for {{time}}, lost in a server restart",
+        "progress-counter-label": "{{current}} / {{total}}",
+        "up-next-label": "Up next",
+        "show-more-label": "Show {{count}} more",
+        "show-less-label": "Show less",
+        "scanning-libraries-label": "Scanning libraries",
+        "libraries-progress-label": "{{current}} of {{total}}",
+        "scans-waiting-label": "Library scans waiting: {{count}}",
+        "and-more-label": "and {{count}} more",
+        "problems-in-libraries-label": "Libraries with problems: {{count}}",
+        "status-offline-alt": "Server unreachable",
+        "status-attention-alt": "Needs attention: {{count}}",
+        "status-attention-error-alt": "Needs attention: {{count}}, including errors",
+        "status-running-alt": "Jobs running: {{count}}",
+        "title-label": "Activity",
+        "filter-group-alt": "Filter activity",
+        "scanned-libraries-label": "Scanned libraries: {{count}}",
+        "rate-limit-description": "Not matched: {{count}}. Try again in a few minutes.",
+        "scan-scheduled": "Scan {{libraryName}}",
+        "scan-libraries-scheduled": "Scan all libraries",
+        "scan-series-scheduled": "Scan {{seriesName}}",
+        "scan-series-in-library-scheduled": "Scan a series in {{libraryName}}",
+        "scan-waiting-description": "Another scan was running",
+        "show-label": "Show",
+        "hide-label": "Hide"
+    },
+
+    "event-title-pipe": {
+        "scan-progress": "Scanning {{libraryName}}",
+        "scan-done": "Scanned {{libraryName}}",
+        "backup-database-progress": "Backing up database",
+        "cleanup-progress": "Cleaning up",
+        "cover-update-progress": "Refreshing covers: {{libraryName}}",
+        "word-count-analyzer-progress": "Counting words: {{libraryName}}",
+        "convert-bookmarks-progress": "Converting bookmarks",
+        "convert-covers-progress": "Converting covers",
+        "smart-collection-sync": "Syncing {{collectionName}}",
+        "rerun-metadata-mappings-progress": "Reapplying metadata mappings",
+        "sending-to-device": "Sending files to device",
+        "download-progress": "Preparing {{downloadName}}",
+        "site-theme-progress": "Processing theme {{themeName}}",
+        "book-theme-progress": "Processing book theme {{themeName}}",
+        "update-available": "Kavita {{version}} is available",
+        "scrobbling-key-expired": "{{provider}} connection expired",
+        "external-match-rate-limit": "Kavita+ rate limit reached"
+    },
+
+    "event-message-pipe": {
+        "root-folders-inaccessible-label": "Library folders can’t be reached",
+        "root-folders-inaccessible-description": "Check that these drives are connected, then rescan: {{folders}}",
+        "root-folders-empty-label": "{{libraryName}} scan aborted",
+        "root-folders-empty-description": "Some root folders are empty. Check that your mount is connected or change the root folder, then rescan.",
+        "series-collision-label": "Series collision on “{{seriesName}}” in {{libraryName}}",
+        "series-collision-description": "Two folders parse to the same series. Open details to see the files.",
+        "files-outside-folder-label": "{{seriesName}} has files outside its folder",
+        "files-outside-folder-description": "This slows down scans. Keep every file for a series under one folder.",
+        "scan-series-no-root-label": "{{seriesName}} scan aborted",
+        "scan-series-no-root-description": "No single folder holds every file for this series. Check the folder layout, then rescan.",
+        "scan-series-not-nested-label": "{{seriesName}} scan aborted",
+        "scan-series-not-nested-description": "The series files are not in a folder under the library path. Move them into one, then rescan.",
+        "scan-series-no-files-label": "No files found for {{seriesName}}",
+        "scan-series-no-files-description": "Files were expected but none were found. Check the file names, or put the series in its own folder.",
+        "scan-series-folder-missing-label": "{{seriesName}} folder is missing",
+        "scan-series-folder-missing-description": "Delete the series or scan the library.",
+        "scan-no-work-label": "{{seriesName}} has nothing to scan",
+        "scan-no-work-description": "No folders changed since the last scan.",
+        "db-write-failed-label": "Couldn’t save {{seriesName}}",
+        "scan-libraries-delayed-label": "Scan all libraries rescheduled",
+        "scan-library-delayed-label": "Scan {{libraryName}} rescheduled",
+        "scan-series-delayed-label": "Scan {{seriesName}} rescheduled",
+        "scan-delayed-description": "Runs at {{time}}. Another scan was running.",
+        "backup-folder-unwritable-label": "Backup failed",
+        "backup-folder-unwritable-description": "Can’t write to {{folder}}.",
+        "backup-exists-label": "{{event-message-pipe.backup-folder-unwritable-label}}",
+        "backup-exists-description": "{{path}} already exists.",
+        "cleanup-on-hold-label": "Cleanup postponed",
+        "cleanup-on-hold-description": "A media conversion is running. Cleanup runs after it.",
+        "word-count-failed-label": "Couldn’t count words in {{seriesName}}",
+        "word-count-failed-description": "Can’t read {{filePath}}."
+    },
+
+    "event-action-pipe": {
+        "reconnect": "Reconnect",
+        "whats-new": "What’s new",
+        "remind-later": "Remind me tomorrow",
+        "open-library": "Open library",
+        "open-series": "Open series",
+        "open-matching": "Open matching",
+        "rescan": "Rescan",
+        "scan-now": "Scan now",
+        "details": "Details"
+    },
+
+    "activity-age-pipe": {
+        "now": "now",
+        "minutes": "{{value}}m",
+        "hours": "{{value}}h"
+    },
+
+    "activity-duration-pipe": {
+        "seconds": "{{seconds}}s",
+        "minutes": "{{minutes}}m {{seconds}}s",
+        "hours": "{{hours}}h {{minutes}}m"
+    },
+
+    "upcoming-task-name-pipe": {
+        "scan-libraries": "Scan all libraries",
+        "cleanup": "Cleanup",
+        "backup": "Backup",
+        "sync-cbl": "Sync reading lists"
     },
 
     "download-queue-drawer": {
@@ -3171,7 +3294,7 @@
         "last-page": "{{keybind-setting-description-pipe.key-bind-title-last-page}}"
     },
 
-    "grouped-typeahead": {
+    "search-typeahead": {
         "files": "Files",
         "chapters": "Chapters",
         "people": "People",
@@ -3182,16 +3305,28 @@
         "libraries": "{{common.libraries}}",
         "reading-lists": "Reading Lists",
         "collections": "Collections",
+        "series": "Series",
         "close": "{{common.close}}",
         "loading": "{{common.loading}}",
-        "include-extras": "Include Chapters & Files"
+        "include-extras": "Include Chapters & Files",
+        "search-alt": "Search…",
+        "person-aka-status": "Matches an alias",
+        "no-data": "No results found",
+        "search-for": "Search for {{term}}",
+        "in-library": "in {{name}}",
+        "volume-count": "{{count}} vols",
+        "volume-count-one": "{{count}} vol",
+        "chapter-count": "{{count}} chapters",
+        "chapter-count-one": "{{count}} chapter",
+        "search-config-alt": "Search options",
+        "search-config-title": "Search Options",
+        "results-available-alt": "{{typeahead.results-available-alt}}",
+        "no-results-alt": "{{typeahead.no-results-alt}}",
+        "search-series-alt": "Search series"
     },
 
     "nav-header": {
         "skip-alt": "Skip to main content",
-        "search-series-alt": "Search series",
-        "search-alt": "Search…",
-        "no-data": "No results found",
         "scroll-to-top-alt": "Scroll to Top",
         "server-settings": "Server Settings",
         "settings": "Settings",
@@ -3201,7 +3336,6 @@
         "all-filters": "Smart Filters",
         "nav-link-header": "Navigation Options",
         "close": "{{common.close}}",
-        "person-aka-status": "Matches an alias",
         "browse-genres": "Browse Genres",
         "browse-tags": "Browse Tags",
         "all-annotations": "Browse Annotations",
@@ -3423,7 +3557,8 @@
         "emulate-comic-book-label": "{{manage-reading-profiles.emulate-comic-book-label}}",
         "series-progress": "Series Progress: {{percentage}}",
         "page-offset-label": "Page Offset",
-        "offset-only-double": "Page Offset can only be used with Double Layout"
+        "offset-only-double": "Page Offset can only be used with Double Layout",
+        "layout-mode-label": "{{manage-reading-profiles.layout-mode-label}}"
     },
 
     "metadata-filter": {
@@ -3544,7 +3679,6 @@
         "web-link-label": "{{tabs.weblink-tab}}",
         "cover-image-description": "Upload and choose a new cover image. Press Save to upload and override the cover.",
         "save": "{{common.save}}",
-        "field-locked-alt": "Field is locked",
         "info-title": "Information",
         "library-title": "Library",
         "format-title": "Format",
@@ -3610,7 +3744,6 @@
         "web-link-description": "{{edit-series-modal.web-link-description}}",
         "web-link-label": "{{edit-series-modal.web-link-label}}",
         "external-ids-tab": "{{tabs.external-ids-tab}}",
-        "field-locked-alt": "{{edit-series-modal.field-locked-alt}}",
         "cover-image-description": "{{edit-series-modal.cover-image-description}}",
 
         "pages-label": "Pages",
@@ -3683,6 +3816,11 @@
         "alias-title": "New aliases",
         "known-for-title": "Known for"
     },
+
+    "locked-field": {
+        "field-locked-alt": "Field is locked"
+    },
+
 
     "day-breakdown": {
         "title": "Reading by Day",
@@ -3883,7 +4021,8 @@
     "favorite-authors": {
         "title": "Most Read Authors",
         "sub-title": "{{name}}'s most read author is {{author}}, with {{count}} total reads",
-        "no-data": "{{common.no-data}}"
+        "no-data": "{{common.no-data}}",
+        "chapter-count": "{{common.chapter-count}}"
     },
 
     "page-spread": {
@@ -4057,6 +4196,7 @@
         "font-already-in-use": "Font already exists by that name",
         "upload-too-large": "The file is too large for upload, select a smaller image and try again.",
         "invalid-form": "The form you're trying to submit contains errors",
+        "required-if-other-invalid": "{{other}} is invalid",
         "import-fields": {
             "non-unique-age-ratings": "Age rating mapping keys aren't unique, please correct your import file",
             "non-unique-fields": "Field mappings do not have a unique id, please correct your import file"
@@ -4146,7 +4286,7 @@
         "edit": "{{common.edit}}",
         "cancel": "{{common.cancel}}",
         "delete": "{{common.delete}}",
-        "pattern": "Host must be a valid http(s):// url"
+        "confirm-delete": "Are you sure you want to delete {{name}} as external source?"
     },
 
     "stream-pipe": {
@@ -4316,6 +4456,7 @@
         "failed-to-import": "Failed to import {{name}}",
         "no-pages": "There are no pages. Kavita was not able to read this archive.",
         "scan-queued": "Scan queued for {{name}}",
+        "scan-all-queued": "Scan queued for all libraries",
         "server-settings-updated": "Server settings updated",
         "reset-ip-address": "IP Addresses Reset",
         "reset-base-url": "Base Url Reset",
@@ -4616,6 +4757,14 @@
         "mobile": "Mobile",
         "tablet": "Tablet",
         "desktop": "Desktop"
+    },
+
+    "rate-and-review-series-modal": {
+        "title": "Rate & Review: {{seriesName}}",
+        "description": "Leave a rating and review about the series.",
+        "save": "{{common.save}}",
+        "close": "{{common.close}}",
+        "review-label": "{{review-modal.review-label}}"
     },
 
     "account-settings": {

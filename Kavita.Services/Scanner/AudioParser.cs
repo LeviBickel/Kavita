@@ -13,7 +13,7 @@ namespace Kavita.Services.Scanner;
 /// </summary>
 public class AudioParser(IDirectoryService directoryService, IAudiobookService audiobookService) : DefaultParser(directoryService)
 {
-    public override ParserInfo? Parse(string filePath, string rootPath, string libraryRoot, LibraryType type,
+    public override ParseInfoResult Parse(string filePath, string rootPath, string libraryRoot, LibraryType type,
         bool enableMetadata = true, ComicInfo? comicInfo = null)
     {
         ParserInfo? info;
@@ -21,7 +21,7 @@ public class AudioParser(IDirectoryService directoryService, IAudiobookService a
         if (enableMetadata)
         {
             info = audiobookService.ParseInfo(filePath);
-            if (info == null) return null;
+            if (info == null) return ParseInfoResult.FailedParse();
         }
         else
         {
@@ -54,7 +54,7 @@ public class AudioParser(IDirectoryService directoryService, IAudiobookService a
 
         FinalizeNumbers(info);
 
-        return string.IsNullOrEmpty(info.Series) ? null : info;
+        return ParseInfoResult.FromParserInfo(info);
     }
 
     /// <summary>

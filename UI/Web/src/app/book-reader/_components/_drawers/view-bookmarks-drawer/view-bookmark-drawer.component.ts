@@ -11,7 +11,6 @@ import {
 import {ReaderService} from "../../../../_services/reader.service";
 import {PageBookmark} from "../../../../_models/readers/page-bookmark";
 import {ImageService} from "../../../../_services/image.service";
-import {VirtualScrollerModule} from "@iharbeck/ngx-virtual-scroller";
 import {ImageComponent} from "../../../../shared/image/image.component";
 import {
   PersonalTableOfContentsComponent,
@@ -30,7 +29,6 @@ export interface LoadPageEvent {
   selector: 'app-view-bookmarks-drawer',
   imports: [
     TranslocoDirective,
-    VirtualScrollerModule,
     ImageComponent,
     NgbNav,
     NgbNavContent,
@@ -61,10 +59,6 @@ export class ViewBookmarkDrawerComponent {
    * Emitted when a bookmark is removed
    */
   removeBookmark: EventEmitter<PageBookmark> = new EventEmitter<PageBookmark>();
-  /**
-   * Used to refresh the Personal PoC
-   */
-  refreshPToC: EventEmitter<void> = new EventEmitter<void>();
   loadPtoc: EventEmitter<LoadPageEvent | null> = new EventEmitter<LoadPageEvent | null>();
 
   tocId: Tabs = Tabs.BookmarkImageTab;

@@ -399,12 +399,30 @@ public class ChapterRepository(DataContext context, IMapper mapper) : IChapterRe
             .ToListAsync(ct);
     }
 
+    public async Task<(int VolumeId, int SeriesId, int LibraryId)?> GetParentIdsForChapter(int chapterId, CancellationToken ct = default)
+    {
+        var ids = await context.Chapter
+            .Where(c => c.Id == chapterId)
+            .Select(c => new { c.VolumeId, c.Volume.SeriesId, c.Volume.Series.LibraryId })
+            .FirstOrDefaultAsync(ct);
+
+        return ids == null ? null : (ids.VolumeId, ids.SeriesId, ids.LibraryId);
+    }
+
     public async Task<int?> GetSeriesIdForChapter(int chapterId, CancellationToken ct = default)
     {
         return await context.Chapter
             .Where(chp => chp.Id == chapterId)
             .Select(chp => chp.Volume.SeriesId)
             .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<IEnumerable<int>> GetChapterIdsInSeries(int seriesId, IEnumerable<int> chapterIds, CancellationToken ct = default)
+    {
+        return await context.Chapter
+            .Where(c => c.Volume.SeriesId == seriesId && chapterIds.Contains(c.Id))
+            .Select(chp => chp.Id)
+            .ToListAsync(ct);
     }
 
     public async Task<IList<Chapter>> GetChaptersByExternalIdsAsync(IList<int> kavitaIds, IList<string> comicVineIds,

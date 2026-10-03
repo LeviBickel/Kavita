@@ -14,7 +14,6 @@ using Kavita.Models.DTOs;
 using Kavita.Models.DTOs.Filtering.v2.Requests;
 using Kavita.Models.DTOs.Metadata.Browse;
 using Kavita.Models.DTOs.Person;
-using Kavita.Models.DTOs.Recommendation;
 using Kavita.Models.DTOs.SignalR;
 using Kavita.Models.Entities.Enums;
 using Kavita.Server.Attributes;
@@ -38,10 +37,11 @@ public class PersonController(
     [HttpGet]
     public async Task<ActionResult<PersonDto>> GetPersonByName(string name)
     {
-        var person = await unitOfWork.PersonRepository.GetPersonDtoByName(name, UserId);
+        var ct = HttpContext.RequestAborted;
+        var person = await unitOfWork.PersonRepository.GetPersonDtoByName(name, UserId, ct: ct);
         if (person == null) return NotFound();
 
-        person.Roles = (await unitOfWork.PersonRepository.GetRolesForPersonByName(person.Id, UserId)).ToList();
+        person.Roles = (await unitOfWork.PersonRepository.GetRolesForPersonByName(person.Id, UserId, ct)).ToList();
 
         EnrichWithWebLinks(person);
 
@@ -87,7 +87,8 @@ public class PersonController(
     [HttpGet("search")]
     public async Task<ActionResult<List<PersonDto>>> SearchPeople([FromQuery] string queryString)
     {
-        return Ok(await unitOfWork.PersonRepository.SearchPeople(queryString));
+        var ct = HttpContext.RequestAborted;
+        return Ok(await unitOfWork.PersonRepository.SearchPeople(queryString, ct: ct));
     }
 
     /// <summary>
@@ -98,7 +99,8 @@ public class PersonController(
     [HttpGet("roles")]
     public async Task<ActionResult<IEnumerable<PersonRole>>> GetRolesForPersonByName(int personId)
     {
-        return Ok(await unitOfWork.PersonRepository.GetRolesForPersonByName(personId, UserId));
+        var ct = HttpContext.RequestAborted;
+        return Ok(await unitOfWork.PersonRepository.GetRolesForPersonByName(personId, UserId, ct));
     }
 
 
@@ -111,9 +113,10 @@ public class PersonController(
     [HttpPost("all")]
     public async Task<ActionResult<PagedList<BrowsePersonDto>>> GetPeopleForBrowse(PersonFilterDto filter, [FromQuery] UserParams? userParams)
     {
+        var ct = HttpContext.RequestAborted;
         userParams ??= UserParams.Default;
 
-        var list = await unitOfWork.PersonRepository.GetBrowsePersonDtos(UserId, filter, userParams);
+        var list = await unitOfWork.PersonRepository.GetBrowsePersonDtos(UserId, filter, userParams, ct);
         Response.AddPaginationHeader(list.CurrentPage, list.PageSize, list.TotalCount, list.TotalPages);
 
         return Ok(list);
@@ -128,15 +131,16 @@ public class PersonController(
     [Authorize(PolicyGroups.AdminPolicy)]
     public async Task<ActionResult<PersonDto>> UpdatePerson(UpdatePersonDto dto)
     {
+        var ct = HttpContext.RequestAborted;
         // This needs to get all people and update them equally
-        var person = await unitOfWork.PersonRepository.GetPersonById(dto.Id, PersonIncludes.Aliases);
+        var person = await unitOfWork.PersonRepository.GetPersonById(dto.Id, PersonIncludes.Aliases, ct);
         if (person == null) return BadRequest(await localizationService.TranslateAsync(UserId, "person-doesnt-exist"));
 
         if (string.IsNullOrEmpty(dto.Name)) return BadRequest(await localizationService.TranslateAsync(UserId, "person-name-required"));
 
 
         // Validate the name is unique
-        if (dto.Name != person.Name && !(await unitOfWork.PersonRepository.IsNameUnique(dto.Name)))
+        if (dto.Name != person.Name && !(await unitOfWork.PersonRepository.IsNameUnique(dto.Name, ct)))
         {
             return BadRequest(await localizationService.TranslateAsync(UserId, "person-name-unique"));
         }
@@ -145,7 +149,7 @@ public class PersonController(
         person.Name = dto.Name.Trim();
         person.NormalizedName = person.Name.ToNormalized();
 
-        var success = await personService.UpdatePersonAliasesAsync(person, dto.Aliases);
+        var success = await personService.UpdatePersonAliasesAsync(person, dto.Aliases, ct);
         if (!success) return BadRequest(await localizationService.TranslateAsync(UserId, "aliases-have-overlap"));
 
 
@@ -173,40 +177,26 @@ public class PersonController(
         }
 
         unitOfWork.PersonRepository.Update(person);
-        await unitOfWork.CommitAsync();
+        await unitOfWork.CommitAsync(ct);
 
         return Ok(mapper.Map<PersonDto>(person));
     }
 
     /// <summary>
-    /// Attempts to download the cover from CoversDB (Note: Not yet release in Kavita)
+    /// Returns the CoversDB image url for a Person, if one can be matched. Does not apply the cover.
     /// </summary>
     /// <param name="personId"></param>
-    /// <returns></returns>
+    /// <returns>The remote url or an empty string when there is no match</returns>
+    [Authorize(Policy = PolicyGroups.AdminPolicy)]
     [PersonAccess]
-    [HttpPost("fetch-cover")]
-    public async Task<ActionResult<string>> DownloadCoverImage([FromQuery] int personId)
+    [HttpGet("coversdb-image")]
+    public async Task<ActionResult<string>> GetCoversDbImage([FromQuery] int personId)
     {
-        var settings = await unitOfWork.SettingsRepository.GetSettingsDtoAsync();
-        var person = await unitOfWork.PersonRepository.GetPersonById(personId);
+        var ct = HttpContext.RequestAborted;
+        var person = await unitOfWork.PersonRepository.GetPersonById(personId, ct: ct);
         if (person == null) return BadRequest(await localizationService.TranslateAsync(UserId, "person-doesnt-exist"));
 
-        var personImage = await coverDbService.DownloadPersonImageAsync(person, settings.EncodeMediaAs);
-
-        if (string.IsNullOrEmpty(personImage))
-        {
-
-            return BadRequest(await localizationService.TranslateAsync(UserId, "person-image-doesnt-exist"));
-        }
-
-        person.CoverImage = personImage;
-        imageService.UpdateColorScape(person);
-        unitOfWork.PersonRepository.Update(person);
-
-        await unitOfWork.CommitAsync();
-        await eventHub.SendMessageAsync(MessageFactory.CoverUpdate, MessageFactory.CoverUpdateEvent(person.Id, "person"), false);
-
-        return Ok(personImage);
+        return Ok(await coverDbService.GetPersonImageUrlAsync(person, ct) ?? string.Empty);
     }
 
     /// <summary>
@@ -218,7 +208,8 @@ public class PersonController(
     [HttpGet("series-known-for")]
     public async Task<ActionResult<IEnumerable<SeriesDto>>> GetKnownSeries(int personId)
     {
-        return Ok(await unitOfWork.PersonRepository.GetSeriesKnownFor(personId, UserId));
+        var ct = HttpContext.RequestAborted;
+        return Ok(await unitOfWork.PersonRepository.GetSeriesKnownFor(personId, UserId, ct));
     }
 
 
@@ -232,7 +223,8 @@ public class PersonController(
     [HttpGet("chapters-by-role")]
     public async Task<ActionResult<IEnumerable<StandaloneChapterDto>>> GetChaptersByRole(int personId, PersonRole role)
     {
-        return Ok(await unitOfWork.PersonRepository.GetChaptersForPersonByRole(personId, UserId, role));
+        var ct = HttpContext.RequestAborted;
+        return Ok(await unitOfWork.PersonRepository.GetChaptersForPersonByRole(personId, UserId, role, ct));
     }
 
     /// <summary>
@@ -244,14 +236,15 @@ public class PersonController(
     [Authorize(PolicyGroups.AdminPolicy)]
     public async Task<ActionResult<PersonDto>> MergePeople(PersonMergeDto dto)
     {
-        var dst = await unitOfWork.PersonRepository.GetPersonById(dto.DestId, PersonIncludes.All);
+        var ct = HttpContext.RequestAborted;
+        var dst = await unitOfWork.PersonRepository.GetPersonById(dto.DestId, PersonIncludes.All, ct);
         if (dst == null) return BadRequest();
 
-        var src = await unitOfWork.PersonRepository.GetPersonById(dto.SrcId, PersonIncludes.All);
+        var src = await unitOfWork.PersonRepository.GetPersonById(dto.SrcId, PersonIncludes.All, ct);
         if (src == null) return BadRequest();
 
-        await personService.MergePeopleAsync(src, dst);
-        await eventHub.SendMessageAsync(MessageFactory.PersonMerged, MessageFactory.PersonMergedMessage(dst, src));
+        await personService.MergePeopleAsync(src, dst, ct);
+        await eventHub.SendMessageAsync(MessageFactory.PersonMerged, MessageFactory.PersonMergedMessage(dst, src), ct: ct);
 
         return Ok(mapper.Map<PersonDto>(dst));
     }
@@ -261,14 +254,16 @@ public class PersonController(
     /// </summary>
     /// <param name="dto">alias check request</param>
     /// <returns></returns>
+    [Authorize(Policy = PolicyGroups.AdminPolicy)]
     [HttpPost("valid-alias")]
     public async Task<ActionResult<bool>> IsValidAlias(PersonAliasCheckDto dto)
     {
-        var person = await unitOfWork.PersonRepository.GetPersonById(dto.PersonId, PersonIncludes.Aliases);
+        var ct = HttpContext.RequestAborted;
+        var person = await unitOfWork.PersonRepository.GetPersonById(dto.PersonId, PersonIncludes.Aliases, ct);
         if (person == null) return NotFound();
 
         var aliasIsName = dto.Name.ToNormalized() == dto.Alias.ToNormalized();
-        var existingAlias = await unitOfWork.PersonRepository.AnyAliasExist(dto.Alias);
+        var existingAlias = await unitOfWork.PersonRepository.AnyAliasExist(dto.Alias, ct);
 
         return Ok(!existingAlias && !aliasIsName);
     }

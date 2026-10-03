@@ -38,6 +38,7 @@ using Kavita.Server.ManualMigrations.v0._8._9;
 using Kavita.Server.ManualMigrations.v0._9._0;
 using Kavita.Server.ManualMigrations.v0._9._1;
 using Kavita.Server.ManualMigrations.v0._9._1.x;
+using Kavita.Server.ManualMigrations.v0._9._2;
 using Kavita.Server.Middleware;
 using Kavita.Server.Swagger;
 using Kavita.Services.SignalR;
@@ -73,6 +74,7 @@ public class Startup
 
         // Disable Hangfire Automatic Retry
         GlobalJobFilters.Filters.Add(new AutomaticRetryAttribute { Attempts = 0 });
+        GlobalJobFilters.Filters.Add(new JobCorrelationFilter());
     }
 
     // This method gets called by the runtime. Use this method to add services to the container.
@@ -383,7 +385,6 @@ public class Startup
         {
             endpoints.MapControllers();
             endpoints.MapHub<MessageHub>("hubs/messages");
-            endpoints.MapHub<LogHub>("hubs/logs");
             if (env.IsDevelopment())
             {
                 endpoints.MapHangfireDashboard();
@@ -396,11 +397,11 @@ public class Startup
         {
             try
             {
-                logger.LogInformation("Kavita - v{Version}", BuildInfo.Version);
+                logger.LogInformation("Kavita - v{Version}, boot {BootId}", BuildInfo.Version, BuildInfo.BootId);
             }
             catch (Exception)
             {
-                Console.WriteLine($"Kavita - v{BuildInfo.Version}");
+                Console.WriteLine($"Kavita - v{BuildInfo.Version}, boot {BuildInfo.BootId}");
             }
 
             _ = Task.Run(async () =>
@@ -547,6 +548,14 @@ public class Startup
 
                     #endregion
 
+                    #region v0.9.2
+
+                    await new ManualMigrationUnassignDefaultReadingProfile().RunAsync(dataContext, logger);
+                    await new ManualMigrateOnDeckSettings().RunAsync(dataContext, logger);
+                    await new ManualMigrationFixInvalidOnDeckSettings().RunAsync(dataContext, logger);
+
+                    #endregion
+
                     #endregion
 
                     //  Update the version in the DB after all migrations are run
@@ -600,7 +609,7 @@ public class Startup
     {
         Console.WriteLine("Server is shutting down. Please allow a few seconds to stop any background jobs...");
         TaskScheduler.Client.Dispose();
-        System.Threading.Thread.Sleep(1000);
+        Thread.Sleep(1000);
         Console.WriteLine("You may now close the application window.");
     }
 

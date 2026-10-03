@@ -50,7 +50,7 @@ import {ReadMoreComponent} from "../shared/read-more/read-more.component";
 import {Person} from "../_models/metadata/person";
 import {IHasCast} from "../_models/common/i-has-cast";
 import {EntityTitleComponent} from "../cards/entity-title/entity-title.component";
-import {VirtualScrollerModule} from "@iharbeck/ngx-virtual-scroller";
+import {VirtualScrollerComponent} from "@kareadita/ngx-virtual-scroller";
 import {UtilityService} from "../shared/_services/utility.service";
 import {EditVolumeModalComponent} from "../_single-module/edit-volume-modal/edit-volume-modal.component";
 import {RelatedTabChangeEvent, RelatedTabComponent} from "../_single-module/related-tab/related-tab.component";
@@ -91,6 +91,7 @@ import {ChapterCardComponent} from "../cards/chapter-card/chapter-card.component
 import {Tabs} from "../_models/tabs";
 import {TabTitlePipe} from "../_pipes/tab-title.pipe";
 import {EntityTitleService} from "../_services/entity-title.service";
+import {ActionResult} from "../_models/actionables/action-result";
 
 interface VolumeCast extends IHasCast {
   characterLocked: boolean;
@@ -140,10 +141,9 @@ interface VolumeCast extends IHasCast {
     EntityTitleComponent,
     RouterLink,
     NgbTooltip,
-    NgStyle,
     NgClass,
     TranslocoDirective,
-    VirtualScrollerModule,
+    VirtualScrollerComponent,
     RelatedTabComponent,
     BadgeExpanderComponent,
     MetadataDetailRowComponent,
@@ -190,6 +190,10 @@ export class VolumeDetailComponent implements OnInit {
   private readonly entityTitleService = inject(EntityTitleService);
 
   readonly scrollingBlock = viewChild<ElementRef<HTMLDivElement>>('scrollingBlock');
+  /**
+   * The element that actually scrolls the page (the app shell's companion bar), for virtual scrollers to track
+   */
+  protected readonly companionBar = this.document.querySelector<HTMLElement>('.companion-bar') ?? undefined;
 
 
   seriesId = input(0, {transform: numberAttribute });
@@ -202,6 +206,14 @@ export class VolumeDetailComponent implements OnInit {
   libraryType = computed(() => this.library().type);
 
   coverImage = computed(() => this.imageService.getVolumeCoverImage(this.volume().id));
+
+  /**
+   * The rating block only renders for a single-chapter volume, so its links are that chapter's
+   */
+  weblinks = computed(() => {
+    const chapter = this.volume()?.chapters?.[0];
+    return chapter?.webLinks?.length ? chapter.webLinks.split(',') : [];
+  });
 
   isLoading = signal(true);
 
@@ -450,10 +462,10 @@ export class VolumeDetailComponent implements OnInit {
 
   openEditModal() {
     const ref = this.modalService.open(EditVolumeModalComponent);
-    ref.componentInstance.volume = this.volume();
-    ref.componentInstance.libraryType = this.libraryType();
-    ref.componentInstance.libraryId = this.libraryId();
-    ref.componentInstance.seriesId = this.seriesId();
+    ref.setInput('volume', this.volume());
+    ref.setInput('libraryType', this.libraryType());
+    ref.setInput('libraryId', this.libraryId());
+    ref.setInput('seriesId', this.seriesId());
 
     ref.closed.pipe(
       filter((res: ModalResult<Volume>) => res.success),
@@ -520,7 +532,25 @@ export class VolumeDetailComponent implements OnInit {
     if (idx >= 0) {
       const chapters = [...volume.chapters];
       chapters[idx] = {...updatedChapter};
-      this.volume.set({...volume, chapters});
+      this.volume.set({
+        ...volume,
+        chapters,
+        pagesRead: chapters.reduce((acc, c) => acc + c.pagesRead, 0),
+      });
+    }
+  }
+
+  handleVolumeAction(event: ActionResult<Volume>) {
+    switch (event.effect) {
+      case "update":
+      case "reload":
+        this.loadVolume();
+        break;
+      case "remove":
+        break;
+      case "none":
+        break;
+
     }
   }
 

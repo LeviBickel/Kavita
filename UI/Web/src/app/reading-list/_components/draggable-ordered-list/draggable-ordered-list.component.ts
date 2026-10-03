@@ -11,11 +11,10 @@ import {
   TemplateRef,
   TrackByFunction
 } from '@angular/core';
-import {VirtualScrollerModule} from '@iharbeck/ngx-virtual-scroller';
+import {VirtualScrollerComponent} from '@kareadita/ngx-virtual-scroller';
 import {NgClass, NgTemplateOutlet} from '@angular/common';
 import {TranslocoDirective} from "@jsverse/transloco";
-import {BulkSelectionService} from "../../../cards/bulk-selection.service";
-import {FormsModule} from "@angular/forms";
+import {BulkSelectionEntityDataSource, BulkSelectionService} from "../../../cards/bulk-selection.service";
 
 export interface IndexUpdateEvent {
   fromPosition: number;
@@ -34,13 +33,14 @@ export interface ItemRemoveEvent {
   templateUrl: './draggable-ordered-list.component.html',
   styleUrls: ['./draggable-ordered-list.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [VirtualScrollerModule, NgTemplateOutlet, CdkDropList, CdkDrag,
-    CdkDragHandle, TranslocoDirective, NgClass, FormsModule]
+  imports: [VirtualScrollerComponent, NgTemplateOutlet, CdkDropList, CdkDrag,
+    CdkDragHandle, TranslocoDirective, NgClass]
 })
 export class DraggableOrderedListComponent {
 
   protected readonly bulkSelectionService = inject(BulkSelectionService);
 
+  readonly bulkDataSource = input<BulkSelectionEntityDataSource>('sideNavStream');
   readonly items = input<Array<any>>([]);
   /**
    * Optional filter function applied to items before rendering. Useful for search/filter UIs.
@@ -129,8 +129,12 @@ export class DraggableOrderedListComponent {
   }
 
   selectItem(updatedVal: Event, index: number) {
-    const boolVal = (updatedVal.target as HTMLInputElement).value == 'true';
-    // TODO: Bug here
-    this.bulkSelectionService.handleCardSelection('sideNavStream', index, this.localItems().length, boolVal);
+    const checked = (updatedVal.target as HTMLInputElement).checked;
+    this.bulkSelectionService.handleCardSelection(this.bulkDataSource(), index, this.localItems().length, !checked);
+  }
+
+  protected isItemSelected(index: number) {
+    this.selectionSignal(); // Ensure we re-render when a deselect occurs elsewhere
+    return this.bulkSelectionService.isCardSelected(this.bulkDataSource(), index);
   }
 }

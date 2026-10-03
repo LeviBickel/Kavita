@@ -15,7 +15,6 @@ import {
   signal,
   viewChild
 } from '@angular/core';
-import {ReactiveFormsModule} from '@angular/forms';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {
   NgbDropdown,
@@ -40,7 +39,7 @@ import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {UserReview} from "../../../_models/user-review";
 import {ExternalSeriesCardComponent} from '../../../cards/external-series-card/external-series-card.component';
 import {SeriesCardComponent} from '../../../cards/series-card/series-card.component';
-import {VirtualScrollerModule} from '@iharbeck/ngx-virtual-scroller';
+import {VirtualScrollerComponent} from '@kareadita/ngx-virtual-scroller';
 import {BulkOperationsComponent} from '../../../cards/bulk-operations/bulk-operations.component';
 import {translate, TranslocoDirective} from "@jsverse/transloco";
 import {CardActionablesComponent} from "../../../_single-module/card-actionables/card-actionables.component";
@@ -145,10 +144,10 @@ const READING_HISTORY_PAGE_SIZE = 10;
   templateUrl: './series-detail.component.html',
   styleUrls: ['./series-detail.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CardActionablesComponent, ReactiveFormsModule, NgStyle,
+  imports: [CardActionablesComponent, NgStyle,
     NgbTooltip, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu,
     NgbDropdownItem, BulkOperationsComponent,
-    NgbNav, NgbNavItem, NgbNavLink, NgbNavContent, VirtualScrollerModule, SeriesCardComponent, ExternalSeriesCardComponent, NgbNavOutlet, NgbPopover, KavitaplusTooltipComponent,
+    NgbNav, NgbNavItem, NgbNavLink, NgbNavContent, VirtualScrollerComponent, SeriesCardComponent, ExternalSeriesCardComponent, NgbNavOutlet, NgbPopover, KavitaplusTooltipComponent,
     TranslocoDirective, NgTemplateOutlet, NextExpectedCardComponent,
     NgClass, DetailsTabComponent, DefaultValuePipe, ExternalRatingComponent, ReadMoreComponent, RouterLink, BadgeExpanderComponent,
     PublicationStatusPipe, MetadataDetailRowComponent, DownloadButtonComponent, RelatedTabComponent, CoverImageComponent, ReviewsComponent,
@@ -191,6 +190,10 @@ class SeriesDetailComponent implements OnInit, AfterViewInit {
   private readonly drawerService = inject(DrawerService);
 
   readonly scrollingBlock = viewChild<ElementRef<HTMLDivElement>>('scrollingBlock');
+  /**
+   * The element that actually scrolls the page (the app shell's companion bar), for virtual scrollers to track
+   */
+  protected readonly companionBar = this.document.querySelector<HTMLElement>('.companion-bar') ?? undefined;
 
 
   seriesId = input(0, {transform: numberAttribute });
@@ -899,7 +902,7 @@ class SeriesDetailComponent implements OnInit, AfterViewInit {
 
   openEditSeriesModal() {
     const modalRef = this.modalService.open(EditSeriesModalComponent);
-    modalRef.componentInstance.series = this.series();
+    modalRef.setInput('series', this.series());
     modalRef.closed.subscribe((closeResult: ModalResult<Series>) => {
       if (closeResult.success) {
         window.scrollTo(0, 0);
@@ -954,12 +957,12 @@ class SeriesDetailComponent implements OnInit, AfterViewInit {
     patchEntitySignal(this.chapters, c);
     patchEntitySignal(this.specials, c);
     patchEntitySignal(this.storylineChapters, c);
-    this.setContinuePoint();
+    this.loadPageSource.next(false);
   }
 
   updateVolume(c: Volume) {
     patchEntitySignal(this.volumes, c);
-    this.setContinuePoint();
+    this.loadPageSource.next(false);
   }
 
   protected readonly LibraryType = LibraryType;

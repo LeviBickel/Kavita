@@ -212,7 +212,7 @@ public class SeriesController(
         {
             // An unlocked sort name is derived from Name - reseed it (mirrors the scanner logic)
             series.SortName = series.Library is {RemovePrefixForSortName: true}
-                ? BookSortTitlePrefixHelper.GetSortTitle(series.Name)
+                ? BookSortTitlePrefixHelper.GetSortTitle(series.Name, series.Metadata.Language)
                 : series.Name;
             series.Metadata.KPlusOverrides.Remove(MetadataSettingField.SortName);
         }
@@ -599,10 +599,14 @@ public class SeriesController(
     /// /// <param name="recommendedSeriesId"></param>
     /// <returns></returns>
     [KPlus]
+    [SeriesAccess]
     [HttpGet("external-series-detail")]
     public async Task<ActionResult<ExternalSeriesDetailDto>> GetExternalSeriesInfo(int seriesId, int? aniListId, long? malId, int? mangaBakaId, int? hardcoverId, int? recommendedSeriesId)
     {
         var ct = HttpContext.RequestAborted;
+        if (recommendedSeriesId is > 0 && !await unitOfWork.UserRepository.HasAccessToSeries(UserId, recommendedSeriesId.Value, ct))
+            return NotFound();
+
         var cacheKey = $"{CacheKey}-{aniListId ?? 0}-{malId ?? 0}-{mangaBakaId ?? 0}-{recommendedSeriesId ?? 0}-{hardcoverId ?? 0}";
 
         ExternalSeriesDetailDto? ret;
@@ -742,7 +746,8 @@ public class SeriesController(
     [Authorize(Policy = PolicyGroups.AdminPolicy)]
     public async Task<ActionResult<MatchSeriesInfoDto>> GetExistingMatchInfo(int seriesId)
     {
-        var series = await unitOfWork.SeriesRepository.GetSeriesByIdAsync(seriesId, SeriesIncludes.ExternalMetadata | SeriesIncludes.Library);
+        var ct = HttpContext.RequestAborted;
+        var series = await unitOfWork.SeriesRepository.GetSeriesByIdAsync(seriesId, SeriesIncludes.ExternalMetadata | SeriesIncludes.Library, ct);
         if (series == null) return NotFound();
 
         var plusFormat = series.Library.Type.ConvertToPlusMediaFormat(series.Format);

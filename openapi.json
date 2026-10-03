@@ -2,12 +2,12 @@
   "openapi": "3.0.4",
   "info": {
     "title": "Kavita",
-    "description": "Kavita provides a set of APIs authenticated via an Auth Key passed in the `x-api-key` header. Generate an Auth Key under User Settings → Manage Auth Keys, paste it into the Authorize panel, and all Try It requests will include it. Assume all fields of a payload are required unless marked optional. Built against v0.9.1.4",
+    "description": "Kavita provides a set of APIs authenticated via an Auth Key passed in the `x-api-key` header. Generate an Auth Key under User Settings → Manage Auth Keys, paste it into the Authorize panel, and all Try It requests will include it. Assume all fields of a payload are required unless marked optional. Built against v0.9.1.10",
     "license": {
       "name": "GPL-3.0",
       "url": "https://github.com/Kareadita/Kavita/blob/develop/LICENSE"
     },
-    "version": "0.9.1.4"
+    "version": "0.9.1.10"
   },
   "servers": [
     {
@@ -602,17 +602,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/InviteUserResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/InviteUserResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/InviteUserResponse"
                 }
               }
             }
@@ -2752,7 +2752,24 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChapterDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChapterDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChapterDto"
+                }
+              }
+            }
           }
         }
       }
@@ -6671,24 +6688,7 @@
         },
         "responses": {
           "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "boolean"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
+            "description": "OK"
           }
         }
       }
@@ -9553,12 +9553,12 @@
         }
       }
     },
-    "/api/Person/fetch-cover": {
-      "post": {
+    "/api/Person/coversdb-image": {
+      "get": {
         "tags": [
           "Person"
         ],
-        "summary": "Attempts to download the cover from CoversDB (Note: Not yet release in Kavita)",
+        "summary": "Returns the CoversDB image url for a Person, if one can be matched. Does not apply the cover.",
         "parameters": [
           {
             "name": "personId",
@@ -13239,7 +13239,7 @@
         "tags": [
           "ReadingProfile"
         ],
-        "summary": "Returns all the Reading rofiles bound to the library",
+        "summary": "Returns all the Reading profiles bound to the library",
         "parameters": [
           {
             "name": "libraryId",
@@ -13987,6 +13987,45 @@
                   "items": {
                     "$ref": "#/components/schemas/UserReviewExtendedDto"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Review/my-series": {
+      "get": {
+        "tags": [
+          "Review"
+        ],
+        "parameters": [
+          {
+            "name": "seriesId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRatingAndReviewDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRatingAndReviewDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRatingAndReviewDto"
                 }
               }
             }
@@ -16778,6 +16817,36 @@
                   "items": {
                     "$ref": "#/components/schemas/JobDto"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Server/activity": {
+      "get": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "What is running, delayed and coming up, so a client can rebuild its activity list after a refresh or a server restart",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivitySnapshotDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivitySnapshotDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivitySnapshotDto"
                 }
               }
             }
@@ -20240,6 +20309,7 @@
         "tags": [
           "Theme"
         ],
+        "summary": "Returns all Themes",
         "responses": {
           "200": {
             "description": "OK",
@@ -21024,10 +21094,11 @@
         ],
         "parameters": [
           {
-            "name": "username",
+            "name": "userId",
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -21814,6 +21885,59 @@
           },
           "preferredTitle": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ActivitySnapshotDto": {
+        "type": "object",
+        "properties": {
+          "bootId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startedUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "running": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignalRMessageDto"
+            },
+            "nullable": true
+          },
+          "scheduled": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduledScanDto"
+            },
+            "nullable": true
+          },
+          "scheduledTotal": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "upcoming": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpcomingTaskDto"
+            },
+            "nullable": true
+          },
+          "recentJobs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecentJobDto"
+            },
+            "nullable": true
+          },
+          "recentEntries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignalRMessageDto"
+            },
             "nullable": true
           }
         },
@@ -23907,6 +24031,9 @@
           "seriesTotalPagesRead": {
             "type": "integer",
             "format": "int32"
+          },
+          "seriesPublicationStatus": {
+            "$ref": "#/components/schemas/PublicationStatus"
           },
           "pageDimensions": {
             "type": "array",
@@ -27715,6 +27842,32 @@
         },
         "additionalProperties": false
       },
+      "MessageEventPriority": {
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "type": "integer",
+        "description": "Members:\n- `0` — Silent\n- `1` — Activity\n- `2` — Info\n- `3` — Action\n- `4` — Error",
+        "format": "int32",
+        "x-enum-varnames": [
+          "Silent",
+          "Activity",
+          "Info",
+          "Action",
+          "Error"
+        ],
+        "x-enum-descriptions": [
+          "Silent",
+          "Activity",
+          "Info",
+          "Action",
+          "Error"
+        ]
+      },
       "MetadataFetchTrigger": {
         "enum": [
           0,
@@ -29909,6 +30062,45 @@
         },
         "additionalProperties": false
       },
+      "RecentJobDto": {
+        "required": [
+          "correlationId"
+        ],
+        "type": "object",
+        "properties": {
+          "correlationId": {
+            "type": "string",
+            "nullable": true
+          },
+          "startedUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endedUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignalRMessageDto"
+            },
+            "nullable": true
+          },
+          "completed": {
+            "type": "boolean"
+          },
+          "seriesAdded": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "seriesRemoved": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "RecommendationDto": {
         "type": "object",
         "properties": {
@@ -30493,6 +30685,33 @@
           },
           "abortOnNoSeriesMatch": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScheduledScanDto": {
+        "required": [
+          "jobId"
+        ],
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "nullable": true
+          },
+          "libraryId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "seriesId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "runAtUtc": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false
@@ -32103,6 +32322,53 @@
           "BrowsePeople"
         ]
       },
+      "SignalRMessageDto": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "body": {
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "subTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "eventType": {
+            "type": "string",
+            "nullable": true
+          },
+          "progress": {
+            "type": "string",
+            "nullable": true
+          },
+          "eventTimeUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/MessageEventPriority"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "correlationId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SiteThemeDto": {
         "required": [
           "fileName",
@@ -33149,6 +33415,28 @@
           "mangaTime": {
             "type": "number",
             "format": "float"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpcomingTaskDto": {
+        "required": [
+          "cron",
+          "taskId"
+        ],
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "nullable": true
+          },
+          "cron": {
+            "type": "string",
+            "nullable": true
+          },
+          "nextRunUtc": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false
@@ -34550,6 +34838,8 @@
           "dataSaver",
           "locale",
           "noTransitions",
+          "onDeckProgressDays",
+          "onDeckUpdateDays",
           "opdsPreferences",
           "promptForDownloadSize",
           "promptForRereadsAfter",
@@ -34587,6 +34877,14 @@
             "type": "boolean"
           },
           "promptForRereadsAfter": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "onDeckProgressDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "onDeckUpdateDays": {
             "type": "integer",
             "format": "int32"
           },
@@ -34706,6 +35004,12 @@
                 "items": {
                   "$ref": "#/components/schemas/KeyBind"
                 }
+              },
+              "OpenEventWidget": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/KeyBind"
+                }
               }
             },
             "additionalProperties": false
@@ -34727,6 +35031,23 @@
           },
           "opdsPreferences": {
             "$ref": "#/components/schemas/AppUserOpdsPreferences"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserRatingAndReviewDto": {
+        "type": "object",
+        "properties": {
+          "rating": {
+            "type": "number",
+            "format": "float"
+          },
+          "review": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasBeenRated": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

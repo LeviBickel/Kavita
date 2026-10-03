@@ -50,7 +50,7 @@ public class MetadataService(
     : IMetadataService
 {
     public const string Name = "MetadataService";
-    private readonly IList<SignalRMessage> _updateEvents = new List<SignalRMessage>();
+    private readonly List<SignalRMessageDto> _updateEvents = new List<SignalRMessageDto>();
 
     /// <summary>
     /// Updates the metadata for a Chapter
@@ -739,11 +739,34 @@ public class MetadataService(
 
         #region Series Metadata
 
-        var genres = series.Volumes.SelectMany(v => v.Chapters).SelectMany(c => c.Genres).ToList();
-        var tags = series.Volumes.SelectMany(v => v.Chapters).SelectMany(c => c.Tags).ToList();
+        // We have to use existing series genres & tags incase they're from K+ and never existed on chapters
+        var allGenres = series.Metadata.Genres
+            .Concat(series.Volumes
+                .SelectMany(v => v.Chapters)
+                .SelectMany(c => c.Genres))
+            .Select(g => g.Title)
+            .ToList();
+        var allTags = series.Metadata.Tags
+            .Concat(series.Volumes
+                .SelectMany(v => v.Chapters)
+                .SelectMany(c => c.Tags))
+            .Select(g => g.Title)
+            .ToList();
 
-        ProcessSeries.UpdateSeriesMetadataGenres(series.Metadata.Genres, genres);
-        ProcessSeries.UpdateSeriesMetadataTags(series.Metadata.Tags, tags);
+        ExternalMetadataService.GenerateExternalGenreAndTagsList(
+            allGenres,
+            allTags,
+            settings, out var newSeriesTags, out var newSeriesGenres);
+
+        try
+        {
+            await TagHelper.UpdateEntityTags(series.Metadata.Genres, newSeriesGenres, scopedUnitOfWork.DataContext.Genre, scopedUnitOfWork);
+            await TagHelper.UpdateEntityTags(series.Metadata.Tags, newSeriesTags, scopedUnitOfWork.DataContext.Tag, scopedUnitOfWork);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to update genres or tags for series {SeriesId}, skipping", series.Id);
+        }
 
         var allSeriesTagsAndGenres = series.Metadata.Genres
             .Select(g => g.Title)

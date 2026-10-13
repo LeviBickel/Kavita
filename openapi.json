@@ -2,12 +2,12 @@
   "openapi": "3.0.4",
   "info": {
     "title": "Kavita",
-    "description": "Kavita provides a set of APIs authenticated via an Auth Key passed in the `x-api-key` header. Generate an Auth Key under User Settings → Manage Auth Keys, paste it into the Authorize panel, and all Try It requests will include it. Assume all fields of a payload are required unless marked optional. Built against v0.9.1.13",
+    "description": "Kavita provides a set of APIs authenticated via an Auth Key passed in the `x-api-key` header. Generate an Auth Key under User Settings → Manage Auth Keys, paste it into the Authorize panel, and all Try It requests will include it. Assume all fields of a payload are required unless marked optional. Built against v0.9.1.14",
     "license": {
       "name": "GPL-3.0",
       "url": "https://github.com/Kareadita/Kavita/blob/develop/LICENSE"
     },
-    "version": "0.9.1.13"
+    "version": "0.9.1.14"
   },
   "servers": [
     {
@@ -1779,6 +1779,81 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Audio/{chapterId}/audio-info": {
+      "get": {
+        "tags": [
+          "Audio"
+        ],
+        "summary": "Returns metadata for the audiobook reader: title, author, narrator, duration (in seconds).",
+        "parameters": [
+          {
+            "name": "chapterId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioInfoDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioInfoDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioInfoDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Audio/{chapterId}/stream": {
+      "get": {
+        "tags": [
+          "Audio"
+        ],
+        "summary": "Streams an audio file with HTTP range request support for efficient seeking.\nThe audio file is served directly from disk — not cached — since audio files\ncan be very large (multiple GB).",
+        "parameters": [
+          {
+            "name": "chapterId",
+            "in": "path",
+            "description": "Chapter to stream",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "query",
+            "description": "User API key for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -18166,7 +18241,7 @@
           {
             "name": "role",
             "in": "query",
-            "description": "Members:\n- `3` — Writer\n- `4` — Penciller\n- `5` — Inker\n- `6` — Colorist\n- `7` — Letterer\n- `8` — CoverArtist\n- `9` — Editor\n- `10` — Publisher\n- `11` — Character\n- `12` — Translator\n- `13` — Imprint\n- `14` — Team\n- `15` — Location",
+            "description": "Members:\n- `3` — Writer\n- `4` — Penciller\n- `5` — Inker\n- `6` — Colorist\n- `7` — Letterer\n- `8` — CoverArtist\n- `9` — Editor\n- `10` — Publisher\n- `11` — Character\n- `12` — Translator\n- `13` — Imprint\n- `14` — Team\n- `15` — Location\n- `16` — Narrator",
             "schema": {
               "$ref": "#/components/schemas/PersonRole"
             }
@@ -22555,6 +22630,62 @@
         },
         "additionalProperties": false
       },
+      "AudioInfoDto": {
+        "type": "object",
+        "properties": {
+          "bookTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "seriesId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "volumeId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "seriesFormat": {
+            "$ref": "#/components/schemas/MangaFormat"
+          },
+          "seriesName": {
+            "type": "string",
+            "nullable": true
+          },
+          "chapterNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "volumeNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "libraryId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isSpecial": {
+            "type": "boolean"
+          },
+          "chapterTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "author": {
+            "type": "string",
+            "nullable": true
+          },
+          "narrator": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "AuditLogMatchExternalIdsParamsDto": {
         "type": "object",
         "properties": {
@@ -25786,22 +25917,25 @@
           1,
           2,
           3,
-          4
+          4,
+          5
         ],
         "type": "integer",
-        "description": "Members:\n- `1` — Archive\n- `2` — EPub (Epub)\n- `3` — Pdf\n- `4` — Images",
+        "description": "Members:\n- `1` — Archive\n- `2` — EPub (Epub)\n- `3` — Pdf\n- `4` — Images\n- `5` — Audio",
         "format": "int32",
         "x-enum-varnames": [
           "Archive",
           "Epub",
           "Pdf",
-          "Images"
+          "Images",
+          "Audio"
         ],
         "x-enum-descriptions": [
           "Archive",
           "EPub",
           "Pdf",
-          "Images"
+          "Images",
+          "Audio"
         ]
       },
       "FilterCombination": {
@@ -27410,10 +27544,11 @@
           2,
           3,
           4,
-          5
+          5,
+          6
         ],
         "type": "integer",
-        "description": "Members:\n- `0` — Manga\n- `1` — Comic (Flexible) (Comic)\n- `2` — Book\n- `3` — Image\n- `4` — Light Novel (LightNovel)\n- `5` — Comic (ComicVine)",
+        "description": "Members:\n- `0` — Manga\n- `1` — Comic (Flexible) (Comic)\n- `2` — Book\n- `3` — Image\n- `4` — Light Novel (LightNovel)\n- `5` — Comic (ComicVine)\n- `6` — Audiobook",
         "format": "int32",
         "x-enum-varnames": [
           "Manga",
@@ -27421,7 +27556,8 @@
           "Book",
           "Image",
           "LightNovel",
-          "ComicVine"
+          "ComicVine",
+          "Audiobook"
         ],
         "x-enum-descriptions": [
           "Manga",
@@ -27429,7 +27565,8 @@
           "Book",
           "Image",
           "Light Novel",
-          "Comic"
+          "Comic",
+          "Audiobook"
         ]
       },
       "LicenseInfoDto": {
@@ -27665,24 +27802,27 @@
           1,
           2,
           3,
-          4
+          4,
+          5
         ],
         "type": "integer",
-        "description": "Members:\n- `0` — Image\n- `1` — Archive\n- `2` — Unknown\n- `3` — EPUB (Epub)\n- `4` — PDF (Pdf)",
+        "description": "Members:\n- `0` — Image\n- `1` — Archive\n- `2` — Unknown\n- `3` — EPUB (Epub)\n- `4` — PDF (Pdf)\n- `5` — Audio",
         "format": "int32",
         "x-enum-varnames": [
           "Image",
           "Archive",
           "Unknown",
           "Epub",
-          "Pdf"
+          "Pdf",
+          "Audio"
         ],
         "x-enum-descriptions": [
           "Image",
           "Archive",
           "Unknown",
           "EPUB",
-          "PDF"
+          "PDF",
+          "Audio"
         ]
       },
       "MangaFormatStatCount": {
@@ -28512,6 +28652,23 @@
             },
             "nullable": true
           },
+          "enableOpenLibrary": {
+            "type": "boolean"
+          },
+          "enableGoogleBooks": {
+            "type": "boolean"
+          },
+          "googleBooksApiKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "enableHardcover": {
+            "type": "boolean"
+          },
+          "hardcoverApiKey": {
+            "type": "string",
+            "nullable": true
+          },
           "filterAboveWeight": {
             "$ref": "#/components/schemas/TagWeight"
           }
@@ -29130,10 +29287,11 @@
           12,
           13,
           14,
-          15
+          15,
+          16
         ],
         "type": "integer",
-        "description": "Members:\n- `3` — Writer\n- `4` — Penciller\n- `5` — Inker\n- `6` — Colorist\n- `7` — Letterer\n- `8` — CoverArtist\n- `9` — Editor\n- `10` — Publisher\n- `11` — Character\n- `12` — Translator\n- `13` — Imprint\n- `14` — Team\n- `15` — Location",
+        "description": "Members:\n- `3` — Writer\n- `4` — Penciller\n- `5` — Inker\n- `6` — Colorist\n- `7` — Letterer\n- `8` — CoverArtist\n- `9` — Editor\n- `10` — Publisher\n- `11` — Character\n- `12` — Translator\n- `13` — Imprint\n- `14` — Team\n- `15` — Location\n- `16` — Narrator",
         "format": "int32",
         "x-enum-varnames": [
           "Writer",
@@ -29148,7 +29306,8 @@
           "Translator",
           "Imprint",
           "Team",
-          "Location"
+          "Location",
+          "Narrator"
         ],
         "x-enum-descriptions": [
           "Writer",
@@ -29163,7 +29322,8 @@
           "Translator",
           "Imprint",
           "Team",
-          "Location"
+          "Location",
+          "Narrator"
         ]
       },
       "PersonSortField": {
@@ -35917,6 +36077,10 @@
     },
     {
       "name": "Annotation"
+    },
+    {
+      "name": "Audio",
+      "description": "Handles audiobook streaming and metadata retrieval.\nAudio files are served directly from disk (not cached) with HTTP range request support\nso the HTML5 audio element can seek efficiently in the browser."
     },
     {
       "name": "Book"

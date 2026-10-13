@@ -8,7 +8,8 @@ ParseReleaseTypes:
   HeadRef: "develop"
   BranchRequirements:
     Nightly:
-      StartsWith: ""
+      StartWiths: ""
+      DoesNotContain: []
 
 VersionBump:
   ComponentToBump: Revision

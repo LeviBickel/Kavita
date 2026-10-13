@@ -2,6 +2,14 @@
 
 CsprojPath: "Kavita.Common/Kavita.Common.csproj"
 
+# This fork builds directly from pushes to develop (no PR required), so force every run to
+# classify as Nightly rather than relying on a PR head ref the tool would otherwise look for.
+ParseReleaseTypes:
+  HeadRef: "develop"
+  BranchRequirements:
+    Nightly:
+      StartsWith: ""
+
 VersionBump:
   ComponentToBump: Revision
   ReleaseTypes: [Nightly]

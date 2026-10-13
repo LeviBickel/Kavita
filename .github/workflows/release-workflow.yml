@@ -11,10 +11,43 @@ permissions:
 jobs:
   run-release-tool:
     if: github.repository == 'LeviBickel/Kavita'
-    uses: Kareadita/GitHubActions/.github/workflows/release-tools.base.yml@main
-    secrets:
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-    with:
-      config-path: release.yml
-      dockerhub-username: "levibickel"
-      uses-docker: true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: "levibickel"
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install Kavita.ReleaseTools
+        run: dotnet tool install --global Kavita.ReleaseTools
+
+      - name: Run Kavita.ReleaseTools
+        run: GITHUB_HEAD_REF="$HEAD_REF" kavita-releasetools run --config release.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_REF: ${{ github.ref_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TARGET_BRANCH: ${{ github.ref_name }}

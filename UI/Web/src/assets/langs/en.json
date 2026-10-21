@@ -1950,6 +1950,7 @@
         "reading-lists": "Reading Lists",
         "bookmarks": "Bookmarks",
         "browse-people": "Browse People",
+        "browse-genres": "Browse Genres",
         "filter-label": "{{common.filter}}",
         "all-series": "All Series",
         "clear": "{{common.clear}}",
@@ -4355,7 +4356,8 @@
         "reading-lists": "{{side-nav.reading-lists}}",
         "bookmarks": "{{side-nav.bookmarks}}",
         "all-series": "{{side-nav.all-series}}",
-        "browse-authors": "{{side-nav.browse-people}}"
+        "browse-authors": "{{side-nav.browse-people}}",
+        "browse-genres": "{{side-nav.browse-genres}}"
     },
 
     "filter-field-pipe": {

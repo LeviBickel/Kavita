@@ -420,6 +420,14 @@ public static class Defaults
         Order = 6,
         IsProvided = true,
         Visible = true
+    },
+    new()
+    {
+        Name = "browse-genres",
+        StreamType = SideNavStreamType.BrowseGenres,
+        Order = 7,
+        IsProvided = true,
+        Visible = true
     }
     ];
 

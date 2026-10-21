@@ -84,6 +84,11 @@
                                    [cdkDragDisabled]="!editMode" [cdkDragData]="navStream" [editMode]="editMode" icon="fa-users" [title]="t('browse-people')" link="/browse/people/" />
               }
 
+              @case (SideNavStreamType.BrowseGenres) {
+                <app-side-nav-item cdkDrag cdkDragBoundary=".side-nav-container" cdkDragPreviewContainer="parent"
+                                   [cdkDragDisabled]="!editMode" [cdkDragData]="navStream" [editMode]="editMode" icon="fa-tags" [title]="t('browse-genres')" link="/browse/genres/" />
+              }
+
               @case (SideNavStreamType.SmartFilter) {
                 <app-side-nav-item cdkDrag cdkDragBoundary=".side-nav-container" cdkDragPreviewContainer="parent"
                                    [cdkDragDisabled]="!editMode" [cdkDragData]="navStream" [editMode]="editMode" icon="fa-bars-staggered" [title]="navStream.name" [link]="getSmartFilterBaseLink(navStream)" [queryParams]="navStream.smartFilterEncoded" />

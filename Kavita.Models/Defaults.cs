@@ -415,16 +415,16 @@ public static class Defaults
     },
     new()
     {
-        Name = "browse-authors",
-        StreamType = SideNavStreamType.BrowsePeople,
+        Name = "browse-genres",
+        StreamType = SideNavStreamType.BrowseGenres,
         Order = 6,
         IsProvided = true,
         Visible = true
     },
     new()
     {
-        Name = "browse-genres",
-        StreamType = SideNavStreamType.BrowseGenres,
+        Name = "browse-authors",
+        StreamType = SideNavStreamType.BrowsePeople,
         Order = 7,
         IsProvided = true,
         Visible = true

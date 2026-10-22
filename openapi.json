@@ -2,12 +2,12 @@
   "openapi": "3.0.4",
   "info": {
     "title": "Kavita",
-    "description": "Kavita provides a set of APIs authenticated via an Auth Key passed in the `x-api-key` header. Generate an Auth Key under User Settings → Manage Auth Keys, paste it into the Authorize panel, and all Try It requests will include it. Assume all fields of a payload are required unless marked optional. Built against v0.9.1.15",
+    "description": "Kavita provides a set of APIs authenticated via an Auth Key passed in the `x-api-key` header. Generate an Auth Key under User Settings → Manage Auth Keys, paste it into the Authorize panel, and all Try It requests will include it. Assume all fields of a payload are required unless marked optional. Built against v0.9.1.16",
     "license": {
       "name": "GPL-3.0",
       "url": "https://github.com/Kareadita/Kavita/blob/develop/LICENSE"
     },
-    "version": "0.9.1.15"
+    "version": "0.9.1.16"
   },
   "servers": [
     {
@@ -32806,10 +32806,11 @@
           6,
           7,
           8,
-          9
+          9,
+          10
         ],
         "type": "integer",
-        "description": "Members:\n- `1` — Collections\n- `2` — ReadingLists\n- `3` — Bookmarks\n- `4` — Library\n- `5` — SmartFilter\n- `6` — ExternalSource\n- `7` — AllSeries\n- `8` — WantToRead\n- `9` — BrowsePeople",
+        "description": "Members:\n- `1` — Collections\n- `2` — ReadingLists\n- `3` — Bookmarks\n- `4` — Library\n- `5` — SmartFilter\n- `6` — ExternalSource\n- `7` — AllSeries\n- `8` — WantToRead\n- `9` — BrowsePeople\n- `10` — BrowseGenres",
         "format": "int32",
         "x-enum-varnames": [
           "Collections",
@@ -32820,7 +32821,8 @@
           "ExternalSource",
           "AllSeries",
           "WantToRead",
-          "BrowsePeople"
+          "BrowsePeople",
+          "BrowseGenres"
         ],
         "x-enum-descriptions": [
           "Collections",
@@ -32831,7 +32833,8 @@
           "ExternalSource",
           "AllSeries",
           "WantToRead",
-          "BrowsePeople"
+          "BrowsePeople",
+          "BrowseGenres"
         ]
       },
       "SignalRMessageDto": {

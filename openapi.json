@@ -2,12 +2,12 @@
   "openapi": "3.0.4",
   "info": {
     "title": "Kavita",
-    "description": "Kavita provides a set of APIs authenticated via an Auth Key passed in the `x-api-key` header. Generate an Auth Key under User Settings → Manage Auth Keys, paste it into the Authorize panel, and all Try It requests will include it. Assume all fields of a payload are required unless marked optional. Built against v0.9.1.17",
+    "description": "Kavita provides a set of APIs authenticated via an Auth Key passed in the `x-api-key` header. Generate an Auth Key under User Settings → Manage Auth Keys, paste it into the Authorize panel, and all Try It requests will include it. Assume all fields of a payload are required unless marked optional. Built against v0.9.1.18",
     "license": {
       "name": "GPL-3.0",
       "url": "https://github.com/Kareadita/Kavita/blob/develop/LICENSE"
     },
-    "version": "0.9.1.17"
+    "version": "0.9.1.18"
   },
   "servers": [
     {
@@ -3361,6 +3361,97 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Collection/create-smart": {
+      "post": {
+        "tags": [
+          "Collection"
+        ],
+        "summary": "Creates a local Smart Collection: a collection whose Items are kept in sync with whatever series\ncurrently match the given Smart Filter. No external service or Kavita+ license required.",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSmartCollectionDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSmartCollectionDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSmartCollectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppUserCollectionDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppUserCollectionDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppUserCollectionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Collection/sync-smart-collection": {
+      "post": {
+        "tags": [
+          "Collection"
+        ],
+        "summary": "Manually re-syncs a local Smart Collection's series against its Smart Filter",
+        "parameters": [
+          {
+            "name": "collectionId",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppUserCollectionDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppUserCollectionDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppUserCollectionDto"
+                }
+              }
+            }
           }
         }
       }
@@ -22582,6 +22673,15 @@
           "missingSeriesFromSource": {
             "type": "string",
             "nullable": true
+          },
+          "smartFilterId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "smartFilterName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -24820,6 +24920,24 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateSmartCollectionDto": {
+        "required": [
+          "smartFilterId",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "smartFilterId": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false

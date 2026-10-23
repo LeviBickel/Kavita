@@ -50,7 +50,6 @@ public class MetadataService(
     IExternalCoverProviderService externalCoverProviderService)
     : IMetadataService
 {
-    public const string Name = "MetadataService";
     private readonly List<SignalRMessageDto> _updateEvents = new List<SignalRMessageDto>();
 
     /// <summary>

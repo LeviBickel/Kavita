@@ -138,6 +138,12 @@ public sealed class DataContext : IdentityDbContext<AppUser, AppRole, int,
             .Property(b => b.AgeRating)
             .HasDefaultValue(AgeRating.Unknown);
 
+        builder.Entity<AppUserCollection>()
+            .HasOne(c => c.SmartFilter)
+            .WithMany()
+            .HasForeignKey(c => c.SmartFilterId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.Entity<MediaError>()
             .HasOne(e => e.Library)
             .WithMany()

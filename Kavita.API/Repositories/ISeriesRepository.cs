@@ -132,6 +132,11 @@ public interface ISeriesRepository
     Task RemoveFromOnDeckAsync(int seriesId, int userId, CancellationToken ct = default);
     Task ClearOnDeckRemovalAsync(int seriesId, int userId, CancellationToken ct = default);
     Task<PagedList<SeriesDto>> GetSeriesDtoForLibraryIdAsync(int userId, UserParams userParams, SeriesFilterV2Dto seriesFilterDto, QueryContext queryContext = QueryContext.None, CancellationToken ct = default);
+    /// <summary>
+    /// All Series entities currently matching a given filter, scoped to what the user can access.
+    /// Used to materialize the membership of a local Smart Collection.
+    /// </summary>
+    Task<List<Series>> GetSeriesForFilterAsync(int userId, SeriesFilterV2Dto seriesFilterDto, CancellationToken ct = default);
     Task<SeriesDetailRequestV3Dto?> GetKavitaPlusSeriesDetailRequestV3Dto(int seriesId, CancellationToken ct = default);
     /// <summary>
     /// Returns the <see cref="MetadataProvider"/> the Series matches against (its override, else the Library's default), or null if the Series doesn't exist

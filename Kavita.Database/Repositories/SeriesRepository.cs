@@ -652,6 +652,17 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
         return await PagedList<SeriesDto>.CreateAsync(retSeries, userParams.PageNumber, userParams.PageSize, ct);
     }
 
+    /// <summary>
+    /// All Series entities currently matching a given filter, scoped to what the user can access.
+    /// Used to materialize the membership of a local Smart Collection.
+    /// </summary>
+    public async Task<List<Series>> GetSeriesForFilterAsync(int userId, SeriesFilterV2Dto seriesFilterDto,
+        CancellationToken ct = default)
+    {
+        var query = await CreateFilteredSearchQueryableV2(userId, seriesFilterDto, QueryContext.None, ct: ct);
+        return await query.ToListAsync(ct);
+    }
+
     public async Task<SeriesDetailRequestV3Dto?> GetKavitaPlusSeriesDetailRequestV3Dto(int seriesId, CancellationToken ct = default)
     {
 

@@ -3005,6 +3005,9 @@ namespace Kavita.Database.Migrations
                     b.Property<string>("SecondaryColor")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("SmartFilterId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Source")
                         .HasColumnType("INTEGER");
 
@@ -3023,6 +3026,8 @@ namespace Kavita.Database.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AppUserId");
+
+                    b.HasIndex("SmartFilterId");
 
                     b.ToTable("AppUserCollection");
                 });
@@ -4702,7 +4707,14 @@ namespace Kavita.Database.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Kavita.Models.Entities.User.AppUserSmartFilter", "SmartFilter")
+                        .WithMany()
+                        .HasForeignKey("SmartFilterId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("AppUser");
+
+                    b.Navigation("SmartFilter");
                 });
 
             modelBuilder.Entity("Kavita.Models.Entities.User.AppUserDashboardStream", b =>

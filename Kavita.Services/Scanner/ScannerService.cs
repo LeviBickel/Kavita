@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using AutoMapper;
@@ -377,6 +378,7 @@ public class ScannerService(
 
         BackgroundJob.Enqueue(() => cacheService.CleanupChapters(existingChapterIdsToClean));
         BackgroundJob.Enqueue(() => directoryService.ClearDirectory(directoryService.CacheDirectory));
+        BackgroundJob.Enqueue<ICollectionFilterSyncService>(s => s.SyncAll(CancellationToken.None));
     }
 
     private static Dictionary<ParsedSeries, IList<ParserInfo>> TrackFoundSeriesAndFiles(IList<ScannedSeriesResult> seenSeries,
@@ -629,6 +631,7 @@ public class ScannerService(
         }
 
         BackgroundJob.Enqueue(() => directoryService.ClearDirectory(directoryService.CacheDirectory));
+        BackgroundJob.Enqueue<ICollectionFilterSyncService>(s => s.SyncAll(CancellationToken.None));
     }
 
     private async Task ScanLibraryFolders(Library library, List<string> libraryFolderPaths, bool forceUpdate, bool endsJob, Stopwatch sw)

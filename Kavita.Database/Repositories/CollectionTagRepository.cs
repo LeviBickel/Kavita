@@ -204,6 +204,14 @@ public class CollectionTagRepository(DataContext context, IMapper mapper) : ICol
             .ToListAsync(ct);
     }
 
+    public async Task<IList<int>> GetSmartCollectionIdsAsync(CancellationToken ct = default)
+    {
+        return await context.AppUserCollection
+            .Where(c => c.SmartFilterId != null)
+            .Select(c => c.Id)
+            .ToListAsync(ct);
+    }
+
     public async Task<AppUserCollection?> GetCollectionAsync(int tagId,
         CollectionIncludes includes = CollectionIncludes.None, CancellationToken ct = default)
     {

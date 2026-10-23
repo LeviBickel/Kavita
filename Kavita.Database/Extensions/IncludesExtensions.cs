@@ -37,6 +37,10 @@ public static class IncludesExtensions
             queryable = queryable.Include(c => c.Items);
         }
 
+        if (includes.HasFlag(CollectionIncludes.SmartFilter))
+        {
+            queryable = queryable.Include(c => c.SmartFilter);
+        }
 
         return queryable.AsSplitQuery();
     }

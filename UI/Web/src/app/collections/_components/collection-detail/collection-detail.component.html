@@ -21,6 +21,24 @@
 
     @if (collectionTag()) {
       <div class="container-fluid">
+        @if (collectionTag()!.smartFilterId !== null) {
+          <div class="row mb-3">
+            <div class="col-12">
+              <i class="fa-solid fa-bars-staggered me-2" aria-hidden="true"></i>
+              <span>{{t('smart-collection-description', {name: collectionTag()!.smartFilterName})}}</span>
+              <span class="dot-separator mx-1"></span>
+              <i class="fa-solid fa-question-circle" aria-hidden="true" [ngbTooltip]="t('last-sync', {date: collectionTag()!.lastSyncUtc | utcToLocalTime: 'short' | defaultDate })"></i>
+              <button class="btn btn-outline-primary btn-sm ms-2" [disabled]="isSyncingSmartCollection()" (click)="syncSmartCollection()">
+                @if (isSyncingSmartCollection()) {
+                  <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                {{t('refresh-now')}}
+              </button>
+            </div>
+            <hr>
+          </div>
+        }
+
         @if (summary().length > 0 || collectionTag()!.source !== ScrobbleProvider.Kavita) {
           <div class="row mb-3">
             <div class="col-md-2 col-xs-4 col-sm-6 d-none d-sm-block">

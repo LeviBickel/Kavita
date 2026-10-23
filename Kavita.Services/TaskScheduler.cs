@@ -67,6 +67,7 @@ public class TaskScheduler : ITaskScheduler
     public const string RemoveFromWantToReadTaskId = TaskSchedulerConstants.RemoveFromWantToReadTaskId;
     public const string UpdateYearlyStatsTaskId = TaskSchedulerConstants.UpdateYearlyStatsTaskId;
     public const string SyncThemesTaskId = TaskSchedulerConstants.SyncThemesTaskId;
+    public const string SmartCollectionFilterSyncId = TaskSchedulerConstants.SmartCollectionFilterSyncId;
     public const string CheckForUpdateId = TaskSchedulerConstants.CheckForUpdateId;
     public const string CleanupDbTaskId = TaskSchedulerConstants.CleanupDbTaskId;
     public const string CleanupTaskId = TaskSchedulerConstants.CleanupTaskId;
@@ -236,6 +237,10 @@ public class TaskScheduler : ITaskScheduler
         RecurringJob.AddOrUpdate<IThemeService>(SyncThemesTaskId,
             themeService => themeService.SyncThemes(CancellationToken.None),
             Cron.Daily, RecurringJobOptions);
+
+        RecurringJob.AddOrUpdate<ICollectionFilterSyncService>(SmartCollectionFilterSyncId,
+            service => service.SyncAll(CancellationToken.None),
+            Cron.Daily(Rnd.Next(2, 5)), RecurringJobOptions);
 
         RecurringJob.AddOrUpdate(AuthKeyExpirationId, () => CheckExpiredOrExpiringAuthKeys(CancellationToken.None),
             Cron.Daily, RecurringJobOptions);

@@ -57,6 +57,13 @@ public class AppUserCollection : IEntityDate, IHasCoverImage
     /// </summary>
     public string? MissingSeriesFromSource { get; set; }
 
+    /// <summary>
+    /// If set, this collection is a local Smart Collection: its Items are kept in sync with whatever
+    /// series currently match this Smart Filter, rather than being manually managed.
+    /// </summary>
+    public int? SmartFilterId { get; set; }
+    public AppUserSmartFilter? SmartFilter { get; set; }
+
     public void ResetColorScape()
     {
         PrimaryColor = string.Empty;

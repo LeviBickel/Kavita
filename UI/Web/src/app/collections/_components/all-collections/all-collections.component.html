@@ -3,6 +3,9 @@
     <app-side-nav-companion-bar [hasFilter]="false" (filterOpen)="filterOpen.emit($event)">
       <h4 title>{{t('title')}}</h4>
       <h5 subtitle>{{t('item-count', {num: collections().length | number})}}</h5>
+      <button main class="btn btn-secondary btn-small" (click)="openCreateSmartCollectionModal()">
+        {{t('create-smart-collection')}}
+      </button>
     </app-side-nav-companion-bar>
 
     <app-card-detail-layout

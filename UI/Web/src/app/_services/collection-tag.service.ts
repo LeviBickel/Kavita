@@ -74,4 +74,12 @@ export class CollectionTagService {
   importStack(stack: MalStack) {
     return this.httpClient.post(this.baseUrl + 'collection/import-stack', stack, TextResonse);
   }
+
+  createSmartCollection(title: string, smartFilterId: number) {
+    return this.httpClient.post<UserCollection>(this.baseUrl + 'collection/create-smart', {title, smartFilterId});
+  }
+
+  syncSmartCollection(collectionId: number) {
+    return this.httpClient.post<UserCollection>(this.baseUrl + 'collection/sync-smart-collection?collectionId=' + collectionId, {});
+  }
 }

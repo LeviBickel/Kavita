@@ -36,6 +36,9 @@ import {ImageService} from "../../../_services/image.service";
 import {AccountService} from "../../../_services/account.service";
 import {UserCollection} from "../../../_models/collection-tag";
 import {Tag} from "../../../_models/tag";
+import {ModalService} from "../../../_services/modal.service";
+import {mediumModal} from "../../../_models/modal/modal-options";
+import {CreateSmartCollectionComponent} from "../create-smart-collection/create-smart-collection.component";
 
 
 @Component({
@@ -57,6 +60,7 @@ export class AllCollectionsComponent implements OnInit {
   public readonly bulkSelectionService = inject(BulkSelectionService);
   public readonly actionService = inject(ActionService);
   private readonly cardConfigFactory = inject(CardConfigFactory);
+  private readonly modalService = inject(ModalService);
 
   protected readonly ScrobbleProvider = ScrobbleProvider;
   protected readonly WikiLink = WikiLink;
@@ -130,5 +134,9 @@ export class AllCollectionsComponent implements OnInit {
       this.collections.set([...tags]);
       this.isLoading.set(false);
     });
+  }
+
+  openCreateSmartCollectionModal() {
+    this.modalService.open(CreateSmartCollectionComponent, mediumModal());
   }
 }

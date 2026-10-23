@@ -119,6 +119,7 @@ export class CollectionDetailComponent implements AfterContentChecked {
   readonly user = this.accountService.currentUser;
 
   isLoading = signal(true);
+  isSyncingSmartCollection = signal(false);
   series = signal<Array<Series>>([]);
   pagination = signal(new Pagination());
   filter = signal<FilterV2<SeriesFilterField> | undefined>(undefined);
@@ -270,6 +271,21 @@ export class CollectionDetailComponent implements AfterContentChecked {
     const ref = this.drawerService.open(SmartCollectionDrawerComponent, {position: 'end', panelClass: ''});
     ref.setInput('collection', this.collectionTag());
     ref.setInput('series', this.series());
+  }
+
+  syncSmartCollection() {
+    const tag = this.collectionTag();
+    if (!tag) return;
+
+    this.isSyncingSmartCollection.set(true);
+    this.collectionService.syncSmartCollection(tag.id).subscribe({
+      next: updated => {
+        this.collectionTag.set(updated);
+        this.isSyncingSmartCollection.set(false);
+        this.loadPage();
+      },
+      error: () => this.isSyncingSmartCollection.set(false)
+    });
   }
 
   protected readonly Breakpoint = Breakpoint;

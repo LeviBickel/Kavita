@@ -36,7 +36,7 @@
       </div>
     </ng-template>
 
-    @if (tag().source === ScrobbleProvider.Kavita) {
+    @if (tag().source === ScrobbleProvider.Kavita && tag().smartFilterId === null) {
       <ng-template [appEditTab]="Tabs.Series">
         @if (!isLoading()) {
           <div class="list-group">

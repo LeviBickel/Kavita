@@ -102,6 +102,7 @@ public static class ApplicationServiceExtensions
         services.AddScoped<ILicenseService, LicenseService>();
         services.AddScoped<IExternalMetadataService, ExternalMetadataService>();
         services.AddScoped<ISmartCollectionSyncService, SmartCollectionSyncService>();
+        services.AddScoped<ICollectionFilterSyncService, CollectionFilterSyncService>();
         services.AddScoped<IWantToReadSyncService, WantToReadSyncService>();
         services.AddScoped<IKavitaPlusAuditService, KavitaPlusAuditService>();
         services.AddScoped<IKavitaPlusProviderHealthService, KavitaPlusProviderHealthService>();

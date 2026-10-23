@@ -22,6 +22,7 @@ public enum CollectionIncludes
 {
     None = 1 << 0,
     Series = 1 << 1,
+    SmartFilter = 1 << 2,
 }
 
 public interface ICollectionTagRepository
@@ -54,4 +55,8 @@ public interface ICollectionTagRepository
     Task UpdateCollectionAgeRating(AppUserCollection tag, CancellationToken ct = default);
     Task<IEnumerable<AppUserCollection>> GetCollectionsByIds(IEnumerable<int> tags, CollectionIncludes includes = CollectionIncludes.None, CancellationToken ct = default);
     Task<IList<AppUserCollection>> GetAllCollectionsForSyncing(DateTime expirationTime, CancellationToken ct = default);
+    /// <summary>
+    /// Ids of every collection backed by a Smart Filter (local Smart Collections)
+    /// </summary>
+    Task<IList<int>> GetSmartCollectionIdsAsync(CancellationToken ct = default);
 }

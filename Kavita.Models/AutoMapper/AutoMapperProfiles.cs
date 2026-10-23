@@ -61,7 +61,8 @@ public class AutoMapperProfiles : Profile
         CreateMap<Series, SeriesDto>();
         CreateMap<AppUserCollection, AppUserCollectionDto>()
             .ForMember(dest => dest.Owner, opt => opt.MapFrom(src => src.AppUser.UserName))
-            .ForMember(dest => dest.ItemCount, opt => opt.MapFrom(src => src.Items.Count));
+            .ForMember(dest => dest.ItemCount, opt => opt.MapFrom(src => src.Items.Count))
+            .ForMember(dest => dest.SmartFilterName, opt => opt.MapFrom(src => src.SmartFilter != null ? src.SmartFilter.Name : null));
         CreateMap<Person, PersonDto>()
             .ForMember(dest => dest.Aliases, opt => opt.MapFrom(src => src.Aliases.Select(s => s.Alias)));
         CreateMap<Genre, GenreTagDto>();

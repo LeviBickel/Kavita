@@ -3044,7 +3044,9 @@
         "no-data-filtered": "No items match your current filter.",
         "sync-progress": "Series Collected: {{title}}",
         "last-sync": "Last Sync: {{date}}",
-        "item-count": "{{common.item-count}}"
+        "item-count": "{{common.item-count}}",
+        "smart-collection-description": "Auto-updates from Smart Filter: {{name}}",
+        "refresh-now": "Refresh Now"
     },
 
     "all-collections": {
@@ -3052,7 +3054,8 @@
         "item-count": "{{common.item-count}}",
         "no-data": "There are no collections.",
         "create-one-part-1": "Try creating",
-        "create-one-part-2": "one"
+        "create-one-part-2": "one",
+        "create-smart-collection": "Create Smart Collection"
     },
 
     "carousel-reel": {
@@ -3458,6 +3461,22 @@
         "promote-label": "{{actionable.promote}}",
         "promote-tooltip": "Promotion means that the collection can be seen server-wide, not just for you. All series within this collection will still have user-access restrictions placed on them.",
         "tags-label": "{{metadata-fields.tags-title}}"
+    },
+
+    "create-smart-collection-modal": {
+        "close": "{{common.close}}",
+        "cancel": "{{common.cancel}}",
+        "title": "Create Smart Collection",
+        "description": "A Smart Collection automatically stays in sync with whatever series currently match a saved Smart Filter.",
+        "collection-title-label": "Collection Title",
+        "smart-filter-label": "Smart Filter",
+        "smart-filter-placeholder": "Select a Smart Filter",
+        "no-data": "{{common.no-data}}",
+        "no-data-description": "You don't have any saved Series Smart Filters yet. Build and save one from a series filter panel first.",
+        "submit": "Create",
+        "saving": "Creating…",
+        "created": "Smart Collection created",
+        "generic-error": "There was an issue creating the Smart Collection"
     },
 
     "import-mal-collection-modal": {

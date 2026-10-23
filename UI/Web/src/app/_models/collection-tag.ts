@@ -22,4 +22,13 @@ export interface UserCollection {
   missingSeriesFromSource: string | null;
   ageRating: AgeRating;
   itemCount: number;
+  /**
+   * If set, this is a local Smart Collection: its series are kept in sync with whatever currently
+   * matches this Smart Filter, rather than being manually managed.
+   */
+  smartFilterId: number | null;
+  /**
+   * Name of the backing Smart Filter, when smartFilterId is set.
+   */
+  smartFilterName: string | null;
 }

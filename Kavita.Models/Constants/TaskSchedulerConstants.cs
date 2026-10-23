@@ -7,6 +7,7 @@ public static class TaskSchedulerConstants
     public const string RemoveFromWantToReadTaskId = "remove-from-want-to-read";
     public const string UpdateYearlyStatsTaskId = "update-yearly-stats";
     public const string SyncThemesTaskId = "sync-themes";
+    public const string SmartCollectionFilterSyncId = "smart-collection-filter-sync";
     public const string CheckForUpdateId = "check-updates";
     public const string CleanupDbTaskId = "cleanup-db";
     public const string CleanupTaskId = "cleanup";

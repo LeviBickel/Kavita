@@ -75,4 +75,10 @@ public class AppUserCollectionBuilder : IEntityBuilder<AppUserCollection>
         _collection.SourceUrl = url;
         return this;
     }
+
+    public AppUserCollectionBuilder WithSmartFilterId(int smartFilterId)
+    {
+        _collection.SmartFilterId = smartFilterId;
+        return this;
+    }
 }

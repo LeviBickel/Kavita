@@ -55,6 +55,16 @@ public sealed record AppUserCollectionDto : IHasCoverImage
     /// </summary>
     public string? MissingSeriesFromSource { get; init; }
 
+    /// <summary>
+    /// If set, this is a local Smart Collection: its Items are kept in sync with whatever series
+    /// currently match this Smart Filter, rather than being manually managed.
+    /// </summary>
+    public int? SmartFilterId { get; init; }
+    /// <summary>
+    /// Name of the backing Smart Filter, when <see cref="SmartFilterId"/> is set.
+    /// </summary>
+    public string? SmartFilterName { get; init; }
+
     public void ResetColorScape()
     {
         PrimaryColor = string.Empty;

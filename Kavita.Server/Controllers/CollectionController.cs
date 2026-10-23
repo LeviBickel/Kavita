@@ -14,6 +14,7 @@ using Kavita.Models.Builders;
 using Kavita.Models.Constants;
 using Kavita.Models.DTOs.Collection;
 using Kavita.Models.DTOs.CollectionTags;
+using Kavita.Models.DTOs.Filtering.v2;
 using Kavita.Models.DTOs.SignalR;
 using Kavita.Models.Entities.Enums;
 using Kavita.Models.Entities.User;
@@ -29,8 +30,8 @@ namespace Kavita.Server.Controllers;
 /// <inheritdoc />
 public class CollectionController(IUnitOfWork unitOfWork, ICollectionTagService collectionService,
     ILocalizationService localizationService, IExternalMetadataService externalMetadataService,
-    ISmartCollectionSyncService collectionSyncService, ILogger<CollectionController> logger,
-    IEventHub eventHub) : BaseApiController
+    ISmartCollectionSyncService collectionSyncService, ICollectionFilterSyncService collectionFilterSyncService,
+    ILogger<CollectionController> logger, IEventHub eventHub) : BaseApiController
 {
 
     /// <summary>
@@ -336,5 +337,85 @@ public class CollectionController(IUnitOfWork unitOfWork, ICollectionTagService 
         }
 
         return BadRequest(await localizationService.TranslateAsync(user.Id, "error-import-stack"));
+    }
+
+    /// <summary>
+    /// Creates a local Smart Collection: a collection whose Items are kept in sync with whatever series
+    /// currently match the given Smart Filter. No external service or Kavita+ license required.
+    /// </summary>
+    /// <param name="dto"></param>
+    /// <returns></returns>
+    [HttpPost("create-smart")]
+    [DisallowRole(PolicyConstants.ReadOnlyRole)]
+    public async Task<ActionResult<AppUserCollectionDto>> CreateSmartCollection(CreateSmartCollectionDto dto)
+    {
+        var ct = HttpContext.RequestAborted;
+        var user = await unitOfWork.UserRepository.GetUserByIdAsync(UserId, AppUserIncludes.Collections, ct);
+        if (user == null) return Unauthorized();
+
+        var filter = await unitOfWork.AppUserSmartFilterRepository.GetById(dto.SmartFilterId, ct);
+        if (filter == null || filter.AppUserId != UserId)
+        {
+            return BadRequest(await localizationService.TranslateAsync(user.Id, "smart-filter-doesnt-exist"));
+        }
+
+        if (filter.EntityType != FilterEntityType.Series)
+        {
+            return BadRequest(await localizationService.TranslateAsync(user.Id, "smart-filter-not-series"));
+        }
+
+        if (await unitOfWork.CollectionTagRepository.CollectionExists(dto.Title, user.Id, ct))
+        {
+            return BadRequest(await localizationService.TranslateAsync(user.Id, "collection-already-exists"));
+        }
+
+        try
+        {
+            var newCollection = new AppUserCollectionBuilder(dto.Title)
+                .WithSmartFilterId(filter.Id)
+                .Build();
+            user.Collections.Add(newCollection);
+
+            unitOfWork.UserRepository.Update(user);
+            await unitOfWork.CommitAsync(ct);
+
+            await collectionFilterSyncService.SyncCollection(newCollection.Id, ct);
+
+            var result = await unitOfWork.CollectionTagRepository.GetCollectionDtoAsync(newCollection.Id, UserId, ct);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "There was an issue creating the Smart Collection");
+        }
+
+        return BadRequest(await localizationService.TranslateAsync(user.Id, "generic-error"));
+    }
+
+    /// <summary>
+    /// Manually re-syncs a local Smart Collection's series against its Smart Filter
+    /// </summary>
+    /// <param name="collectionId"></param>
+    /// <returns></returns>
+    [HttpPost("sync-smart-collection")]
+    [DisallowRole(PolicyConstants.ReadOnlyRole)]
+    public async Task<ActionResult<AppUserCollectionDto>> SyncSmartCollection(int collectionId)
+    {
+        var ct = HttpContext.RequestAborted;
+        var collection = await unitOfWork.CollectionTagRepository.GetCollectionAsync(collectionId, ct: ct);
+        if (collection == null || collection.AppUserId != UserId)
+        {
+            return BadRequest(await localizationService.TranslateAsync(UserId, "collection-doesnt-exist"));
+        }
+
+        if (collection.SmartFilterId == null)
+        {
+            return BadRequest(await localizationService.TranslateAsync(UserId, "collection-not-smart"));
+        }
+
+        await collectionFilterSyncService.SyncCollection(collectionId, ct);
+
+        var result = await unitOfWork.CollectionTagRepository.GetCollectionDtoAsync(collectionId, UserId, ct);
+        return Ok(result);
     }
 }

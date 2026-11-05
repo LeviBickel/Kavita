@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using EasyCaching.Core;
 using Hangfire;
@@ -44,7 +45,8 @@ public class ServerController(
     IEasyCachingProviderFactory cachingProviderFactory,
     IThemeService themeService,
     ILocalizationService localizationService,
-    IActivityTracker activityTracker)
+    IActivityTracker activityTracker,
+    IDebugExportService debugExportService)
     : BaseApiController
 {
     /// <summary>
@@ -169,6 +171,35 @@ public class ServerController(
     }
 
     /// <summary>
+    /// Starts building a scrubbed debug export. Admins get <c>DebugExportReady</c> with the export id when it is done
+    /// </summary>
+    [HttpPost("debug-export")]
+    public async Task<ActionResult> StartDebugExport()
+    {
+        if (TaskScheduler.HasAlreadyEnqueuedTask<IDebugExportService>(s => s.ExportAsync(CancellationToken.None), checkRunningJobs: true))
+        {
+            return BadRequest(await localizationService.TranslateAsync(UserId, "job-already-running"));
+        }
+
+        logger.LogInformation("{UserName} is starting a debug export from admin dashboard", Username!);
+        BackgroundJob.Enqueue<IDebugExportService>(s => s.ExportAsync(CancellationToken.None));
+        return Ok();
+    }
+
+    /// <summary>
+    /// Downloads a finished debug export
+    /// </summary>
+    /// <param name="exportId">From the <c>DebugExportReady</c> event</param>
+    [HttpGet("debug-export/{exportId}")]
+    public ActionResult DownloadDebugExport(string exportId)
+    {
+        var zipPath = debugExportService.GetZipPath(exportId);
+        if (zipPath == null) return NotFound();
+
+        return PhysicalFile(zipPath, "application/zip", $"kavita-debug-export-{exportId}.zip", true);
+    }
+
+    /// <summary>
     /// Checks for updates and pushes an event to the UI
     /// </summary>
     /// <remarks>Some users have websocket issues so this is not always reliable to alert the user</remarks>
@@ -183,11 +214,12 @@ public class ServerController(
     /// <summary>
     /// Checks for updates, if no updates that are > current version installed, returns null
     /// </summary>
+    /// <param name="forceRefresh">Ask GitHub even when the cached release list is fresh</param>
     [HttpGet("check-update")]
-    public async Task<ActionResult<UpdateNotificationDto?>> CheckForUpdates()
+    public async Task<ActionResult<UpdateNotificationDto?>> CheckForUpdates(bool forceRefresh = false)
     {
         var ct = HttpContext.RequestAborted;
-        return Ok(await versionUpdaterService.CheckForUpdate(ct));
+        return Ok(await versionUpdaterService.CheckForUpdate(forceRefresh, ct));
     }
 
     /// <summary>

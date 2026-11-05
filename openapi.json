@@ -16893,6 +16893,43 @@
         }
       }
     },
+    "/api/Server/debug-export": {
+      "post": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Starts building a scrubbed debug export. Admins get `DebugExportReady` with the export id when it is done",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Server/debug-export/{exportId}": {
+      "get": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Downloads a finished debug export",
+        "parameters": [
+          {
+            "name": "exportId",
+            "in": "path",
+            "description": "From the `DebugExportReady` event",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Server/check-for-updates": {
       "get": {
         "tags": [
@@ -16913,6 +16950,17 @@
           "Server"
         ],
         "summary": "Checks for updates, if no updates that are > current version installed, returns null",
+        "parameters": [
+          {
+            "name": "forceRefresh",
+            "in": "query",
+            "description": "Ask GitHub even when the cached release list is fresh",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -23919,7 +23967,7 @@
             },
             "nullable": true
           },
-          "rateLimitDto": {
+          "rateLimit": {
             "$ref": "#/components/schemas/GithubRateLimitDto"
           },
           "fromCache": {
@@ -28639,12 +28687,8 @@
           "field": {
             "$ref": "#/components/schemas/MetadataFieldChangeKind"
           },
-          "from": {
-            "nullable": true
-          },
-          "to": {
-            "nullable": true
-          },
+          "from": { },
+          "to": { },
           "note": {
             "type": "string",
             "nullable": true
@@ -33144,9 +33188,7 @@
         ],
         "type": "object",
         "properties": {
-          "body": {
-            "nullable": true
-          },
+          "body": { },
           "name": {
             "type": "string",
             "nullable": true

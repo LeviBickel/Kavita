@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Kavita.Models.Attributes;
 using Kavita.Models.DTOs.KavitaPlus.Metadata;
 using Kavita.Models.Entities.Enums;
 using Kavita.Models.Entities.Enums.KavitaPlus;
@@ -161,6 +162,7 @@ public class MetadataSettings
     /// <summary>
     /// Optional Google Books API key for higher rate limits
     /// </summary>
+    [ExportScrub(ExportScrubKind.Random)]
     public string GoogleBooksApiKey { get; set; } = string.Empty;
 
     /// <summary>
@@ -171,6 +173,7 @@ public class MetadataSettings
     /// <summary>
     /// Hardcover API key (required to use Hardcover)
     /// </summary>
+    [ExportScrub(ExportScrubKind.Random)]
     public string HardcoverApiKey { get; set; } = string.Empty;
 
     #endregion

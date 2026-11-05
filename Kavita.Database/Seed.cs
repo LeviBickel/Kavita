@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -142,10 +143,22 @@ public static class Seed
         await unitOfWork.CommitAsync();
     }
 
+    /// <summary>
+    /// Server settings to use the default value of, if empty.
+    /// Reports of users with these as an empty value. I cannot figure out how they got it that way
+    /// See: https://github.com/Kareadita/Kavita/issues/5017
+    /// </summary>
+    private static readonly IReadOnlyList<ServerSettingKey> UseDefaultIfEmpty = [
+        ServerSettingKey.TaskScan,
+        ServerSettingKey.TaskBackup,
+        ServerSettingKey.TaskCleanup,
+        ServerSettingKey.TaskCblSync,
+    ];
+
     public static async Task SeedSettings(IDataContext context, IDirectoryService directoryService)
     {
         await context.Database.EnsureCreatedAsync();
-        Defaults.DefaultSettings = [
+        ImmutableArray<ServerSetting> defaultSettings = [
             ..new List<ServerSetting>()
             {
                 new() {Key = ServerSettingKey.CacheDirectory, Value = directoryService.CacheDirectory},
@@ -200,13 +213,18 @@ public static class Seed
                 new() {Key = ServerSettingKey.StatsApiHits, Value = "0"},
             }.ToArray()
         ];
+        Defaults.DefaultSettings = defaultSettings;
 
-        foreach (var defaultSetting in Defaults.DefaultSettings)
+        foreach (var defaultSetting in defaultSettings)
         {
             var existing = await context.ServerSetting.FirstOrDefaultAsync(s => s.Key == defaultSetting.Key);
             if (existing == null)
             {
                 await context.ServerSetting.AddAsync(defaultSetting);
+            }
+            else if (UseDefaultIfEmpty.Contains(defaultSetting.Key) && string.IsNullOrEmpty(existing.Value))
+            {
+                existing.Value = defaultSetting.Value;
             }
         }
 

@@ -6,6 +6,7 @@ using Kavita.Common.Extensions;
 using Kavita.Models.DTOs.Account;
 using Kavita.Models.DTOs.KavitaPlus.Scrobble;
 using Kavita.Models.DTOs.Reader;
+using Kavita.Models.DTOs.Settings;
 using Kavita.Models.DTOs.SignalR.Bodies;
 using Kavita.Models.DTOs.Update;
 using Kavita.Models.Entities.Enums;
@@ -115,13 +116,9 @@ public static class MessageFactory
     /// </summary>
     public const string UserUpdate = "UserUpdate";
     /// <summary>
-    /// When bulk bookmarks are being converted
+    /// When managed media (covers, bookmarks, favicons, ...) is being converted or cleaned up
     /// </summary>
-    private const string ConvertBookmarksProgress = "ConvertBookmarksProgress";
-    /// <summary>
-    /// When bulk covers are being converted
-    /// </summary>
-    private const string ConvertCoversProgress = "ConvertCoversProgress";
+    private const string ConvertMediaProgress = "ConvertMediaProgress";
     /// <summary>
     /// When files are being scanned to calculate word count
     /// </summary>
@@ -476,12 +473,13 @@ public static class MessageFactory
 
     // Body repeats Name, Title and SubTitle because the current widget reads them from the payload.
     // A LibraryId or SeriesId in Body narrows the audience of an onlyAdmins: false send to users with access
-    private static SignalRMessageDto CodedEvent(string name, string code, string title, string subtitle, object body)
+    private static SignalRMessageDto CodedEvent(string name, string code, string title, string subtitle, object body,
+        MessageEventPriority? priority = null)
     {
         return new SignalRMessageDto
         {
             Name = name,
-            Priority = name == Error ? MessageEventPriority.Error : MessageEventPriority.Info,
+            Priority = priority ?? (name == Error ? MessageEventPriority.Error : MessageEventPriority.Info),
             Code = code,
             Title = title,
             SubTitle = subtitle,
@@ -842,6 +840,38 @@ public static class MessageFactory
             new DebugExportReadyEventBodyDto(Info, title, exportId, exportId, bytes));
     }
 
+    /// <summary>
+    /// This is a one time event for a ManualMigration to inform of status
+    /// </summary>
+    public static SignalRMessageDto ImageMigrationSummaryEvent(int corrected, int deleted, long bytesSaved, int missing, int unreadable)
+    {
+        const string title = "Image migration finished";
+        var subtitle = $"Cleaned up {corrected} images, deleted {deleted} and saved {bytesSaved} bytes. {missing} were missing and {unreadable} could not be read";
+
+        return CodedEvent(Info, MessageEventCode.ImageMigrationSummary, title, subtitle,
+            new ImageCleanupSummaryEventBodyDto(Info, title, subtitle, corrected, deleted, bytesSaved, missing, unreadable));
+    }
+
+    public static SignalRMessageDto MediaConversionSummaryEvent(int corrected, int deleted, long bytesSaved, int missing, int unreadable)
+    {
+        const string title = "Media conversion finished";
+        var subtitle = $"Cleaned up {corrected} images, deleted {deleted} and saved {bytesSaved} bytes. {missing} were missing and {unreadable} could not be read";
+
+        return CodedEvent(Info, MessageEventCode.MediaConversionSummary, title, subtitle,
+            new ImageCleanupSummaryEventBodyDto(Info, title, subtitle, corrected, deleted, bytesSaved, missing, unreadable));
+    }
+
+    public static SignalRMessageDto BookmarkDirectoryMovedEvent(string path, int moved, int skipped)
+    {
+        const string title = "Bookmarks moved";
+        var subtitle = $"Moved {moved} bookmark files to {path}. {skipped} were left in the old folder because the name was taken";
+
+        var name = skipped > 0 ? Error : Info;
+
+        return CodedEvent(name, MessageEventCode.BookmarkDirectoryMoved, title, subtitle,
+            new BookmarkDirectoryMovedEventBodyDto(name, title, subtitle, path, moved, skipped));
+    }
+
     public static SignalRMessageDto DebugExportFailedEvent(string exportId, string error)
     {
         const string title = "Debug export failed";
@@ -865,6 +895,26 @@ public static class MessageFactory
             SeriesName = seriesName,
             FilePath = filePath,
         });
+    }
+
+    /// <summary>Error when the check failed, so the widget shows it. Silent when kepub works or was unticked on purpose</summary>
+    public static SignalRMessageDto KepubifyCheckedEvent(KepubifyStatusDto status)
+    {
+        var failed = status.Status == KepubifyCheckStatus.NotSupported && status.Reason != KepubifyOffReason.Disabled;
+        var name = failed ? Error : Info;
+        var title = failed ? "Kepubify is off" : "Kepubify checked";
+        var subtitle = status.Reason switch
+        {
+            KepubifyOffReason.FileMissing => $"{status.Path} does not exist. Books sync to Kobo as plain epub",
+            KepubifyOffReason.HashMismatch => $"{status.Path} does not match any known kepubify release, so the kepub setting was turned off. Books sync to Kobo as plain epub",
+            KepubifyOffReason.VersionCheckFailed => $"{status.Path} did not report a kepubify version. Books sync to Kobo as plain epub",
+            KepubifyOffReason.Disabled => "Kepubify is unticked in settings. Books sync to Kobo as plain epub",
+            _ => $"Using {status.Path}",
+        };
+
+        return CodedEvent(name, MessageEventCode.KepubifyChecked, title, subtitle,
+            new KepubifyCheckedEventBodyDto(name, title, subtitle, status),
+            failed ? MessageEventPriority.Error : MessageEventPriority.Silent);
     }
 
     #endregion
@@ -1083,31 +1133,18 @@ public static class MessageFactory
         };
     }
 
-    public static SignalRMessageDto ConvertBookmarksProgressEvent(float progress, string eventType)
+    public static SignalRMessageDto ConvertMediaProgressEvent(float progress, string eventType, string subtitle = "",
+        int? current = null, int? total = null)
     {
         return new SignalRMessageDto()
         {
-            Name = ConvertBookmarksProgress,
+            Name = ConvertMediaProgress,
             Priority = MessageEventPriority.Activity,
-            Title = "Converting Bookmarks",
-            SubTitle = string.Empty,
+            Title = "Converting Media",
+            SubTitle = subtitle,
             EventType = eventType,
             Progress = ProgressType.Determinate,
-            Body = new ConvertBookmarksProgressEventBodyDto(progress, DateTime.Now)
-        };
-    }
-
-    public static SignalRMessageDto ConvertCoverProgressEvent(float progress, string eventType)
-    {
-        return new SignalRMessageDto()
-        {
-            Name = ConvertCoversProgress,
-            Priority = MessageEventPriority.Activity,
-            Title = "Converting Covers",
-            SubTitle = string.Empty,
-            EventType = eventType,
-            Progress = ProgressType.Determinate,
-            Body = new ConvertCoverProgressEventBodyDto(progress, DateTime.Now)
+            Body = new ConvertMediaProgressEventBodyDto(progress, DateTime.Now, current, total)
         };
     }
 

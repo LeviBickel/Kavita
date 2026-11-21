@@ -23,6 +23,7 @@ using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
 using Kavita.Models.Entities.Enums.User;
 using Kavita.Models.Extensions;
+using Kavita.Models.Images;
 using Kavita.Models.Metadata;
 using Kavita.Models.Parser;
 using Kavita.Services.Extensions;
@@ -42,7 +43,6 @@ namespace Kavita.Services;
 public partial class BookService(
     ILogger<BookService> logger,
     IDirectoryService directoryService,
-    IImageService imageService,
     IMediaErrorService mediaErrorService,
     IUnitOfWork unitOfWork)
     : IBookService
@@ -965,7 +965,7 @@ public partial class BookService(
         return 0;
     }
 
-    private static string EscapeTags(string content)
+    public static string EscapeTags(string content)
     {
         content = Regex.Replace(content, @"<script(.*)(/>)", "<script$1></script>", RegexOptions.None, Parser.RegexTimeout);
         content = Regex.Replace(content, @"<title(.*)(/>)", "<title$1></title>", RegexOptions.None, Parser.RegexTimeout);
@@ -982,21 +982,73 @@ public partial class BookService(
         return key.Replace("../", string.Empty);
     }
 
-    public async Task<Dictionary<string, int>> CreateKeyToPageMappingAsync(EpubBookRef book,
-        CancellationToken ct = default)
+    public static async Task<Dictionary<string, int>> CreateKeyToPageMappingAsync(EpubBookRef book)
     {
         var dict = new Dictionary<string, int>();
         var pageCount = 0;
         foreach (var contentFileRef in await book.GetReadingOrderAsync())
         {
             if (contentFileRef.ContentType != EpubContentType.XHTML_1_1) continue;
-            // Some keys are different than FilePath, so we add both to ease loookup
-            dict.Add(contentFileRef.FilePath, pageCount); // FileName -> FilePath
-            dict.TryAdd(contentFileRef.Key, pageCount); // FileName -> FilePath
+            // Some keys are different than FilePath, so we add both to ease lookup
+            dict.TryAdd(contentFileRef.FilePath, pageCount); // FilePath -> Page
+            dict.TryAdd(contentFileRef.Key, pageCount); // Key -> Page
             pageCount += 1;
         }
 
         return dict;
+    }
+
+    public async Task<int?> GetPageForFile(string filePath, string epubFile)
+    {
+        try
+        {
+            using var book = await EpubReader.OpenBookAsync(filePath, LenientBookReaderOptions);
+            if (book == null) return null;
+
+            var counter = 0;
+            foreach (var contentFileRef in await book.GetReadingOrderAsync())
+            {
+                if (contentFileRef.FilePath.Equals(epubFile, StringComparison.InvariantCultureIgnoreCase) ||
+                    contentFileRef.Key.Equals(epubFile, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return counter;
+                }
+
+                counter++;
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<string?> GetFileForPage(string filePath, int page)
+    {
+        try
+        {
+            using var book = await EpubReader.OpenBookAsync(filePath, LenientBookReaderOptions);
+            if (book == null) return null;
+
+            var counter = 0;
+            foreach (var contentFileRef in await book.GetReadingOrderAsync())
+            {
+                if (counter == page)
+                {
+                    return contentFileRef.FilePath;
+                }
+
+                counter++;
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public async Task<IDictionary<int, int>?> GetWordCountsPerPage(string bookFilePath, CancellationToken ct = default)
@@ -1007,7 +1059,7 @@ public partial class BookService(
             using var book = await EpubReader.OpenBookAsync(bookFilePath, LenientBookReaderOptions);
             if (book == null) return null;
 
-            var mappings = await CreateKeyToPageMappingAsync(book, ct);
+            var mappings = await CreateKeyToPageMappingAsync(book);
 
             var doc = new HtmlDocument {OptionFixNestedTags = true};
 
@@ -1022,7 +1074,7 @@ public partial class BookService(
                 var body = GetBodyOrCreate(doc, book);
 
                 // Find all words in the html body
-                ret.Add(page, CountLettersInBody(body));
+                ret.TryAdd(page, CountLettersInBody(body));
             }
 
         }
@@ -1408,6 +1460,38 @@ public partial class BookService(
         return BookResourceResultDto.Success(content, contentType, requestedKey);
     }
 
+    public async Task<(HtmlDocument?, int)> GetDocumentAsync(string filePath, string fileRef, int? filePos)
+    {
+        try
+        {
+            using var book = await EpubReader.OpenBookAsync(filePath, LenientBookReaderOptions);
+            if (book == null) return (null, 0);
+
+            var readingOrder = await book.GetReadingOrderAsync();
+
+            var contentRef = readingOrder.FirstOrDefault(f => f.FilePath == fileRef);
+            if (contentRef == null && filePos != null)
+            {
+                contentRef = readingOrder.ElementAtOrDefault(filePos.Value);
+            }
+
+            if (contentRef == null) return (null, 0);
+
+            var content = await contentRef.ReadContentAsync();
+
+            var doc = new HtmlDocument { OptionFixNestedTags = true };
+            doc.LoadHtml(EscapeTags(content));
+
+            return (doc, filePos ?? readingOrder.IndexOf(contentRef));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to read document {FileRef}@{FilePos} in {Path}", fileRef.Sanitize(), filePos, filePath.Sanitize());
+        }
+
+        return (null, 0);
+    }
+
 
     /// <summary>
     /// Parses out Title from book. Chapters and Volumes will always be "0". This expects only an epub file
@@ -1676,7 +1760,7 @@ public partial class BookService(
         using var book = await EpubReader.OpenBookAsync(chapter.Files.ElementAt(0).FilePath, LenientBookReaderOptions);
         if (book == null) return [];
 
-        var mappings = await CreateKeyToPageMappingAsync(book, ct);
+        var mappings = await CreateKeyToPageMappingAsync(book);
 
         var navItems = await book.GetNavigationAsync();
         var chaptersList = new List<BookChapterItem>();
@@ -1813,7 +1897,7 @@ public partial class BookService(
             .Key;
 
         using var book = await EpubReader.OpenBookAsync(cachedEpubPath, LenientBookReaderOptions);
-        var mappings = await CreateKeyToPageMappingAsync(book, ct);
+        var mappings = await CreateKeyToPageMappingAsync(book);
         var apiBase = baseUrl + "book/" + chapterId + "/" + string.Format(BookApiUrl, authKey);
 
         var counter = 0;
@@ -1867,25 +1951,17 @@ public partial class BookService(
         throw new KavitaException("epub-html-missing");
     }
 
-    /// <summary>
-    /// Extracts the cover image to covers directory and returns file path back
-    /// </summary>
-    /// <param name="fileFilePath"></param>
-    /// <param name="fileName">Name of the new file.</param>
-    /// <param name="outputDirectory">Where to output the file, defaults to covers directory</param>
-    /// <param name="encodeFormat">When saving the file, use encoding</param>
-    /// <returns></returns>
-    public string GetCoverImage(string fileFilePath, string fileName, string outputDirectory, EncodeFormat encodeFormat, CoverImageSize size = CoverImageSize.Default)
+    public OpenedCover? OpenCover(string fileFilePath)
     {
-        if (!IsValidFile(fileFilePath)) return string.Empty;
+        if (!IsValidFile(fileFilePath)) return null;
 
         if (Parser.IsPdf(fileFilePath))
         {
-            return GetPdfCoverImage(fileFilePath, fileName, outputDirectory, encodeFormat, size);
+            return OpenPdfCover(fileFilePath);
         }
 
-        using var epubBook = EpubReader.OpenBook(fileFilePath, LenientBookReaderOptions);
-        if (epubBook == null) return string.Empty;
+        var epubBook = EpubReader.OpenBook(fileFilePath, LenientBookReaderOptions);
+        if (epubBook == null) return null;
 
         try
         {
@@ -1894,18 +1970,22 @@ public partial class BookService(
                                     ?? epubBook.Content.Images.Local.FirstOrDefault(file => Parser.IsCoverImage(file.FilePath))
                                     ?? epubBook.Content.Images.Local.FirstOrDefault();
 
-            if (coverImageContent == null) return string.Empty;
-            using var stream = coverImageContent.GetContentStream();
+            if (coverImageContent == null)
+            {
+                epubBook.Dispose();
+                return null;
+            }
 
-            return imageService.WriteCoverThumbnail(stream, fileName, outputDirectory, encodeFormat, size);
+            return new OpenedCover(new ImageSource.FromStream(coverImageContent.GetContentStream()), epubBook);
         }
         catch (Exception ex)
         {
+            epubBook.Dispose();
             logger.LogWarning(ex, "[BookService] There was a critical error and prevented thumbnail generation on {BookFile}. Defaulting to no cover image", fileFilePath);
             mediaErrorService.ReportMediaIssue(fileFilePath, MediaErrorProducer.BookService, MediaErrorReason.CoverFailed, ex);
         }
 
-        return string.Empty;
+        return null;
     }
 
     public static string? GetChapterTitleFromToC(ICollection<BookChapterItem>? tableOfContents, int pageNumber)
@@ -1931,28 +2011,29 @@ public partial class BookService(
     }
 
 
-    private string GetPdfCoverImage(string fileFilePath, string fileName, string outputDirectory, EncodeFormat encodeFormat, CoverImageSize size)
+    private OpenedCover? OpenPdfCover(string fileFilePath)
     {
+        Stream? stream = null;
         try
         {
             using var docReader = DocLib.Instance.GetDocReader(fileFilePath, new PageDimensions(1080, 1920));
-            if (docReader.GetPageCount() == 0) return string.Empty;
+            if (docReader.GetPageCount() == 0) return null;
 
-            using var stream = StreamManager.GetStream("BookService.GetPdfPage");
+            stream = StreamManager.GetStream("BookService.GetPdfPage");
             GetPdfPage(docReader, 0, stream);
 
-            return imageService.WriteCoverThumbnail(stream, fileName, outputDirectory, encodeFormat, size);
-
+            return new OpenedCover(new ImageSource.FromStream(stream));
         }
         catch (Exception ex)
         {
+            stream?.Dispose();
             logger.LogWarning(ex,
                 "[BookService] There was a critical error and prevented thumbnail generation on {BookFile}. Defaulting to no cover image",
                 fileFilePath);
             mediaErrorService.ReportMediaIssue(fileFilePath, MediaErrorProducer.BookService, MediaErrorReason.CoverFailed, ex);
         }
 
-        return string.Empty;
+        return null;
     }
 
     /// <summary>

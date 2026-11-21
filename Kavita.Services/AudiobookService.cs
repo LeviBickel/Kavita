@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Kavita.API.Services;
-using Kavita.Models.DTOs.Reader;
 using Kavita.Models.Entities.Enums;
+using Kavita.Models.Images;
 using Kavita.Models.Metadata;
 using Kavita.Models.Parser;
 using Kavita.Common.Extensions;
@@ -20,8 +20,7 @@ namespace Kavita.Services;
 /// </summary>
 public class AudiobookService(
     ILogger<AudiobookService> logger,
-    IDirectoryService directoryService,
-    IImageService imageService) : IAudiobookService
+    IDirectoryService directoryService) : IAudiobookService
 {
     /// <summary>
     /// Parses metadata out of an audio file and returns a ParserInfo.
@@ -146,11 +145,10 @@ public class AudiobookService(
     }
 
     /// <summary>
-    /// Extracts the cover image for an audio file.
+    /// Opens the cover image for an audio file.
     /// First tries embedded art in the file, then falls back to cover.jpg/folder.jpg in the same directory.
-    /// Returns the filename of the saved cover image, or empty string if none found.
     /// </summary>
-    public string GetCoverImage(string filePath, string fileName, string outputDirectory, EncodeFormat encodeFormat, CoverImageSize size = CoverImageSize.Default)
+    public OpenedCover? OpenCover(string filePath)
     {
         // 1. Try embedded cover art
         try
@@ -173,8 +171,7 @@ public class AudiobookService(
 
                 if (!picture.Data.IsEmpty)
                 {
-                    using var ms = new MemoryStream(picture.Data.Data);
-                    return imageService.WriteCoverThumbnail(ms, fileName, outputDirectory, encodeFormat, size);
+                    return new OpenedCover(new ImageSource.FromBytes(picture.Data.Data));
                 }
             }
         }
@@ -198,18 +195,11 @@ public class AudiobookService(
                 var candidatePath = Path.Combine(dir, candidate);
                 if (System.IO.File.Exists(candidatePath))
                 {
-                    try
-                    {
-                        return imageService.GetCoverImage(candidatePath, fileName, outputDirectory, encodeFormat, size);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogError(ex, "[AudiobookService] Failed to use folder cover image {CoverPath}", candidatePath);
-                    }
+                    return new OpenedCover(new ImageSource.FromFile(candidatePath));
                 }
             }
         }
 
-        return string.Empty;
+        return null;
     }
 }

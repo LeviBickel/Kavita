@@ -1533,7 +1533,10 @@
 
         "force-selected-one-column": "Layout mode switched to One Column due to insufficient space to render Two Columns",
         "forced-vertical-switch": "Layout mode switched as Two Column layout doesn't work with Vertical Writing Style",
-        "shortcuts-menu-alt": "{{manga-reader.shortcuts-menu-alt}}"
+        "shortcuts-menu-alt": "{{manga-reader.shortcuts-menu-alt}}",
+        "bookmarks-alt": "{{view-bookmark-drawer.title}}",
+        "annotations-alt": "{{view-annotations-drawer.title}}",
+        "toc-alt": "{{view-toc-drawer.title}}"
     },
 
     "personal-table-of-contents": {
@@ -2485,7 +2488,6 @@
         "encode-as-description-part-1": "WebP/AVIF can drastically reduce space requirements for files. WebP/AVIF is not supported on all browsers or versions. To learn if these settings are appropriate for your setup, visit ",
         "encode-as-description-part-2": "Can I Use WebP?",
         "encode-as-description-part-3": "Can I Use AVIF?",
-        "encode-as-warning": "You cannot convert back to PNG once you've gone to WebP/AVIF. You would need to refresh covers on your libraries to regenerate all covers. Bookmarks and favicons cannot be converted.",
         "media-warning": "You must trigger the media conversion task in Tasks Tab after Saving.",
         "encode-as-label": "Save Media As",
         "encode-as-tooltip": "All media Kavita manages (covers, bookmarks, favicons) will be encoded as this type.",
@@ -2502,6 +2504,24 @@
         "pdf-render-resolution-tooltip": "Resolution at which PDFs will be rendered. Higher resolutions will take longer to render and consume more memory. If you experience issues with PDF rendering, try lowering this.",
         "cover-image-size-label": "Cover Image Size",
         "cover-image-size-tooltip": "How large should cover images generate as. Note: Anything larger than the default will incur longer page load times."
+    },
+
+    "kepubify-source-pipe": {
+        "shipped": "Shipped kepubify",
+        "custom": "Custom kepubify from appsettings.json"
+    },
+
+    "kepubify-check-status-pipe": {
+        "checking": "Checking kepubify…",
+        "supported": "Kepub conversion is working",
+        "not-supported": "Kepub conversion is off"
+    },
+
+    "kepubify-off-reason-pipe": {
+        "disabled": "Turned off in settings",
+        "file-missing": "The kepubify file does not exist",
+        "hash-mismatch": "The shipped kepubify does not match any known release, so it was turned off. Replace the file or set KepubifyPath in appsettings.json, then turn it back on",
+        "version-check-failed": "The file did not report a kepubify version"
     },
 
     "pdf-render-resolution": {
@@ -2562,6 +2582,14 @@
         "opds-label": "OPDS",
         "opds-tooltip": "OPDS support will allow all users to use OPDS to read and download content from the server.",
         "enable-opds": "Enable OPDS",
+        "kobo-label": "Enable Kobo Sync",
+        "kobo-tooltip": "Enable Kobo Sync support for all users on the server. Covers and downloads may fail if your hostname is not set",
+        "kepubify-restart-required": "A custom kepubify can be set as KepubifyPath in appsettings.json. Changing it requires a manual restart of Kavita to take effect.",
+        "enable-kepubify-label": "Convert Epubs to Kepub for Kobo",
+        "enable-kepubify-tooltip": "Kobo devices get kepub files, which let reading progress sync to the exact position. When off, books sync to Kobo as plain epub, and reading progress only syncs to the chapter.",
+        "kepubify-off-alert": "Kepub conversion is off. Books sync to Kobo as plain epub, and reading progress only syncs to the chapter.",
+        "kepubify-status-label": "{{source}}: {{path}}",
+        "kobo-no-hostname-warning": "You have no hostname set, this may cause issues while using Kobo Sync",
         "folder-watching-label": "Folder Watching",
         "folder-watching-tooltip": "Allows Kavita to monitor Library Folders to detect changes and invoke scanning on those changes. This allows content to be updated without manually invoking scans or waiting for nightly scans. A folder is scanned 30 seconds after its last change. Each library chooses how it watches on its Folder tab.",
         "enable-folder-watching": "Enable Folder Watching",
@@ -2612,6 +2640,8 @@
         "cleanup-tooltip": "How often Kavita will run cleanup tasks. This can be heavy and should be performed at midnight in most cases.",
         "cbl-sync-label": "Reading List Sync",
         "cbl-sync-tooltip": "How often Kavita will check for new updates to CBL Reading Lists. Defaults to daily at 4am.",
+        "composite-covers-label": "Reading List & Collection Covers",
+        "composite-covers-tooltip": "How often Kavita will rebuild the reading list and collection covers it makes from their items, picking up items added or removed since the last run. Recommended to run after the Reading List Sync. Defaults to daily at 5 am.",
         "adhoc-tasks-title": "Ad-hoc Tasks",
         "job-title-header": "Job Title",
         "description-header": "Description",
@@ -2781,7 +2811,8 @@
         "mal-stack-import": "MAL Stack",
         "admin-public-metadata": "Metadata Controls",
         "admin-manage-kavitaplus-activity": "Kavita+ Activity",
-        "scrobble-settings": "Connections"
+        "scrobble-settings": "Connections",
+        "kobo": "Kobo Sync"
     },
 
     "scrobble-provider-settings-manager": {
@@ -2930,6 +2961,62 @@
         "key-bind-tooltip-first-page": "Move to the first page",
         "key-bind-title-last-page": "Last Page",
         "key-bind-tooltip-last-page": "Move to the last page"
+    },
+
+    "manage-kobo": {
+        "kobo-sync-settings-title": "Sync Settings",
+        "kobo-sync-disabled-alert": "Kobo Sync has been disabled by your administrator.",
+        "kobo-sync-no-download-role": "Kobo Sync requires the Download role. Ask your administrator for help.",
+        "sync-item-limit-label": "Sync Item Limit",
+        "sync-item-limit-tooltip": "Maximum number of items sent to the device per sync request. Between 25 and 100.",
+        "forward-to-kobo-store-label": "Forward to Kobo Store",
+        "forward-to-kobo-store-tooltip": "Forward requests for books outside your Kavita library to the official Kobo store. Disable to stop the device from talking to Kobo's servers.",
+        "sync-sources-title": "Sync Sources",
+        "sync-libraries-label": "Libraries",
+        "sync-libraries-tooltip": "Enable to sync chapters in your libraries. If none are selected, all are synced",
+        "sync-libraries-selection-label": "Libraries to sync",
+        "sync-reading-lists-label": "Reading Lists",
+        "sync-reading-lists-tooltip": "Enable to sync reading lists to your kobo as tags. If none are selected, all are synced",
+        "sync-reading-lists-selection-label": "Reading lists to sync",
+        "sync-collections-label": "Collections",
+        "sync-collections-tooltip": "Enable to sync collections to your kobo as tags. If none are selected, all are synced",
+        "sync-collections-selection-label": "Collections to sync",
+        "sync-smart-filters-label": "Sync Smart Filters",
+        "sync-smart-filters-tooltip": "Coming soon. Smart Filters cannot be used as a Kobo sync source yet",
+        "managed-collection-label": "Managed Collection",
+        "managed-collection-tooltip": "Collection used to add recommendation to when \"purchasing\" them on your Kobo. Required for the feature to work",
+        "kobo-devices-title": "Kobo Devices",
+        "kobo-devices-description": "Each device has a sync point associated with it. Managed deleted chapters, or delete the sync point to reset",
+        "device-id-label": "Device ID",
+        "removed-chapters-label": "Chapters Removed",
+        "view-removed-chapters-tooltip": "View the chapters removed on this device",
+        "view-removed-chapters-alt": "View removed chapters, {{count}}",
+        "last-sync-label": "Last Sync",
+        "delete-sync-point-alt": "Delete the sync point for device {{device}}",
+        "no-devices-title": "No Kobo devices",
+        "no-devices-description": "A device appears here after it syncs with your account for the first time.",
+        "load-error-title": "Could not load Kobo settings",
+        "load-error-description": "Refresh the page to try again."
+    },
+
+    "restore-chapters-modal": {
+        "title": "Removed Chapters",
+        "description": "These chapters were removed on your Kobo and are skipped during sync. Select the chapters you want to sync again, then restore",
+        "no-data": "{{common.no-data}}",
+        "no-data-description": "There are no chapters available to restore for this device.",
+        "selected-count": "{{selected}} of {{total}} selected",
+        "select-all": "{{common.select-all}}",
+        "clear-selection": "Clear",
+        "load-error-title": "Could not load chapter details",
+        "load-error-description": "Close the dialog and try again.",
+        "cancel": "{{common.cancel}}",
+        "close": "{{common.close}}",
+        "restore-selected": "Restore Selected ({{count}})",
+        "series-label": "Series name",
+        "chapter-title-label": "Chapter title",
+        "removed-at-label": "Removed",
+        "select-chapter-alt": "Select {{title}}",
+        "unselect-chapter-alt": "Unselect {{title}}"
     },
 
     "cbl-manager": {
@@ -3242,8 +3329,7 @@
         "cleanup-progress": "Cleaning up",
         "cover-update-progress": "Refreshing covers: {{libraryName}}",
         "word-count-analyzer-progress": "Counting words: {{libraryName}}",
-        "convert-bookmarks-progress": "Converting bookmarks",
-        "convert-covers-progress": "Converting covers",
+        "convert-media-progress": "Converting media",
         "smart-collection-sync": "Syncing {{collectionName}}",
         "rerun-metadata-mappings-progress": "Reapplying metadata mappings",
         "sending-to-device": "Sending files to device",
@@ -3300,9 +3386,18 @@
         "debug-export-ready-label": "Debug export ready",
         "debug-export-ready-description": "{{size}}, kept until {{time}}",
         "debug-export-failed-label": "Debug export failed",
+        "image-migration-summary-label": "Image migration finished",
+        "media-conversion-summary-label": "Media conversion finished",
+        "image-cleanup-summary-description": "Cleaned up {{corrected}} images, deleted {{deleted}} and saved {{size}}.",
+        "image-cleanup-summary-skipped-description": "Cleaned up {{corrected}} images, deleted {{deleted}} and saved {{size}}. {{missing}} were missing and {{unreadable}} could not be read. The log lists each one.",
+        "bookmark-directory-moved-label": "Bookmarks moved",
+        "bookmark-directory-moved-description": "Moved {{moved}} bookmark images to {{path}}.",
+        "bookmark-directory-moved-skipped-description": "Moved {{moved}} bookmark images to {{path}}. {{skipped}} stayed in the old folder because {{path}} already had a file with the same name. The log lists each one.",
         "folder-watch-fallback-label": "Library is now using Polling",
         "folder-watch-fallback-errors-description": "Too many errors occurred watching {{folder}}, so {{libraryName}} was switched to Polling. Use Retry on the library’s Folder tab to watch again.",
-        "folder-watch-fallback-missed-change-description": "The watcher missed a change in {{folder}}, so {{libraryName}} was switched to Polling. Use Retry on the library’s Folder tab to watch again."
+        "folder-watch-fallback-missed-change-description": "The watcher missed a change in {{folder}}, so {{libraryName}} was switched to Polling. Use Retry on the library’s Folder tab to watch again.",
+        "kepubify-checked-failed-label": "Kepubify is off",
+        "kepubify-checked-failed-description": "{{path}}: {{reason}}. Books sync to Kobo as plain epub."
     },
 
     "event-action-pipe": {
@@ -3335,7 +3430,8 @@
         "scan-libraries": "Scan all libraries",
         "cleanup": "Cleanup",
         "backup": "Backup",
-        "sync-cbl": "Sync reading lists"
+        "sync-cbl": "Sync reading lists",
+        "refresh-composite-covers": "Refresh reading list and collection covers"
     },
 
     "download-queue-drawer": {
@@ -3465,7 +3561,8 @@
         "unknown": "Unknown",
         "oidc": "OIDC",
         "jwt": "JWT",
-        "auth-key": "Auth Key"
+        "auth-key": "Auth Key",
+        "kobo": "Kobo"
     },
 
     "client-device-platform-pipe": {
@@ -3479,7 +3576,8 @@
         "koreader": "KOReader",
         "panels": "Panels",
         "librera": "Librera",
-        "opds-client": "OPDS Client"
+        "opds-client": "OPDS Client",
+        "kobo": "Kobo"
     },
 
 
@@ -3617,7 +3715,22 @@
         "dark-theme-alt": "Dark Theme",
         "close-reader-alt": "Close Reader",
         "toggle-incognito": "Turn off Incognito Mode",
-        "shortcuts-menu-alt": "{{manga-reader.shortcuts-menu-alt}}"
+        "shortcuts-menu-alt": "{{manga-reader.shortcuts-menu-alt}}",
+        "prev-chapter-alt": "Previous Chapter",
+        "next-chapter-alt": "Next Chapter",
+        "first-page-alt": "{{manga-reader.first-page-tooltip}}",
+        "prev-page-alt": "{{manga-reader.prev-page-tooltip}}",
+        "next-page-alt": "{{manga-reader.next-page-tooltip}}",
+        "last-page-alt": "{{manga-reader.last-page-tooltip}}"
+    },
+
+    "chapter-cap": {
+        "next-scroll-hint": "Scroll or click to read",
+        "prev-scroll-hint": "Scroll up or click to read",
+        "click-hint": "Click to read",
+        "finish-hint": "Click to finish",
+        "end-of-series": "End of series",
+        "end-of-reading-list": "End of reading list"
     },
 
     "pdf-layout-mode-pipe": {
@@ -3642,9 +3755,7 @@
 
     "infinite-scroller": {
         "continuous-reading-prev-chapter-alt": "Scroll up to move to previous chapter",
-        "continuous-reading-prev-chapter": "Previous Chapter",
-        "continuous-reading-next-chapter-alt": "Scroll up to move to next chapter",
-        "continuous-reading-next-chapter": "Next Chapter"
+        "continuous-reading-prev-chapter": "Previous Chapter"
     },
 
     "manga-reader": {
@@ -4641,10 +4752,13 @@
         "k+-reset-key-success": "Your license has been un-registered. Use Edit button to re-register your instance and re-activate Kavita+",
         "library-deleted": "Library {{name}} has been removed",
         "copied-to-clipboard": "Copied to clipboard",
-        "no-next-chapter": "Could not find next {{entity}}",
-        "no-prev-chapter": "Could not find previous {{entity}}",
+        "no-next-chapter": "No next {{entity}}",
+        "no-prev-chapter": "No previous {{entity}}",
         "load-next-chapter": "Next {{entity}} loaded",
         "load-prev-chapter": "Previous {{entity}} loaded",
+        "reading-profile-switched": "Using reading profile {{name}}",
+        "reading-profile-switched-series": "Using your settings for {{seriesName}}",
+        "reading-profile-switch-failed": "The reading profile for {{seriesName}} failed to load, settings will not save",
         "account-registration-complete": "Account registration complete",
         "account-migration-complete": "Account migration complete",
         "password-reset": "Password reset",
@@ -4659,6 +4773,12 @@
         "device-updated": "Device updated",
         "device-created": "Device created",
         "delete-device": "Are you sure you want to delete this device?",
+        "kobo-sync-point": {
+            "confirm-delete": "Are you sure you want to delete this sync point? The device will start a fresh sync the next time it connects.",
+            "deleted": "Sync point deleted",
+            "restored": "Chapters restored",
+            "copied": "Copied device id to your clipboard"
+        },
         "confirm-regen-covers": "Refresh covers will force all cover images to be recalculated. This is a heavy operation. Are you sure you don't want to perform a Scan instead?",
         "confirm-delete-multiple-series": "Are you sure you want to delete {{count}} series? It will not modify files on disk.",
         "confirm-delete-multiple-chapters": "Are you sure you want to delete {{count}} chapter/volumes? It will not modify files on disk.",
@@ -4688,7 +4808,9 @@
         "reading-list-promoted": "Reading List promoted",
         "reading-list-unpromoted": "Reading List un-promoted",
         "confirm-delete-collection": "Are you sure you want to delete the collection? This cannot be undone.",
+        "confirm-delete-kobo-collection": "Are you sure you want to delete the collection? It is being used to sync media to your Kobo.",
         "confirm-delete-collections": "Are you sure you want to delete multiple collections?",
+        "confirm-delete-collections-kobo": "Are you sure you want to delete multiple collections? One of these is used to sync your media to your Kobo.",
         "collections-deleted": "Collections deleted",
         "confirm-delete-annotations": "Are you sure you want to delete the annotations? This cannot be undone.",
         "annotations-deleted": "Annotation deleted",
@@ -5029,7 +5151,8 @@
     "media-error-producer-pipe": {
         "book-service": "Book processing",
         "archive-service": "Archive processing",
-        "scanner": "Scanner"
+        "scanner": "Scanner",
+        "kepubify": "Kepub conversion"
     },
 
     "media-error-reason-pipe": {
@@ -5044,7 +5167,8 @@
         "io-error": "File could not be accessed (disk, network or permissions)",
         "metadata-unreadable": "Embedded metadata could not be read, imported without it",
         "epub-not-strict": "Epub has structural errors, imported in lenient mode",
-        "ambiguous-series": "Matches more than one series, edit its SeriesSort/LocalizedSeries tag"
+        "ambiguous-series": "Matches more than one series, edit its LocalizedSeries tag",
+        "kepub-conversion-failed": "Could not be converted to kepub, Kobo devices get the plain epub instead"
     },
 
     "validation": {

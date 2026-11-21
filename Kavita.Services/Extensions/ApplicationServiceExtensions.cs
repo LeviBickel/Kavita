@@ -1,4 +1,7 @@
-﻿using System.IO.Abstractions;
+using System;
+using System.IO.Abstractions;
+using System.Net;
+using System.Net.Http;
 using System;
 using Kavita.API.Services;
 using Kavita.API.Services.Helpers;
@@ -12,6 +15,8 @@ using Kavita.Models.Entities.Enums;
 using Kavita.Services.DebugExport;
 using Kavita.Services.Helpers;
 using Kavita.Services.HostedServices;
+using Kavita.Services.Images;
+using Kavita.Services.Kobo;
 using Kavita.Services.Metadata;
 using Kavita.Services.Metadata.Providers;
 using Kavita.Services.Plus;
@@ -64,7 +69,6 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IDeviceService, DeviceService>();
         services.AddScoped<IStatisticService, StatisticService>();
         services.AddScoped<IMediaErrorService, MediaErrorService>();
-        services.AddScoped<IMediaConversionService, MediaConversionService>();
         services.AddScoped<IStreamService, StreamService>();
         services.AddScoped<IRatingService, RatingService>();
         services.AddScoped<IPersonService, PersonService>();
@@ -100,8 +104,11 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IDirectoryService, DirectoryService>();
         services.AddScoped<IEventHub, EventHub>();
         services.AddScoped<IPresenceTracker, PresenceTracker>();
-        services.AddScoped<IImageService, ImageService>();
+
+        services.AddSingleton<IImagePipeline, ImagePipeline>();
         services.AddScoped<ICoverDbService, CoverDbService>();
+        services.AddScoped<IImageFileService, ImageFileService>();
+        services.AddScoped<ICompositeCoverService, CompositeCoverService>();
 
         services.AddScoped<ILocalizationService, LocalizationService>();
         services.AddScoped<ISettingsService, SettingsService>();
@@ -124,13 +131,35 @@ public static class ApplicationServiceExtensions
 
         services.AddScoped<IOidcService, OidcService>();
 
-
         services.AddScoped<IReadingHistoryService, ReadingHistoryService>();
         services.AddScoped<IClientDeviceService, ClientDeviceService>();
         services.AddScoped<IDeviceTrackingService, DeviceTrackingService>();
 
+        services.AddScoped<IKoboSyncService, KoboSyncService>();
+        services.AddHttpClient("Kobo", builder =>
+        {
+            builder.BaseAddress = new Uri("https://storeapi.kobo.com");
+            builder.Timeout = TimeSpan.FromMinutes(1);
+        }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            AllowAutoRedirect = false,
+            AutomaticDecompression = DecompressionMethods.None,
+            UseCookies = false
+        });
+        services.AddHttpClient("KoboReadingServices", builder =>
+        {
+            builder.BaseAddress = new Uri("https://readingservices.kobo.com");
+            builder.Timeout = TimeSpan.FromMinutes(1);
+        }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            AllowAutoRedirect = false,
+            AutomaticDecompression = DecompressionMethods.None,
+            UseCookies = false
+        });
 
+        services.AddScoped<IProcessRunner, ProcessRunner>();
         services.AddScoped<IFileCacheService, FileCacheService>();
+        services.AddSingleton<IKepubifyConverterService, KepubifyConverterService>();
         services.AddSingleton<IReadingSessionService, ReadingSessionService>();
         services.AddSingleton<IEntityNamingService, EntityNamingService>();
         services.AddSingleton<IProgressThrottle, ProgressThrottle>();
@@ -140,6 +169,7 @@ public static class ApplicationServiceExtensions
         services.AddHostedService(sp => sp.GetRequiredService<ActiveUserTrackerService>());
 
         services.AddHostedService<StartupTasksHostedService>();
+        services.AddHostedService<KepubifyCheckHostedService>();
     }
 
 }

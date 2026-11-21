@@ -34,6 +34,7 @@ public class DirectoryService : IDirectoryService
     public string CustomizedTemplateDirectory { get; }
     public string TemplateDirectory { get; }
     public string PublisherDirectory { get; }
+    public string MigrationDirectory { get; }
     public string LongTermCacheDirectory { get; }
     public string EpubFontDirectory { get; }
     public string BackupDirectory { get; }
@@ -83,6 +84,8 @@ public class DirectoryService : IDirectoryService
         ExistOrCreate(BackupDirectory);
         DebugExportDirectory = FileSystem.Path.Join(FileSystem.Directory.GetCurrentDirectory(), "config", "debug-exports");
         ExistOrCreate(DebugExportDirectory);
+        MigrationDirectory = FileSystem.Path.Join(FileSystem.Directory.GetCurrentDirectory(), "config", "migrations");
+        ExistOrCreate(MigrationDirectory);
     }
 
     /// <summary>
@@ -387,7 +390,16 @@ public class DirectoryService : IDirectoryService
             foreach (var dir in di.EnumerateDirectories())
             {
                 if (!dir.Exists) continue;
-                dir.Delete(true);
+                try
+                {
+                    dir.Delete(true);
+                }
+                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is DirectoryNotFoundException)
+                {
+                    // A chapter cache can be re-created (or partially removed) by a live reader
+                    // between enumeration and delete; skip it and let the next cleanup take it.
+                    _logger.LogWarning(ex, "[ClearDirectory] Could not delete {DirectoryPath}, skipping", dir.FullName);
+                }
             }
         }
         catch (UnauthorizedAccessException ex)
@@ -968,6 +980,20 @@ public class DirectoryService : IDirectoryService
             {
                 /* Swallow exception */
             }
+        }
+    }
+
+    public bool DeleteFileQuietly(string path)
+    {
+        try
+        {
+            FileSystem.File.Delete(path);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(ex, "Could not delete {File}", path);
+            return false;
         }
     }
 

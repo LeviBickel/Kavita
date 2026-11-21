@@ -1,5 +1,4 @@
-using Kavita.Models.DTOs.Reader;
-using Kavita.Models.Entities.Enums;
+using Kavita.Models.Images;
 using Kavita.Models.Parser;
 
 namespace Kavita.API.Services;
@@ -19,8 +18,8 @@ public interface IAudiobookService
     int GetDurationInSeconds(string filePath);
 
     /// <summary>
-    /// Extracts embedded cover art from an audio file and saves it as a cover image.
-    /// Returns the saved filename, or empty string if no cover art is available.
+    /// Opens the audio file's cover image: embedded art if present, else cover/folder.jpg|jpeg|png in the file's
+    /// directory or its parent. Null when neither is available
     /// </summary>
-    string GetCoverImage(string filePath, string fileName, string outputDirectory, EncodeFormat encodeFormat, CoverImageSize size = CoverImageSize.Default);
+    OpenedCover? OpenCover(string filePath);
 }

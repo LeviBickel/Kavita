@@ -21,15 +21,18 @@ using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
 using Kavita.Models.Entities.Progress;
 using Kavita.Models.Entities.User;
+using Kavita.Models.Extensions;
+using Kavita.Models.Images;
 using Kavita.Services.Comparators;
 using Kavita.Services.Extensions;
 using Kavita.Services.Metadata;
 using Kavita.Services.Scanner;
 using Microsoft.Extensions.Logging;
+using Kavita.Services.Helpers;
 
 namespace Kavita.Services.Reading;
 
-public class ReaderService(IUnitOfWork unitOfWork, ILogger<ReaderService> logger, IEventHub eventHub, IImageService imageService,
+public class ReaderService(IUnitOfWork unitOfWork, ILogger<ReaderService> logger, IEventHub eventHub, IImagePipeline imagePipeline,
     IDirectoryService directoryService, IScrobblingService scrobblingService, IReadingSessionService readingSessionService,
     IClientInfoAccessor clientInfoAccessor, IEntityNamingService namingService,
     ILocalizationService localizationService, IBookService bookService)
@@ -59,7 +62,7 @@ public class ReaderService(IUnitOfWork unitOfWork, ILogger<ReaderService> logger
     /// <param name="ct"></param>
     public async Task MarkSeriesAsRead(AppUser user, int seriesId, CancellationToken ct = default)
     {
-        var volumes = await unitOfWork.VolumeRepository.GetVolumes(seriesId, ct);
+        var volumes = await unitOfWork.VolumeRepository.GetVolumesForSeriesAsync(seriesId, ct: ct);
         var chapters = volumes.SelectMany(v => v.Chapters).ToList();
 
         await MarkChaptersAsRead(user, seriesId, chapters, ct);
@@ -73,7 +76,7 @@ public class ReaderService(IUnitOfWork unitOfWork, ILogger<ReaderService> logger
     /// <param name="ct"></param>
     public async Task MarkSeriesAsUnread(AppUser user, int seriesId, CancellationToken ct = default)
     {
-        var volumes = await unitOfWork.VolumeRepository.GetVolumes(seriesId, ct);
+        var volumes = await unitOfWork.VolumeRepository.GetVolumesForSeriesAsync(seriesId, ct: ct);
         var chapters = volumes.SelectMany(v => v.Chapters).ToList();
 
         await MarkChaptersAsUnread(user, seriesId, chapters, ct);
@@ -227,9 +230,27 @@ public class ReaderService(IUnitOfWork unitOfWork, ILogger<ReaderService> logger
 
             // Don't create an empty progress record if there isn't any progress. This prevents Last Read date from being updated when opening a chapter
             if (userProgress == null && progressDto.PageNum == 0) return true;
-            if (oldProgress == progressDto.PageNum && userProgress?.BookScrollId == progressDto.BookScrollId) return true;
 
-            logger.LogDebug("Saving Progress on Series {SeriesId}, Chapter {ChapterId} to Page {PageNum}", progressDto.SeriesId, progressDto.ChapterId, progressDto.PageNum);
+            // If a kobo span is present, always process updates
+            if (oldProgress == progressDto.PageNum
+                && userProgress?.BookScrollId == progressDto.BookScrollId
+                && userProgress?.KoboSpan == progressDto.KoboSpan)
+            {
+                return true;
+            }
+
+            // Remove KoboSpan on chapter completion to reduce amount of needed KoboSpan Syncs
+            // We will only start syncing them again if the book is read on a kobo afterwards
+            if (progressDto.PageNum >= totalPages)
+            {
+                progressDto.KoboSpan = null;
+            }
+
+            // Reconcile Kobo if we had Kobo progress and the update (UI) does not
+            var shouldSyncKoboSpan = string.IsNullOrEmpty(progressDto.KoboSpan) && !string.IsNullOrEmpty(userProgress?.KoboSpan);
+
+            logger.LogDebug("Saving Progress on Series {SeriesId}, Chapter {ChapterId} to Page {PageNum} - {BookScrollId} - {Kobo}",
+                progressDto.SeriesId, progressDto.ChapterId, progressDto.PageNum, progressDto.BookScrollId?.Sanitize(), progressDto.KoboSpan?.Sanitize());
             if (userProgress == null)
             {
                 userProgress = new AppUserProgress
@@ -240,6 +261,7 @@ public class ReaderService(IUnitOfWork unitOfWork, ILogger<ReaderService> logger
                     ChapterId = progressDto.ChapterId,
                     LibraryId = progressDto.LibraryId,
                     BookScrollId = progressDto.BookScrollId,
+                    KoboSpan = progressDto.KoboSpan,
                     AppUserId = userId,
                 };
 
@@ -252,6 +274,8 @@ public class ReaderService(IUnitOfWork unitOfWork, ILogger<ReaderService> logger
                 userProgress.VolumeId = progressDto.VolumeId;
                 userProgress.LibraryId = progressDto.LibraryId;
                 userProgress.BookScrollId = progressDto.BookScrollId;
+                userProgress.KoboSpan = progressDto.KoboSpan;
+
                 unitOfWork.AppUserProgressRepository.Update(userProgress);
             }
 
@@ -261,6 +285,16 @@ public class ReaderService(IUnitOfWork unitOfWork, ILogger<ReaderService> logger
                 {
                     BackgroundJob.Enqueue(() => readingSessionService.UpdateProgress(userId, progressDto,
                         clientInfoAccessor.Current, clientInfoAccessor.CurrentDeviceId));
+                }
+
+                if (shouldSyncKoboSpan && !TaskScheduler.HasAlreadyEnqueuedTask<IKoboSyncService>(
+                        s => s.SyncXPathToKoboSpan(userProgress.Id, CancellationToken.None)))
+                {
+                    logger.LogTrace("Scheduling KoboSpan sync for {Id} - {ChapterId} - {UserId} in 5m",
+                        userProgress.Id, progressDto.ChapterId, userId);
+                    BackgroundJob.Schedule<IKoboSyncService>(
+                        s => s.SyncXPathToKoboSpan(userProgress.Id, CancellationToken.None)
+                        ,TimeSpan.FromMinutes(5));
                 }
 
                 await eventHub.SendMessageAsync(MessageFactory.UserProgressUpdate,
@@ -633,6 +667,7 @@ public class ReaderService(IUnitOfWork unitOfWork, ILogger<ReaderService> logger
     public async Task<HourEstimateRangeDto> GetEstimateFromPageForChapter(int userId, int seriesId, int chapterId,
         int page, CancellationToken ct = default)
     {
+        // TODO: Pass down object instead of loading from DB
         var series = await unitOfWork.SeriesRepository.GetSeriesDtoByIdAsync(seriesId, userId, ct);
         var chapter = await unitOfWork.ChapterRepository.GetChapterDtoAsync(chapterId, userId, ct);
         if (series == null || chapter == null)
@@ -648,7 +683,7 @@ public class ReaderService(IUnitOfWork unitOfWork, ILogger<ReaderService> logger
 
             // Sum character counts for unread pages
             var toReadCharacters = pageCounts
-                .Where(kvp => kvp.Key >= page)
+                .Where(kvp => kvp.Key >= page && kvp.Key < chapter.PagesRead)
                 .Sum(kvp => kvp.Value);
 
             var progressCount = WordCountAnalyzerService.GetWordCount(toReadCharacters);
@@ -743,18 +778,20 @@ public class ReaderService(IUnitOfWork unitOfWork, ILogger<ReaderService> logger
         CancellationToken ct = default)
     {
         var outputDirectory =
-            directoryService.FileSystem.Path.Join(directoryService.TempDirectory, ImageService.GetThumbnailFormat(chapter.Id));
+            directoryService.FileSystem.Path.Join(directoryService.TempDirectory, ImageHelper.GetThumbnailFormat(chapter.Id));
         try
         {
-            var encodeFormat =
-                (await unitOfWork.SettingsRepository.GetSettingsDtoAsync(ct)).EncodeMediaAs;
+            var settings = await unitOfWork.SettingsRepository.GetSettingsDtoAsync(ct);
+            var policy = new ImagePolicy(settings.EncodeMediaAs, settings.CoverImageSize);
+            var extension = policy.Format.ForKind(ImageKind.ReaderPageThumb).GetExtension();
 
             if (!Directory.Exists(outputDirectory))
             {
                 var outputtedThumbnails = cachedImages
                     .Select((img, idx) =>
                         directoryService.FileSystem.Path.Join(outputDirectory,
-                            imageService.WriteCoverThumbnail(img, $"{idx}", outputDirectory, encodeFormat)))
+                            imagePipeline.Write(new ImageSource.FromFile(img), ImageKind.ReaderPageThumb, policy,
+                                outputDirectory, idx + extension).FileName))
                     .ToArray();
                 return CacheService.GetPageFromFiles(outputtedThumbnails, pageNum);
             }

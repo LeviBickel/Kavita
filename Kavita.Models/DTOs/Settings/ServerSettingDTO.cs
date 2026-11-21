@@ -13,6 +13,7 @@ public sealed record ServerSettingDto
     public string TaskBackup { get; set; } = default!;
     public string TaskCleanup { get; set; } = default!;
     public string TaskCblSync { get; set; } = default!;
+    public string TaskCompositeCovers { get; set; } = default!;
     /// <summary>
     /// Logging level for server. Managed in appsettings.json.
     /// </summary>
@@ -103,6 +104,14 @@ public sealed record ServerSettingDto
     /// OIDC Configuration
     /// </summary>
     public OidcConfigDto OidcConfig { get; set; }
+    /// <summary>
+    /// Is KoboSync enabled on this server
+    /// </summary>
+    public bool EnableKobo { get; set; }
+    /// <summary>
+    /// Is kepub conversion enabled. Read only here, saved through settings/kepubify
+    /// </summary>
+    public bool EnableKepubify { get; set; }
 
     /// <summary>
     /// The Date Kavita was first installed

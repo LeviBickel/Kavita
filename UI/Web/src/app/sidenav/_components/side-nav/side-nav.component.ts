@@ -194,7 +194,7 @@ export class SideNavComponent {
   }
 
   getLibraryImage(library: Library) {
-    if (library.coverImage) return this.imageService.getLibraryCoverImage(library.id);
+    if (library.hasCoverImage) return this.imageService.getLibraryCoverImage(library.id);
     return null;
   }
 

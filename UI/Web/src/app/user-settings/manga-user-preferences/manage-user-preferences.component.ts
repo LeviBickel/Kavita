@@ -23,8 +23,11 @@ import {TypeaheadComponent} from "../../typeahead/_components/typeahead.componen
 import {TypeaheadConfig} from "../../typeahead/_models/typeahead-config";
 import {TypeaheadConfigFactoryService} from "../../typeahead-config-factory.service";
 import {FormFieldDirective} from "../../_directives/form-field.directive";
-import {debounce, disabled, form, FormField, min, required} from "@angular/forms/signals";
+import {debounce, disabled, form, FormField, max, min, required} from "@angular/forms/signals";
 import {SettingSelectComponent} from "../../settings/_components/setting-enum-select/setting-select.component";
+import {UserCollection} from "../../_models/collection-tag";
+import {CollectionTagService} from "../../_services/collection-tag.service";
+import {SettingsService} from "../../admin/settings.service";
 
 @Component({
   selector: 'app-manga-user-preferences',
@@ -53,8 +56,14 @@ export class ManageUserPreferencesComponent implements OnInit {
   private readonly libraryService = inject(LibraryService);
   private readonly metadataService = inject(MetadataService);
   private readonly typeaheadSettingFactory = inject(TypeaheadConfigFactoryService);
+  private readonly collectionTagService = inject(CollectionTagService);
+  private readonly settingsService = inject(SettingsService);
 
   protected readonly isReadOnly = this.accountService.hasReadOnlyRole;
+  protected readonly hasDownloadRole = computed(() => {
+    return this.accountService.hasAdminRole() || this.accountService.hasDownloadRole();
+  });
+
   loading = signal(true);
   ageRatings = signal<AgeRatingDto[]>([]);
   locales = signal<KavitaLocale[]>([]);
@@ -85,6 +94,17 @@ export class ManageUserPreferencesComponent implements OnInit {
       socialMaxAgeRating: AgeRating.NotApplicable,
       socialIncludeUnknowns: false,
       shareProfile: false
+    },
+    koboSyncPreferences: {
+      syncItemLimit: 25,
+      forwardToKoboStore: false,
+      librarySyncEnabled: false,
+      syncLibraries: [],
+      readingListSyncEnabled: false,
+      syncReadingLists: [],
+      collectionSyncEnabled: false,
+      syncCollections: [],
+      managedCollection: 0
     },
     theme: {
       id: 0,
@@ -140,7 +160,8 @@ export class ManageUserPreferencesComponent implements OnInit {
       pref: this.accountService.getPreferences(),
       libraries: this.libraryService.getLibraries(),
       ageRatings: this.metadataService.getAllAgeRatings(),
-    }).subscribe(({pref, libraries, ageRatings}) => {
+      collections: this.collectionTagService.allCollections(true)
+    }).subscribe(({pref, libraries, ageRatings, collections}) => {
       const socialLibs = this.accountService.userPreferences()?.socialPreferences.socialLibraries ?? [];
 
       this.ageRatings.set([{value: AgeRating.NotApplicable, title: '',}, ...ageRatings]);

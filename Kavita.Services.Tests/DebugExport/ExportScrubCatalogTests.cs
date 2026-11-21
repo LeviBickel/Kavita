@@ -50,6 +50,8 @@ public class ExportScrubCatalogTests
     [InlineData("Device.IpAddress")]
     [InlineData("ClientInfoData.IpAddress")]
     [InlineData("AppUserScrobbleProvider.AuthenticationToken")]
+    [InlineData("KoboSyncPoint.KoboStoreSyncToken")]
+    [InlineData("KoboSyncPoint.KoboDeviceId")]
     [InlineData("ServerSettingKey.LicenseKey")]
     [InlineData("OidcConfigDto.Secret")]
     [InlineData("DataProtectionKey.Xml")]

@@ -10,11 +10,14 @@ export interface ServerSettings {
   taskBackup: string;
   taskCleanup: string;
   taskCblSync: string;
+  taskCompositeCovers: string;
   loggingLevel: string;
   port: number;
   ipAddresses: string;
   allowStatCollection: boolean;
   enableOpds: boolean;
+  enableKobo: boolean;
+  enableKepubify: boolean;
   baseUrl: string;
   bookmarksDirectory: string;
   emailServiceUrl: string;

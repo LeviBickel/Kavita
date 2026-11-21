@@ -41,6 +41,7 @@ This fork adds a native **Audiobook** library type. Audio files (MP3, M4B, FLAC,
 - Ability to customize your dashboard and side nav with smart filters, custom order and visibility toggles
 - Full Localization Support ([Weblate](https://hosted.weblate.org/engage/kavita/))
 - Epub-based Annotation/Highlight support
+- Kobo Sync for Epub/Archives/Images with Annotation sync. Included Kepubify out of the box. [wiki](https://wiki.kavitareader.com/guides/features/kobo-sync/)
 
 
 ## Docker (this fork)
@@ -79,6 +80,28 @@ Kavita is being actively developed and should be considered beta software until 
 Kavita may be subject to changes in how the platform functions as it is being built out toward the
 vision. You may lose data and have to restart. The Kavita team strives to avoid any data loss.
 
+## Donate
+If you like Kavita, have gotten good use out of it, or feel like you want to say thanks with a few bucks, feel free to donate. Money will go towards
+expenses related to Kavita. Back us through [OpenCollective](https://opencollective.com/Kavita#backer). You can also use [Paypal](https://www.paypal.com/paypalme/majora2007?locale.x=en_US), however your name will not show below. [Kavita+](https://wiki.kavitareader.com/kavita+) is also an 
+option which provides funding and a benefit.
+
+## Kavita+
+[Kavita+](https://wiki.kavitareader.com/kavita+) is a paid subscription that offers premium (internet-facing) features that otherwise wouldn't be feasible to include in Kavita. It is run and operated by [majora2007](https://github.com/majora2007), the creator and primary developer of Kavita.
+
+If you are interested, you can use the promo code [`FIRSTTIME`](https://buy.kavitareader.com/?src=github&promo=FIRSTTIME) for your initial signup for 2$ off the first payment. Get some sweet features, while supporting majora2007's goal to go full time on Kavita development.
+
+**If you already contribute via OpenCollective, please reach out to majora2007 for a provisioned license.**
+
+## Localization
+Thank you to [Weblate](https://hosted.weblate.org/engage/kavita/) who hosts our localization infrastructure pro bono. If you want to see Kavita in your language, please help us localize. Drop by the discord and sign up for the `Translator` role.
+
+<a href="https://hosted.weblate.org/engage/kavita/">
+<img src="https://hosted.weblate.org/widget/kavita/horizontal-auto.svg" alt="Translation status" />
+</a>
+
+## I don't have a Server
+If you want to take a stab at self-hosting, but don't have a PC, you can use either [Zenith](https://zenith.hosting/host/kavita) or [PikaPods](https://www.pikapods.com/pods?run=kavita). 
+Both these companies offer a simple interface to self-hosting and contribute back to Kavita via OpenCollective.
 
 ## Contributors
 

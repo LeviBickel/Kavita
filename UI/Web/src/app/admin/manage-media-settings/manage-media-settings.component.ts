@@ -18,8 +18,9 @@ import {PdfRenderResolutionPipe} from "../../_pipes/pdf-render-resolution.pipe"
 import {takeUntilDestroyed, toObservable} from "@angular/core/rxjs-interop";
 import {ModalService} from "../../_services/modal.service";
 import {FormFieldDirective} from "../../_directives/form-field.directive";
-import {form, FormField, readonly, required} from "@angular/forms/signals";
+import {form, FormField, required} from "@angular/forms/signals";
 import {SettingSelectComponent} from "../../settings/_components/setting-enum-select/setting-select.component";
+import {KepubifyCheckStatus} from "../_models/kepubify-check-status";
 
 interface FormModel {
   encodeMediaAs: EncodeFormat;
@@ -34,7 +35,8 @@ interface FormModel {
   templateUrl: './manage-media-settings.component.html',
   styleUrls: ['./manage-media-settings.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslocoDirective, SettingItemComponent, EncodeFormatPipe, CoverImageSizePipe, PdfRenderResolutionPipe, FormFieldDirective, FormField, SettingSelectComponent]
+  imports: [TranslocoDirective, SettingItemComponent, EncodeFormatPipe, CoverImageSizePipe, PdfRenderResolutionPipe,
+    FormFieldDirective, FormField, SettingSelectComponent]
 })
 export class ManageMediaSettingsComponent implements OnInit {
 
@@ -46,9 +48,10 @@ export class ManageMediaSettingsComponent implements OnInit {
   protected readonly allEncodeFormats = allEncodeFormats;
   protected readonly allCoverImageSizes = allCoverImageSizes;
   protected readonly allPdfRenderResolutions = allPdfRenderResolutions;
+  protected readonly KepubifyCheckStatus = KepubifyCheckStatus;
 
   private serverSettings!: ServerSettings;
-  protected readonly isLoaded = signal(false);
+  protected isLoaded = signal(false);
 
   private readonly formModel = signal<FormModel>({
     encodeMediaAs: EncodeFormat.PNG,
@@ -58,7 +61,7 @@ export class ManageMediaSettingsComponent implements OnInit {
   });
   protected readonly settingsForm = form(this.formModel, p => {
     required(p.encodeMediaAs);
-    readonly(p.bookmarksDirectory);
+    required(p.bookmarksDirectory);
     required(p.coverImageSize);
     required(p.pdfRenderResolution);
   });

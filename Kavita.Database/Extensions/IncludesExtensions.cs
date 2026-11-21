@@ -42,6 +42,11 @@ public static class IncludesExtensions
             queryable = queryable.Include(c => c.SmartFilter);
         }
 
+        if (includes.HasFlag(CollectionIncludes.CoverImageFile))
+        {
+            queryable = queryable.Include(c => c.CoverImageFile);
+        }
+
         return queryable.AsSplitQuery();
     }
 
@@ -90,6 +95,18 @@ public static class IncludesExtensions
                 .Include(c => c.ExternalRatings);
         }
 
+        if (includes.HasFlag(ChapterIncludes.CoverImageFile))
+        {
+            queryable = queryable.Include(c => c.CoverImageFile);
+
+            if (includes.HasFlag(ChapterIncludes.Volumes))
+            {
+                queryable = queryable
+                    .Include(c => c.Volume)
+                    .ThenInclude(v => v.CoverImageFile);
+            }
+        }
+
         return queryable.AsSplitQuery();
     }
 
@@ -119,6 +136,18 @@ public static class IncludesExtensions
             queryable = queryable
                 .Include(vol => vol.Chapters)
                 .ThenInclude(c => c.Tags);
+        }
+
+        if (includes.HasFlag(VolumeIncludes.CoverImageFile))
+        {
+            queryable = queryable.Include(vol => vol.CoverImageFile);
+
+            if (includes.HasFlag(VolumeIncludes.Chapters) || includes.HasFlag(VolumeIncludes.Files))
+            {
+                queryable = queryable
+                    .Include(vol => vol.Chapters)
+                    .ThenInclude(c => c.CoverImageFile);
+            }
         }
 
         return queryable.AsSplitQuery();
@@ -190,6 +219,27 @@ public static class IncludesExtensions
                 .ThenInclude(m => m.Tags.OrderBy(g => g.NormalizedTitle));
         }
 
+        if (includeFlags.HasFlag(SeriesIncludes.CoverImageFile))
+        {
+            query = query.Include(s => s.CoverImageFile);
+
+            if (includeFlags.HasFlag(SeriesIncludes.Volumes) || includeFlags.HasFlag(SeriesIncludes.Chapters))
+            {
+                query = query
+                    .Include(s => s.Volumes)
+                    .ThenInclude(v => v.CoverImageFile);
+            }
+
+            if (includeFlags.HasFlag(SeriesIncludes.Chapters))
+            {
+                // Must repeat the OrderBy above: EF rejects two different filters on the same navigation
+                query = query
+                    .Include(s => s.Volumes)
+                    .ThenInclude(v => v.Chapters.OrderBy(c => c.SortOrder))
+                    .ThenInclude(c => c.CoverImageFile);
+            }
+        }
+
         return query.AsSplitQuery();
     }
 
@@ -197,7 +247,8 @@ public static class IncludesExtensions
     {
         if (includeFlags.HasFlag(AppUserIncludes.Bookmarks))
         {
-            query = query.Include(u => u.Bookmarks);
+            query = query.Include(u => u.Bookmarks)
+                .ThenInclude(b => b.ImageFile);
         }
 
         if (includeFlags.HasFlag(AppUserIncludes.Progress))
@@ -281,6 +332,11 @@ public static class IncludesExtensions
             query = query.Include(u => u.AuthKeys);
         }
 
+        if (includeFlags.HasFlag(AppUserIncludes.CoverImageFile))
+        {
+            query = query.Include(u => u.CoverImageFile);
+        }
+
         return query.AsSplitQuery();
     }
 
@@ -302,6 +358,11 @@ public static class IncludesExtensions
         if (includes.HasFlag(ReadingListIncludes.Tags))
         {
             queryable = queryable.Include(r => r.Tags);
+        }
+
+        if (includes.HasFlag(ReadingListIncludes.CoverImageFile))
+        {
+            queryable = queryable.Include(r => r.CoverImageFile);
         }
 
         return queryable.AsSplitQuery();
@@ -334,6 +395,11 @@ public static class IncludesExtensions
             query = query.Include(l => l.LibraryExcludePatterns);
         }
 
+        if (includeFlags.HasFlag(LibraryIncludes.CoverImageFile))
+        {
+            query = query.Include(l => l.CoverImageFile);
+        }
+
         return query.AsSplitQuery();
     }
 
@@ -353,6 +419,11 @@ public static class IncludesExtensions
         if (includeFlags.HasFlag(PersonIncludes.SeriesPeople))
         {
             queryable = queryable.Include(p => p.SeriesMetadataPeople);
+        }
+
+        if (includeFlags.HasFlag(PersonIncludes.CoverImageFile))
+        {
+            queryable = queryable.Include(p => p.CoverImageFile);
         }
 
         return queryable;

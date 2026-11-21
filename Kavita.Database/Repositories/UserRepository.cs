@@ -14,6 +14,7 @@ using Kavita.Models.DTOs.Account;
 using Kavita.Models.DTOs.Dashboard;
 using Kavita.Models.DTOs.Filtering.v2;
 using Kavita.Models.DTOs.Filtering.v2.Requests;
+using Kavita.Models.DTOs.Kobo;
 using Kavita.Models.DTOs.Reader;
 using Kavita.Models.DTOs.Scrobbling;
 using Kavita.Models.DTOs.SeriesDetail;
@@ -152,13 +153,14 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
 
     public async Task<IEnumerable<AppUserBookmark>> GetAllBookmarksAsync(CancellationToken ct = default)
     {
-        return await context.AppUserBookmark.ToListAsync(ct);
+        return await context.AppUserBookmark.Include(b => b.ImageFile).ToListAsync(ct);
     }
 
     public async Task<AppUserBookmark?> GetBookmarkForPage(int page, int chapterId, int imageOffset, int userId, CancellationToken ct = default)
     {
         return await context.AppUserBookmark
             .Where(b => b.Page == page && b.ChapterId == chapterId && b.AppUserId == userId && b.ImageOffset == imageOffset)
+            .Include(b => b.ImageFile)
             .FirstOrDefaultAsync(ct);
     }
 
@@ -166,21 +168,19 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
     {
         return await context.AppUserBookmark
             .Where(b => b.Id == bookmarkId)
+            .Include(b => b.ImageFile)
             .FirstOrDefaultAsync(ct);
     }
 
     /// <summary>
     /// Returns all Bookmarks for a given set of Ids
     /// </summary>
-    /// <param name="seriesId"></param>
-    /// <param name="bookmarkIds"></param>
-    /// <param name="ct"></param>
-    /// <returns></returns>
     public async Task<IList<AppUserBookmark>> GetAllBookmarksByIds(int userId, int seriesId, IList<int> bookmarkIds,
         CancellationToken ct = default)
     {
         return await context.AppUserBookmark
             .Where(b => b.AppUserId == userId && bookmarkIds.Contains(b.Id) && b.SeriesId == seriesId)
+            .Include(b => b.ImageFile)
             .OrderBy(b => b.Created)
             .ToListAsync(ct);
     }
@@ -193,6 +193,14 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
             .FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower().Equals(lowerEmail), ct);
     }
 
+
+    public Task<AppUserKoboSyncPreferences> GetKoboSyncPreferences(int userId, CancellationToken ct = default)
+    {
+        return context.AppUserPreferences
+            .Where(p => p.AppUserId == userId)
+            .Select(p => p.KoboSyncPreferences)
+            .FirstAsync(ct);
+    }
 
     public async Task<IEnumerable<AppUserPreferences>> GetAllPreferencesByThemeAsync(int themeId, CancellationToken ct = default)
     {
@@ -310,6 +318,13 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
         return context.ReadingList
             .Where(rl => rl.AppUserId == userId || (rl.Promoted && allowPromoted))
             .AnyAsync(rl => rl.Id == readingListId, ct);
+    }
+
+    public Task<bool> HasAccessToCollection(int userId, int collectionId, bool allowPromoted, CancellationToken ct = default)
+    {
+        return context.AppUserCollection
+            .Where(c => c.AppUserId == userId || (c.Promoted && allowPromoted))
+            .AnyAsync(c => c.Id == collectionId, ct);
     }
 
     public async Task<IEnumerable<AppUser>> GetAllUsersAsync(AppUserIncludes includeFlags = AppUserIncludes.None, bool track = true, CancellationToken ct = default)
@@ -759,6 +774,21 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
             .ToListAsync(ct);
     }
 
+    public async Task<List<KoboReviewDto>> GetKoboReviewsForChapterAsync(int userId, IEnumerable<int> chapterIds, CancellationToken ct = default)
+    {
+        var userPreferences = await context.AppUserPreferences.ToListAsync(ct);
+
+        return await context.AppUserChapterRating
+            .Include(r => r.AppUser)
+            .Where(r => chapterIds.Contains(r.ChapterId))
+            .RestrictBySocialPreferences(userId, userPreferences)
+            .OrderBy(r => r.AppUserId == userId)
+            .ThenBy(r => r.Rating)
+            .AsSplitQuery()
+            .ProjectTo<KoboReviewDto>(mapper.ConfigurationProvider)
+            .ToListAsync(ct);
+    }
+
     public async Task<AppUserPreferences?> GetPreferencesAsync(string username, CancellationToken ct = default)
     {
         return await context.AppUserPreferences
@@ -957,16 +987,16 @@ public class UserRepository(DataContext context, UserManager<AppUser> userManage
     public Task<string?> GetCoverImageAsync(int userId, CancellationToken ct = default)
     {
         return context.AppUser
-            .Where(u => u.Id == userId)
-            .Select(u => u.CoverImage)
+            .Where(u => u.Id == userId && u.CoverImageFileId != null)
+            .Select(u => u.CoverImageFile!.FileName)
             .FirstOrDefaultAsync(ct);
     }
 
     public async Task<string?> GetPersonCoverImageAsync(int personId, CancellationToken ct = default)
     {
         return await context.Person
-            .Where(p => p.Id == personId)
-            .Select(p => p.CoverImage)
+            .Where(p => p.Id == personId && p.CoverImageFileId != null)
+            .Select(p => p.CoverImageFile!.FileName)
             .FirstOrDefaultAsync(ct);
     }
 

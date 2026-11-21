@@ -52,7 +52,7 @@ public class OpdsServiceTests(ITestOutputHelper testOutputHelper) : AbstractDbTe
         var ds = new DirectoryService(Substitute.For<ILogger<DirectoryService>>(), new FileSystem());
 
         var readerService = new ReaderService(unitOfWork, Substitute.For<ILogger<ReaderService>>(),
-            Substitute.For<IEventHub>(), Substitute.For<IImageService>(), ds,
+            Substitute.For<IEventHub>(), Substitute.For<IImagePipeline>(), ds,
             Substitute.For<IScrobblingService>(), Substitute.For<IReadingSessionService>(),
             Substitute.For<IClientInfoAccessor>(), Substitute.For<IEntityNamingService>(),
             Substitute.For<ILocalizationService>(), Substitute.For<IBookService>());
@@ -63,15 +63,15 @@ public class OpdsServiceTests(ITestOutputHelper testOutputHelper) : AbstractDbTe
         var namingService = new EntityNamingService();
 
         var readingListService = new ReadingListService(unitOfWork, Substitute.For<ILogger<ReadingListService>>(),
-            Substitute.For<IEventHub>(), Substitute.For<IImageService>(), Substitute.For<IDirectoryService>(),
-            namingService);
+            namingService, Substitute.For<IImageFileService>(),
+            Substitute.For<ICompositeCoverService>());
 
         var seriesService = new SeriesService(unitOfWork, Substitute.For<IEventHub>(), Substitute.For<ITaskScheduler>(),
             Substitute.For<ILogger<SeriesService>>(),
             localizationService, Substitute.For<IReadingListService>(), namingService);
 
         var opdsService = new OpdsService(unitOfWork, localizationService,
-            seriesService, Substitute.For<DownloadService>(),
+            seriesService, Substitute.For<IDownloadService>(),
             ds, readerService, namingService, readingListService);
 
         return new Tuple<IOpdsService, IReaderService>(opdsService, readerService);

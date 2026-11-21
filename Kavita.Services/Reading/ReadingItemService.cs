@@ -2,6 +2,7 @@
 using System.IO;
 using Kavita.API.Services;
 using Kavita.Models.Entities.Enums;
+using Kavita.Models.Images;
 using Kavita.Models.Metadata;
 using Kavita.Models.Parser;
 using Kavita.Services.Scanner;
@@ -13,7 +14,6 @@ public class ReadingItemService : IReadingItemService
 {
     private readonly IArchiveService _archiveService;
     private readonly IBookService _bookService;
-    private readonly IImageService _imageService;
     private readonly IDirectoryService _directoryService;
     private readonly IAudiobookService _audiobookService;
     private readonly ILogger<ReadingItemService> _logger;
@@ -24,12 +24,11 @@ public class ReadingItemService : IReadingItemService
     private readonly PdfParser _pdfParser;
     private readonly AudioParser _audioParser;
 
-    public ReadingItemService(IArchiveService archiveService, IBookService bookService, IImageService imageService,
+    public ReadingItemService(IArchiveService archiveService, IBookService bookService,
         IDirectoryService directoryService, ILogger<ReadingItemService> logger, IAudiobookService audiobookService)
     {
         _archiveService = archiveService;
         _bookService = bookService;
-        _imageService = imageService;
         _directoryService = directoryService;
         _audiobookService = audiobookService;
         _logger = logger;
@@ -153,22 +152,19 @@ public class ReadingItemService : IReadingItemService
         }
     }
 
-    public string GetCoverImage(string filePath, string fileName, MangaFormat format, EncodeFormat encodeFormat, CoverImageSize size = CoverImageSize.Default)
+    public OpenedCover? OpenCover(string filePath, MangaFormat format)
     {
-        if (string.IsNullOrEmpty(filePath) || string.IsNullOrEmpty(fileName))
-        {
-            return string.Empty;
-        }
-
+        if (string.IsNullOrEmpty(filePath)) return null;
 
         return format switch
         {
-            MangaFormat.Epub => _bookService.GetCoverImage(filePath, fileName, _directoryService.CoverImageDirectory, encodeFormat, size),
-            MangaFormat.Archive => _archiveService.GetCoverImage(filePath, fileName, _directoryService.CoverImageDirectory, encodeFormat, size),
-            MangaFormat.Image => _imageService.GetCoverImage(filePath, fileName, _directoryService.CoverImageDirectory, encodeFormat, size),
-            MangaFormat.Pdf => _bookService.GetCoverImage(filePath, fileName, _directoryService.CoverImageDirectory, encodeFormat, size),
-            MangaFormat.Audio => _audiobookService.GetCoverImage(filePath, fileName, _directoryService.CoverImageDirectory, encodeFormat, size),
-            _ => string.Empty
+            MangaFormat.Epub or MangaFormat.Pdf => _bookService.OpenCover(filePath),
+            MangaFormat.Archive => _archiveService.OpenCover(filePath),
+            MangaFormat.Image => _directoryService.FileSystem.File.Exists(filePath)
+                ? new OpenedCover(new ImageSource.FromFile(filePath))
+                : null,
+            MangaFormat.Audio => _audiobookService.OpenCover(filePath),
+            _ => null
         };
     }
 
@@ -188,7 +184,7 @@ public class ReadingItemService : IReadingItemService
                 _archiveService.ExtractArchive(fileFilePath, targetDirectory);
                 break;
             case MangaFormat.Image:
-                _imageService.ExtractImages(fileFilePath, targetDirectory, imageCount);
+                ExtractImages(fileFilePath, targetDirectory, imageCount);
                 break;
             case MangaFormat.Pdf:
                 _bookService.ExtractPdfImages(fileFilePath, targetDirectory);
@@ -215,5 +211,20 @@ public class ReadingItemService : IReadingItemService
         if (_basicParser.IsApplicable(path, type)) return _basicParser;
 
         return null;
+    }
+
+    private void ExtractImages(string? fileFilePath, string targetDirectory, int fileCount)
+    {
+        if (string.IsNullOrEmpty(fileFilePath)) return;
+        _directoryService.ExistOrCreate(targetDirectory);
+        if (fileCount == 1)
+        {
+            _directoryService.CopyFileToDirectory(fileFilePath, targetDirectory);
+        }
+        else
+        {
+            _directoryService.CopyDirectoryToDirectory(_directoryService.FileSystem.Path.GetDirectoryName(fileFilePath), targetDirectory,
+                Parser.ImageFileExtensions);
+        }
     }
 }

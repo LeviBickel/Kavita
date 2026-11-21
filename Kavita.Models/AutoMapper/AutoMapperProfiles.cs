@@ -17,6 +17,7 @@ using Kavita.Models.DTOs.KavitaPlus.Account;
 using Kavita.Models.DTOs.KavitaPlus.Manage;
 using Kavita.Models.DTOs.KavitaPlus.Metadata;
 using Kavita.Models.DTOs.KavitaPlus.Scrobble;
+using Kavita.Models.DTOs.Kobo;
 using Kavita.Models.DTOs.MediaErrors;
 using Kavita.Models.DTOs.Metadata;
 using Kavita.Models.DTOs.Person;
@@ -34,6 +35,8 @@ using Kavita.Models.DTOs.Stats;
 using Kavita.Models.DTOs.Theme;
 using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
+using Kavita.Models.Entities.Interfaces;
+using Kavita.Models.Entities.Kobo;
 using Kavita.Models.Entities.Metadata;
 using Kavita.Models.Entities.MetadataMatching;
 using Kavita.Models.Entities.Person;
@@ -41,6 +44,7 @@ using Kavita.Models.Entities.Progress;
 using Kavita.Models.Entities.ReadingLists;
 using Kavita.Models.Entities.Scrobble;
 using Kavita.Models.Entities.User;
+using Kavita.Models.Extensions;
 using Kavita.Models.Parser;
 
 namespace Kavita.Models.AutoMapper;
@@ -58,12 +62,17 @@ public class AutoMapperProfiles : Profile
             .ForMember(dest => dest.Series, opt => opt.MapFrom(src => src.Series));
         CreateMap<LibraryDto, Library>();
         CreateMap<MangaFile, MangaFileDto>();
-        CreateMap<Series, SeriesDto>();
+        CreateMap<IHasCoverImageFile, IHasCoverImageDto>()
+            .ForMember(dest => dest.HasCoverImage, opt => opt.MapFrom(src => src.CoverImageFileId != null));
+        CreateMap<Series, SeriesDto>()
+            .IncludeBase<IHasCoverImageFile, IHasCoverImageDto>();
         CreateMap<AppUserCollection, AppUserCollectionDto>()
+            .IncludeBase<IHasCoverImageFile, IHasCoverImageDto>()
             .ForMember(dest => dest.Owner, opt => opt.MapFrom(src => src.AppUser.UserName))
             .ForMember(dest => dest.ItemCount, opt => opt.MapFrom(src => src.Items.Count))
             .ForMember(dest => dest.SmartFilterName, opt => opt.MapFrom(src => src.SmartFilter != null ? src.SmartFilter.Name : null));
         CreateMap<Person, PersonDto>()
+            .IncludeBase<IHasCoverImageFile, IHasCoverImageDto>()
             .ForMember(dest => dest.Aliases, opt => opt.MapFrom(src => src.Aliases.Select(s => s.Alias)));
         CreateMap<Genre, GenreTagDto>();
         CreateMap<Tag, TagDto>();
@@ -202,6 +211,7 @@ public class AutoMapperProfiles : Profile
                         src => src.Tags.OrderBy(p => p.NormalizedTitle)));
 
         CreateMap<AppUser, UserDto>()
+            .IncludeBase<IHasCoverImageFile, IHasCoverImageDto>()
             .ForMember(dest => dest.Roles,
                 opt =>
                     opt.MapFrom(src => src.UserRoles.Select(r => r.Role.Name)))
@@ -234,6 +244,7 @@ public class AutoMapperProfiles : Profile
 
         CreateMap<ReadingListTag, ReadingListTagDto>();
         CreateMap<ReadingList, ReadingListDto>()
+            .IncludeBase<IHasCoverImageFile, IHasCoverImageDto>()
             .ForMember(dest => dest.ItemCount, opt => opt.MapFrom(src => src.Items.Count))
             .ForMember(dest => dest.OwnerUserName, opt => opt.MapFrom(src => src.AppUser.UserName))
             .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.Tags));
@@ -255,6 +266,7 @@ public class AutoMapperProfiles : Profile
 
         CreateMap<Library, LiteLibraryDto>();
         CreateMap<Library, LibraryDto>()
+            .IncludeBase<IHasCoverImageFile, IHasCoverImageDto>()
             .ForMember(dest => dest.Folders,
                 opt =>
                     opt.MapFrom(src => src.Folders.Select(x => x.Path).ToList()))
@@ -439,6 +451,11 @@ public class AutoMapperProfiles : Profile
         CreateMap<AppUserAuthKey, AuthKeyDto>();
         CreateMap<AppUserScrobbleProvider, ScrobbleProviderDto>();
         CreateMap<AppUserRating, UserRatingAndReviewDto>();
+
+        CreateMap<KoboSyncPoint, KoboSyncPointDto>()
+            .ForMemberSimple(dest => dest.DeviceId, src => src.KoboDeviceId)
+            .ForMemberSimple(dest => dest.RemovedChapterCount, src => src.RemovedChapterIds.Count)
+            .ForMemberSimple(dest => dest.LastSync, src => new[] { src.ProgressSyncTime, src.ChapterSyncTime }.Max());
 
 
     }

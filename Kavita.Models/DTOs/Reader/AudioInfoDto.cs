@@ -20,6 +20,7 @@ public sealed record AudioInfoDto : IChapterInfoDto
     public int Pages { get; set; }
     public bool IsSpecial { get; set; }
     public string ChapterTitle { get; set; } = default!;
+    public PublicationStatus? SeriesPublicationStatus { get; set; }
     /// <summary>Author(s) of the book being narrated.</summary>
     public string Author { get; set; } = string.Empty;
     /// <summary>Narrator(s) of the audiobook.</summary>

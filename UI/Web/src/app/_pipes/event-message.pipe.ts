@@ -5,6 +5,9 @@ import {FolderWatchFallbackReason} from '../_models/events/core/folder-watch-fal
 import {DateTime} from 'luxon';
 import {BytesPipe} from './bytes.pipe';
 import {UtcToLocalTimePipe} from './utc-to-local-time.pipe';
+import {KepubifyOffReasonPipe} from './kepubify-off-reason.pipe';
+import {KepubifyStatus} from '../admin/_models/kepubify-status';
+import {KepubifyCheckStatus} from '../admin/_models/kepubify-check-status';
 
 const PREFIX = 'event-message-pipe';
 // Mirrors the 24-hour cutoff in CleanupService.CleanupDebugExports
@@ -31,6 +34,14 @@ type MessageBody = Partial<{
   reason: FolderWatchFallbackReason;
   message: string | null;
   bytes: number;
+  status: KepubifyStatus;
+  corrected: number;
+  deleted: number;
+  bytesSaved: number;
+  missing: number;
+  unreadable: number;
+  moved: number;
+  skipped: number;
 }>;
 
 type Params = Record<string, string | undefined>;
@@ -47,6 +58,7 @@ export class EventMessagePipe implements PipeTransform {
   private readonly translocoService = inject(TranslocoService);
   private readonly bytesPipe = new BytesPipe();
   private readonly utcToLocalTimePipe = new UtcToLocalTimePipe();
+  private readonly kepubifyOffReasonPipe = new KepubifyOffReasonPipe();
 
   transform(source: EventMessageSource, part: EventMessagePart): string {
     const body = (source.body ?? {}) as MessageBody;
@@ -109,6 +121,16 @@ export class EventMessagePipe implements PipeTransform {
         return this.translate(`${PREFIX}.debug-export-ready-label`, {}, fallback);
       case MessageEventCode.DebugExportFailed:
         return this.translate(`${PREFIX}.debug-export-failed-label`, {}, fallback);
+      case MessageEventCode.ImageMigrationSummary:
+        return this.translate(`${PREFIX}.image-migration-summary-label`, {}, fallback);
+      case MessageEventCode.MediaConversionSummary:
+        return this.translate(`${PREFIX}.media-conversion-summary-label`, {}, fallback);
+      case MessageEventCode.BookmarkDirectoryMoved:
+        return this.translate(`${PREFIX}.bookmark-directory-moved-label`, {}, fallback);
+      case MessageEventCode.KepubifyChecked:
+        return body.status?.status === KepubifyCheckStatus.NotSupported
+          ? this.translate(`${PREFIX}.kepubify-checked-failed-label`, {}, fallback)
+          : fallback;
       default:
         return fallback;
     }
@@ -169,6 +191,18 @@ export class EventMessagePipe implements PipeTransform {
         return this.translate(`${PREFIX}.word-count-failed-description`, {filePath: body.filePath}, fallback);
       case MessageEventCode.DebugExportReady:
         return this.debugExportReadyDescription(source, body, fallback);
+      case MessageEventCode.ImageMigrationSummary:
+      case MessageEventCode.MediaConversionSummary:
+        return this.imageCleanupSummaryDescription(body, fallback);
+      case MessageEventCode.BookmarkDirectoryMoved:
+        return this.bookmarkDirectoryMovedDescription(body, fallback);
+      case MessageEventCode.KepubifyChecked: {
+        const status = body.status;
+        if (status?.status !== KepubifyCheckStatus.NotSupported) return fallback;
+
+        const reason = this.kepubifyOffReasonPipe.transform(status.reason);
+        return this.translate(`${PREFIX}.kepubify-checked-failed-description`, {path: status.path, reason}, fallback);
+      }
       default:
         return fallback;
     }
@@ -181,6 +215,37 @@ export class EventMessagePipe implements PipeTransform {
     const keptUntilUtc = DateTime.fromISO(source.updatedUtc, {zone: 'utc'}).plus({hours: DebugExportKeptHours}).toISO();
     const time = this.utcToLocalTimePipe.transform(keptUntilUtc, 'weekdayTime');
     return this.translate(`${PREFIX}.debug-export-ready-description`, {size, time}, fallback);
+  }
+
+  private imageCleanupSummaryDescription(body: MessageBody, fallback: string): string {
+    if (body.corrected === undefined || body.deleted === undefined || body.bytesSaved === undefined) return fallback;
+
+    const params: Params = {
+      corrected: body.corrected.toLocaleString(),
+      deleted: body.deleted.toLocaleString(),
+      size: this.bytesPipe.transform(Math.max(body.bytesSaved, 0)),
+    };
+    const missing = body.missing ?? 0;
+    const unreadable = body.unreadable ?? 0;
+    if (missing + unreadable === 0) {
+      return this.translate(`${PREFIX}.image-cleanup-summary-description`, params, fallback);
+    }
+
+    return this.translate(`${PREFIX}.image-cleanup-summary-skipped-description`,
+      {...params, missing: missing.toLocaleString(), unreadable: unreadable.toLocaleString()}, fallback);
+  }
+
+  private bookmarkDirectoryMovedDescription(body: MessageBody, fallback: string): string {
+    if (body.moved === undefined || body.path === undefined) return fallback;
+
+    const params: Params = {moved: body.moved.toLocaleString(), path: body.path};
+    const skipped = body.skipped ?? 0;
+    if (skipped === 0) {
+      return this.translate(`${PREFIX}.bookmark-directory-moved-description`, params, fallback);
+    }
+
+    return this.translate(`${PREFIX}.bookmark-directory-moved-skipped-description`,
+      {...params, skipped: skipped.toLocaleString()}, fallback);
   }
 
   private unreadableFoldersDescription(body: MessageBody, fallback: string): string {

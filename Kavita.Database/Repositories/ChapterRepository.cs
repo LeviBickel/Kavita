@@ -12,6 +12,7 @@ using Kavita.Database.Extensions;
 using Kavita.Models.Constants;
 using Kavita.Models.DTOs;
 using Kavita.Models.DTOs.KavitaPlus.Scrobble;
+using Kavita.Models.DTOs.Kobo;
 using Kavita.Models.DTOs.Metadata;
 using Kavita.Models.DTOs.Reader;
 using Kavita.Models.DTOs.SeriesDetail;
@@ -19,6 +20,7 @@ using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
 using Kavita.Models.Entities.Metadata;
 using Kavita.Models.Extensions;
+using Kavita.Models.DTOs.Theme;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kavita.Database.Repositories;
@@ -81,7 +83,8 @@ public class ChapterRepository(DataContext context, IMapper mapper) : IChapterRe
                 SeriesFormat = series.Format,
                 SeriesName = series.Name,
                 series.LibraryId,
-                LibraryType = series.Library.Type
+                LibraryType = series.Library.Type,
+                SeriesPublicationStatus = (PublicationStatus?) series.Metadata.PublicationStatus
             })
             .AsNoTracking()
             .AsSplitQuery()
@@ -102,7 +105,8 @@ public class ChapterRepository(DataContext context, IMapper mapper) : IChapterRe
             LibraryId = data.LibraryId,
             Pages = data.Pages,
             ChapterTitle = data.TitleName,
-            LibraryType = data.LibraryType
+            LibraryType = data.LibraryType,
+            SeriesPublicationStatus = data.SeriesPublicationStatus
         };
     }
 
@@ -182,38 +186,8 @@ public class ChapterRepository(DataContext context, IMapper mapper) : IChapterRe
     {
         return await context.Chapter
             .Where(c => c.Id == chapterId)
-            .Select(c => c.CoverImage)
+            .Select(c => c.CoverImageFile!.FileName)
             .SingleOrDefaultAsync(ct);
-    }
-
-    public async Task<IList<string>> GetAllCoverImagesAsync(CancellationToken ct = default)
-    {
-        return (await context.Chapter
-            .Select(c => c.CoverImage)
-            .Where(t => !string.IsNullOrEmpty(t))
-            .ToListAsync(ct))!;
-    }
-
-    public async Task<IList<Chapter>> GetAllChaptersWithCoversInDifferentEncoding(EncodeFormat format,
-        CancellationToken ct = default)
-    {
-        var extension = format.GetExtension();
-        return await context.Chapter
-            .Where(c => !string.IsNullOrEmpty(c.CoverImage)  && !c.CoverImage.EndsWith(extension))
-            .ToListAsync(ct);
-    }
-
-    /// <summary>
-    /// Returns cover images for locked chapters
-    /// </summary>
-    /// <returns></returns>
-    public async Task<IEnumerable<string>> GetCoverImagesForLockedChaptersAsync(CancellationToken ct = default)
-    {
-        return (await context.Chapter
-            .Where(c => c.CoverImageLocked)
-            .Select(c => c.CoverImage)
-            .Where(t => !string.IsNullOrEmpty(t))
-            .ToListAsync(ct))!;
     }
 
     /// <summary>
@@ -271,7 +245,8 @@ public class ChapterRepository(DataContext context, IMapper mapper) : IChapterRe
             .Include(c => c.Volume);
     }
 
-    public async Task<IList<Chapter>> GetAllChaptersForSeries(int seriesId, CancellationToken ct = default)
+    public async Task<IList<Chapter>> GetAllChaptersForSeriesAsync(int seriesId, ChapterIncludes includes = ChapterIncludes.None,
+        CancellationToken ct = default)
     {
         return await context.Chapter
             .Where(c => c.Volume.SeriesId == seriesId)
@@ -279,6 +254,7 @@ public class ChapterRepository(DataContext context, IMapper mapper) : IChapterRe
             .Include(c => c.Volume)
             .Include(c => c.People)
             .ThenInclude(cp => cp.Person)
+            .Includes(includes)
             .ToListAsync(ct);
     }
 
@@ -329,6 +305,15 @@ public class ChapterRepository(DataContext context, IMapper mapper) : IChapterRe
         return await context.Chapter
             .Where(c => c.Id == chapterId)
             .SelectMany(c => c.ExternalRatings)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IList<int>> GetActiveReadingChapterIdsAsync(CancellationToken ct = default)
+    {
+        return await context.AppUserReadingSession
+            .Where(s => s.IsActive)
+            .SelectMany(s => s.ActivityData.Select(a => a.ChapterId))
+            .Distinct()
             .ToListAsync(ct);
     }
 
@@ -409,6 +394,14 @@ public class ChapterRepository(DataContext context, IMapper mapper) : IChapterRe
         return ids == null ? null : (ids.VolumeId, ids.SeriesId, ids.LibraryId);
     }
 
+    public Task<LibraryType?> GetLibraryTypeAsync(int chapterId, CancellationToken ct = default)
+    {
+        return context.Chapter
+            .Where(c => c.Id == chapterId)
+            .Select(c => (LibraryType?) c.Volume.Series.Library.Type)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<int?> GetSeriesIdForChapter(int chapterId, CancellationToken ct = default)
     {
         return await context.Chapter
@@ -423,6 +416,67 @@ public class ChapterRepository(DataContext context, IMapper mapper) : IChapterRe
             .Where(c => c.Volume.SeriesId == seriesId && chapterIds.Contains(c.Id))
             .Select(chp => chp.Id)
             .ToListAsync(ct);
+    }
+
+    public Task<KoboBookDetailsDto?> GetKoboBookDetailsAsync(int chapterId, CancellationToken ct = default)
+    {
+        return context.Chapter
+            .Where(c => c.Id == chapterId)
+            .ProjectTo<KoboBookDetailsDto>(mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<KoboRecommendationResponseDto> GetKoboRecommendationAsync(int userId, int chapterId, CancellationToken ct = default)
+    {
+        const int maxRecommendationCount = 25;
+
+        var seriesId = await GetSeriesIdForChapter(chapterId, ct);
+        var syncPreferences = await context.AppUserPreferences.Where(p => p.AppUserId == userId)
+            .Select(p => p.KoboSyncPreferences)
+            .FirstAsync(ct);
+        // Kobo only displays non-owned recommendations. We require a collection to add them to later
+        if (!syncPreferences.HasManagedCollection)
+        {
+            return KoboRecommendationResponseDto.Empty;
+        }
+
+        var ageRestriction = await context.AppUser.GetUserAgeRestriction(userId, ct);
+
+        var chapterIds = await context.ExternalRecommendation
+            .Where(r => r.ExternalSeriesMetadatas.Any(sm => sm.SeriesId == seriesId))
+            .Where(r => r.SeriesId != null)
+            .Select(r => r.SeriesId)
+            .Distinct()
+            .Select(s => context.Chapter
+                .Where(c => c.Volume.SeriesId == s)
+                .OrderBy(c => c.Volume.MinNumber == ParserConstants.LooseLeafVolumeNumber ||
+                              c.Volume.MinNumber == ParserConstants.SpecialVolumeNumber ? 1 : 0)
+                .ThenBy(c => c.Volume.MinNumber == ParserConstants.SpecialVolumeNumber ? 1 : 0)
+                .ThenBy(c => c.IsSpecial ? 1 : 0)
+                .ThenBy(c => c.Volume.MinNumber)
+                .ThenBy(c => c.SortOrder)
+                .First())
+            .Take(maxRecommendationCount)
+            .RestrictByLibrary(context.Library.GetUserLibraries(userId))
+            .RestrictAgainstAgeRestriction(ageRestriction)
+            .Select(c => c.Id)
+            .ToListAsync(ct);
+
+        var chapters = await context.Chapter
+            .Where(c => chapterIds.Contains(c.Id))
+            .ProjectTo<KoboBookRecommendationDto>(mapper.ConfigurationProvider)
+            .ToListAsync(ct);
+
+        return new KoboRecommendationResponseDto
+        {
+            CurrentPageIndex = 0,
+            ItemCount = chapters.Count,
+            ItemsPerPage = maxRecommendationCount,
+            TotalItemCount = chapters.Count,
+            TotalPageCount = 1,
+            VersionCode = 2,
+            Items = [.. chapters.Select(r => new KoboBookWrapperDto<KoboBookRecommendationDto> { Book = r })]
+        };
     }
 
     public async Task<IList<Chapter>> GetChaptersByExternalIdsAsync(IList<int> kavitaIds, IList<string> comicVineIds,
@@ -517,5 +571,13 @@ public class ChapterRepository(DataContext context, IMapper mapper) : IChapterRe
             .ThenInclude(v => v.Series)
             .ThenInclude(s => s.Metadata)
             .ToListAsync(ct);
+    }
+
+    public async Task<ColorScapeDto?> GetColorScapeAsync(int chapterId, CancellationToken ct = default)
+    {
+        return await context.Chapter
+            .Where(c => c.Id == chapterId && c.CoverImageFile != null)
+            .Select(c => new ColorScapeDto(c.CoverImageFile!.PrimaryColor, c.CoverImageFile.SecondaryColor))
+            .FirstOrDefaultAsync(ct);
     }
 }

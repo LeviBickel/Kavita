@@ -5,9 +5,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kavita.Models.DTOs;
 using Kavita.Models.DTOs.KavitaPlus.Scrobble;
-using Kavita.Models.DTOs.Metadata;
+using Kavita.Models.DTOs.Kobo;
 using Kavita.Models.DTOs.Reader;
 using Kavita.Models.DTOs.SeriesDetail;
+using Kavita.Models.DTOs.Theme;
 using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
 using Kavita.Models.Entities.Metadata;
@@ -24,7 +25,8 @@ public enum ChapterIncludes
     Genres = 1 << 4,
     Tags = 1 << 5,
     ExternalReviews = 1 << 6,
-    ExternalRatings = 1 << 7
+    ExternalRatings = 1 << 7,
+    CoverImageFile = 1 << 8,
 }
 
 public interface IChapterRepository
@@ -43,23 +45,36 @@ public interface IChapterRepository
     Task<long> GetFilesizeAsync(int chapterId, CancellationToken ct = default);
     Task<Dictionary<int, long>> GetFilesizesAsync(int userId, IList<int> chapterIds, CancellationToken ct = default);
     Task<string?> GetChapterCoverImageAsync(int chapterId, CancellationToken ct = default);
-    Task<IList<string>> GetAllCoverImagesAsync(CancellationToken ct = default);
-    Task<IList<Chapter>> GetAllChaptersWithCoversInDifferentEncoding(EncodeFormat format, CancellationToken ct = default);
-    Task<IEnumerable<string>> GetCoverImagesForLockedChaptersAsync(CancellationToken ct = default);
     IQueryable<Chapter> GetChaptersForSeries(int seriesId, CancellationToken ct = default);
-    Task<IList<Chapter>> GetAllChaptersForSeries(int seriesId, CancellationToken ct = default);
+    Task<IList<Chapter>> GetAllChaptersForSeriesAsync(int seriesId, ChapterIncludes includes = ChapterIncludes.None,
+        CancellationToken ct = default);
     Task<int> GetAverageUserRating(int chapterId, int userId, CancellationToken ct = default);
     Task<IList<UserReviewDto>> GetExternalChapterReviewDtos(int chapterId, CancellationToken ct = default);
     Task<IList<ExternalReview>> GetExternalChapterReview(int chapterId, CancellationToken ct = default);
     Task<IList<RatingDto>> GetExternalChapterRatingDtos(int chapterId, CancellationToken ct = default);
     Task<IList<ExternalRating>> GetExternalChapterRatings(int chapterId, CancellationToken ct = default);
     Task<ChapterDto?> GetCurrentlyReadingChapterAsync(int seriesId, int userId, CancellationToken ct = default);
+    /// <summary>
+    /// Chapter ids referenced by currently active reading sessions. These chapters are
+    /// being read right now, so their page cache must not be wiped by maintenance jobs.
+    /// </summary>
+    Task<IList<int>> GetActiveReadingChapterIdsAsync(CancellationToken ct = default);
     Task<ChapterDto?> GetFirstChapterForSeriesAsync(int seriesId, int userId, CancellationToken ct = default);
     Task<ChapterDto?> GetFirstChapterForVolumeAsync(int volumeId, int userId, CancellationToken ct = default);
     Task<IList<ChapterDto>> GetChapterDtosAsync(IEnumerable<int> chapterIds, int userId, CancellationToken ct = default);
     Task<int?> GetSeriesIdForChapter(int chapterId, CancellationToken ct = default);
     Task<(int VolumeId, int SeriesId, int LibraryId)?> GetParentIdsForChapter(int chapterId, CancellationToken ct = default);
+    Task<LibraryType?> GetLibraryTypeAsync(int chapterId, CancellationToken ct = default);
     Task<IEnumerable<int>> GetChapterIdsInSeries(int seriesId, IEnumerable<int> chapterIds, CancellationToken ct = default);
+    Task<KoboBookDetailsDto?> GetKoboBookDetailsAsync(int chapterId, CancellationToken ct = default);
+    /// <summary>
+    /// Returns recommendations for a chapter. These are the first chapters for the recommended series
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <param name="chapterId"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    Task<KoboRecommendationResponseDto> GetKoboRecommendationAsync(int userId, int chapterId, CancellationToken ct = default);
 
     /// <summary>
     /// Fetches chapters matching by ComicVineId or MetronId, with Volume and Series included.
@@ -73,4 +88,5 @@ public interface IChapterRepository
     Task<IList<Chapter>> GetChaptersByAlternateSeriesAsync(IList<string> normalizedNames, IList<int> libraryIds, CancellationToken ct = default);
 
     Task<List<Chapter>> GetChaptersForReadStatusTransitionRuleAsync(int userId, ReadStatusTransitionRule rule, CancellationToken ct = default);
+    Task<ColorScapeDto?> GetColorScapeAsync(int chapterId, CancellationToken ct = default);
 }

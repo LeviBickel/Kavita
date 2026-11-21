@@ -2,12 +2,12 @@
   "openapi": "3.0.4",
   "info": {
     "title": "Kavita",
-    "description": "Kavita provides a set of APIs authenticated via an Auth Key passed in the `x-api-key` header. Generate an Auth Key under User Settings → Manage Auth Keys, paste it into the Authorize panel, and all Try It requests will include it. Assume all fields of a payload are required unless marked optional. Built against v0.9.1.19",
+    "description": "Kavita provides a set of APIs authenticated via an Auth Key passed in the `x-api-key` header. Generate an Auth Key under User Settings → Manage Auth Keys, paste it into the Authorize panel, and all Try It requests will include it. Assume all fields of a payload are required unless marked optional. Built against v0.9.1.24",
     "license": {
       "name": "GPL-3.0",
       "url": "https://github.com/Kareadita/Kavita/blob/develop/LICENSE"
     },
-    "version": "0.9.1.19"
+    "version": "0.9.1.24"
   },
   "servers": [
     {
@@ -2738,6 +2738,56 @@
         }
       }
     },
+    "/api/Chapter/restore-info": {
+      "get": {
+        "tags": [
+          "Chapter"
+        ],
+        "summary": "Returns information to restore chapters in the Kobo Sync UI",
+        "parameters": [
+          {
+            "name": "syncPointId",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChapterRestoreInfoDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChapterRestoreInfoDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChapterRestoreInfoDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/Chapter/delete-multiple": {
       "post": {
         "tags": [
@@ -3464,9 +3514,8 @@
         "summary": "Returns the color scape for a series",
         "parameters": [
           {
-            "name": "id",
+            "name": "seriesId",
             "in": "query",
-            "description": "",
             "schema": {
               "type": "integer",
               "format": "int32"
@@ -3505,9 +3554,8 @@
         "summary": "Returns the color scape for a volume",
         "parameters": [
           {
-            "name": "id",
+            "name": "volumeId",
             "in": "query",
-            "description": "",
             "schema": {
               "type": "integer",
               "format": "int32"
@@ -3546,9 +3594,128 @@
         "summary": "Returns the color scape for a chapter",
         "parameters": [
           {
-            "name": "id",
+            "name": "chapterId",
             "in": "query",
-            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColorScapeDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColorScapeDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColorScapeDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ColorScape/person": {
+      "get": {
+        "tags": [
+          "ColorScape"
+        ],
+        "summary": "Returns the color scape for a person",
+        "parameters": [
+          {
+            "name": "personId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColorScapeDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColorScapeDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColorScapeDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ColorScape/reading-list": {
+      "get": {
+        "tags": [
+          "ColorScape"
+        ],
+        "summary": "Returns the color scape for a reading list",
+        "parameters": [
+          {
+            "name": "readingListId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColorScapeDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColorScapeDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColorScapeDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ColorScape/collection": {
+      "get": {
+        "tags": [
+          "ColorScape"
+        ],
+        "summary": "Returns the color scape for a collection",
+        "parameters": [
+          {
+            "name": "collectionId",
+            "in": "query",
             "schema": {
               "type": "integer",
               "format": "int32"
@@ -5110,7 +5277,7 @@
         "tags": [
           "Font"
         ],
-        "summary": "Removes a font family from the system. The family is validated for in-use server side and only removed when\nit is not selected by a user, or when an admin forces the deletion.",
+        "summary": "Removes a font family from the system. The family is validated for in-use server side and only removed when\nit is not selected by a user, or when force is true.",
         "parameters": [
           {
             "name": "fontId",
@@ -5124,7 +5291,7 @@
           {
             "name": "force",
             "in": "query",
-            "description": "If the family is in use and an admin wants it deleted, they must confirm to force delete it. This is prompted in the UI.",
+            "description": "True to force deletion if the font is in use. This is prompted in the UI.",
             "schema": {
               "type": "boolean",
               "default": false
@@ -6030,6 +6197,771 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/initialization": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "First request when starting the sync flow. Returns all config for the Kobo to make request. We inject some\nredirect to the Kavita instance\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/library/sync": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Returns changes since last sync\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/library/{bookId}/metadata": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Metadata for the given book. Called when opening information, and sometimes during sync but not always\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/library/{bookId}/state": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Gets progress. Called on book open to sync\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Updates progress. Call on book close and when switching chapters via ToC while connected to the internet.\nOtherwise, during sync\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/library/{bookId}/file/epub": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Gets the (k)epub file\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "convert",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/books/{thumbnailId}/thumbnail/{width}/{height}/{isGreyScale}/image.jpg": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Gets the cover. Called during sync, and on extra info when missing\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "thumbnailId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "width",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "height",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isGreyScale",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/books/{thumbnailId}/thumbnail/{width}/{height}/{quality}/{isGreyScale}/image.jpg": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Gets the cover. Called during sync, and on extra info when missing\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "thumbnailId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "width",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "height",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "quality",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isGreyScale",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/library/{bookId}": {
+      "delete": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Called when a book is deleted from the Kobo. Will no longer be synced to the Kobo. Can be restored in the UI\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Called when clicking on a recommendation. Adds the series to the Kobo sync collection if enabled\nOtherwise No-Op\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/products/{bookId}/reviews": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Returns reviews for the book. Implemented to reduce upstream bad requests.\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Updates review for a book. Doesn't work 100%. Reviews are a bit weird on Kobo, needs more work\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/products/{bookId}/recommendations": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Returns the first books in a series that's recommended to the series the book belongs to\nRequires Kavita+ and Collection Sync\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/products/books/{bookId}": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Book metadata when viewing recommendations\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/products/{bookId}/nextread": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Implemented to reduce upstream bad requests. Called during sync, and sometimes otherwise\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/products/books/series/{bookId}": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Implemented to reduce upstream bad requests. Called during sync, and sometimes otherwise\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/products/{bookIds}/prices": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Implemented to reduce upstream bad requests. Always returns FREE\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "bookIds",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/user/reviews": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Returns a list of reviews\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "ProductIds",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/user/wishlist": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Dummy implementation to reduce failure when forward is off. Returns an empty pagination response\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Kobo/{apiKey}/v1/analytics/gettests": {
+      "get": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Dummy implementation\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Kobo"
+        ],
+        "summary": "Dummy implementation\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "apiKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v3/content/{bookId}/annotations": {
+      "get": {
+        "tags": [
+          "KoboAnnotation"
+        ],
+        "summary": "Returns annotations for the given book\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "KoboAnnotation"
+        ],
+        "summary": "Update an annotation\n            \nNot intended for use beyond Kobo devices",
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v3/content/checkforchanges": {
+      "post": {
+        "tags": [
+          "KoboAnnotation"
+        ],
+        "summary": "Check if the given books have had any changes since their last ETag\n            \nNot intended for use beyond Kobo devices",
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -16872,7 +17804,7 @@
         "tags": [
           "Server"
         ],
-        "summary": "Triggers the scheduling of the convert media job. This will convert all media to the target encoding (except for PNG). Only one job will run at a time.",
+        "summary": "Triggers the scheduling of the convert media job. This will convert all media to the target encoding. Only one job will run at a time.",
         "responses": {
           "200": {
             "description": "OK"
@@ -17790,6 +18722,113 @@
               "text/json": {
                 "schema": {
                   "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Settings/kobo-enabled": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "boolean"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Settings/kepubify-supported": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/KepubifyStatusDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KepubifyStatusDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KepubifyStatusDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Settings/kepubify": {
+      "post": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Saves EnableKepubify and queues the check. Returns Checking, the result comes as a kepubify-checked event",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateKepubifyDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateKepubifyDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateKepubifyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/KepubifyStatusDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KepubifyStatusDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KepubifyStatusDto"
                 }
               }
             }
@@ -21838,6 +22877,102 @@
         }
       }
     },
+    "/api/Users/kobo-sync-points": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Returns all sync points for the currently active user",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KoboSyncPointDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KoboSyncPointDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KoboSyncPointDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Users/kobo-sync-point": {
+      "delete": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Delete a kobo sync point. By id",
+        "parameters": [
+          {
+            "name": "syncPointId",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Users/kobo-sync-point/undo-remove-books": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Undo removal of books for the given sync point",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UndoKoboRemoveBookDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UndoKoboRemoveBookDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UndoKoboRemoveBookDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Users/names": {
       "get": {
         "tags": [
@@ -22760,21 +23895,6 @@
           "ageRating": {
             "$ref": "#/components/schemas/AgeRating"
           },
-          "coverImage": {
-            "type": "string",
-            "nullable": true
-          },
-          "primaryColor": {
-            "type": "string",
-            "nullable": true
-          },
-          "secondaryColor": {
-            "type": "string",
-            "nullable": true
-          },
-          "coverImageLocked": {
-            "type": "boolean"
-          },
           "itemCount": {
             "type": "integer",
             "format": "int32"
@@ -22810,6 +23930,68 @@
           "smartFilterName": {
             "type": "string",
             "nullable": true
+          },
+          "hasCoverImage": {
+            "type": "boolean"
+          },
+          "coverImageLocked": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AppUserKoboSyncPreferences": {
+        "type": "object",
+        "properties": {
+          "syncItemLimit": {
+            "maximum": 100,
+            "minimum": 25,
+            "type": "integer",
+            "format": "int32"
+          },
+          "forwardToKoboStore": {
+            "type": "boolean"
+          },
+          "librarySyncEnabled": {
+            "type": "boolean"
+          },
+          "syncLibraries": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "readingListSyncEnabled": {
+            "type": "boolean"
+          },
+          "syncReadingLists": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "collectionSyncEnabled": {
+            "type": "boolean"
+          },
+          "syncCollections": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "managedCollection": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasManagedCollection": {
+            "type": "boolean",
+            "readOnly": true
           }
         },
         "additionalProperties": false
@@ -22902,6 +24084,9 @@
           "chapterTitle": {
             "type": "string",
             "nullable": true
+          },
+          "seriesPublicationStatus": {
+            "$ref": "#/components/schemas/PublicationStatus"
           },
           "author": {
             "type": "string",
@@ -23068,22 +24253,25 @@
           0,
           1,
           2,
-          3
+          3,
+          4
         ],
         "type": "integer",
-        "description": "Members:\n- `0` — Unknown\n- `1` — JWT\n- `2` — AuthKey\n- `3` — OIDC",
+        "description": "Members:\n- `0` — Unknown\n- `1` — JWT\n- `2` — AuthKey\n- `3` — OIDC\n- `4` — KoboDevice",
         "format": "int32",
         "x-enum-varnames": [
           "Unknown",
           "JWT",
           "AuthKey",
-          "OIDC"
+          "OIDC",
+          "KoboDevice"
         ],
         "x-enum-descriptions": [
           "Unknown",
           "JWT",
           "AuthKey",
-          "OIDC"
+          "OIDC",
+          "KoboDevice"
         ]
       },
       "AuthorChapterDto": {
@@ -23213,6 +24401,9 @@
           "chapterTitle": {
             "type": "string",
             "nullable": true
+          },
+          "seriesPublicationStatus": {
+            "$ref": "#/components/schemas/PublicationStatus"
           }
         },
         "additionalProperties": false
@@ -23419,20 +24610,11 @@
             "type": "string",
             "nullable": true
           },
-          "coverImageLocked": {
+          "hasCoverImage": {
             "type": "boolean"
           },
-          "primaryColor": {
-            "type": "string",
-            "nullable": true
-          },
-          "secondaryColor": {
-            "type": "string",
-            "nullable": true
-          },
-          "coverImage": {
-            "type": "string",
-            "nullable": true
+          "coverImageLocked": {
+            "type": "boolean"
           },
           "aliases": {
             "type": "array",
@@ -24429,17 +25611,8 @@
           "sortOrderLocked": {
             "type": "boolean"
           },
-          "coverImage": {
-            "type": "string",
-            "nullable": true
-          },
-          "primaryColor": {
-            "type": "string",
-            "nullable": true
-          },
-          "secondaryColor": {
-            "type": "string",
-            "nullable": true
+          "hasCoverImage": {
+            "type": "boolean"
           },
           "format": {
             "$ref": "#/components/schemas/MangaFormat"
@@ -24560,6 +25733,32 @@
         },
         "additionalProperties": false
       },
+      "ChapterRestoreInfoDto": {
+        "type": "object",
+        "properties": {
+          "chapterId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "seriesId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "seriesTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "removedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "CharacterRole": {
         "enum": [
           0,
@@ -24667,10 +25866,11 @@
           3,
           4,
           5,
-          6
+          6,
+          7
         ],
         "type": "integer",
-        "description": "Members:\n- `0` — Unknown\n- `1` — Web Browser (WebBrowser)\n- `2` — Web App (WebApp)\n- `3` — KOReader (KoReader)\n- `4` — Panels\n- `5` — Librera\n- `6` — OPDS Client (OpdsClient)",
+        "description": "Members:\n- `0` — Unknown\n- `1` — Web Browser (WebBrowser)\n- `2` — Web App (WebApp)\n- `3` — KOReader (KoReader)\n- `4` — Panels\n- `5` — Librera\n- `6` — OPDS Client (OpdsClient)\n- `7` — Kobo",
         "format": "int32",
         "x-enum-varnames": [
           "Unknown",
@@ -24679,7 +25879,8 @@
           "KoReader",
           "Panels",
           "Librera",
-          "OpdsClient"
+          "OpdsClient",
+          "Kobo"
         ],
         "x-enum-descriptions": [
           "Unknown",
@@ -24688,7 +25889,8 @@
           "KOReader",
           "Panels",
           "Librera",
-          "OPDS Client"
+          "OPDS Client",
+          "Kobo"
         ]
       },
       "ClientDeviceTypeStatCount": {
@@ -25492,20 +26694,23 @@
         "enum": [
           0,
           1,
-          2
+          2,
+          3
         ],
         "type": "integer",
-        "description": "Members:\n- `0` — PNG\n- `1` — WebP (WEBP)\n- `2` — AVIF",
+        "description": "Members:\n- `0` — PNG\n- `1` — WebP (WEBP)\n- `2` — AVIF\n- `3` — JPEG",
         "format": "int32",
         "x-enum-varnames": [
           "PNG",
           "WEBP",
-          "AVIF"
+          "AVIF",
+          "JPEG"
         ],
         "x-enum-descriptions": [
           "PNG",
           "WebP",
-          "AVIF"
+          "AVIF",
+          "JPEG"
         ]
       },
       "EpubFontDto": {
@@ -27617,6 +28822,85 @@
         },
         "additionalProperties": false
       },
+      "KepubifyCheckStatus": {
+        "enum": [
+          0,
+          1,
+          2
+        ],
+        "type": "integer",
+        "description": "Members:\n- `0` — Checking\n- `1` — Supported\n- `2` — NotSupported",
+        "format": "int32",
+        "x-enum-varnames": [
+          "Checking",
+          "Supported",
+          "NotSupported"
+        ],
+        "x-enum-descriptions": [
+          "Checking",
+          "Supported",
+          "NotSupported"
+        ]
+      },
+      "KepubifyOffReason": {
+        "enum": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "type": "integer",
+        "description": "Members:\n- `0` — Disabled\n- `1` — FileMissing\n- `2` — HashMismatch\n- `3` — VersionCheckFailed",
+        "format": "int32",
+        "x-enum-varnames": [
+          "Disabled",
+          "FileMissing",
+          "HashMismatch",
+          "VersionCheckFailed"
+        ],
+        "x-enum-descriptions": [
+          "Disabled",
+          "FileMissing",
+          "HashMismatch",
+          "VersionCheckFailed"
+        ]
+      },
+      "KepubifySource": {
+        "enum": [
+          0,
+          1
+        ],
+        "type": "integer",
+        "description": "Members:\n- `0` — Shipped\n- `1` — Custom",
+        "format": "int32",
+        "x-enum-varnames": [
+          "Shipped",
+          "Custom"
+        ],
+        "x-enum-descriptions": [
+          "Shipped",
+          "Custom"
+        ]
+      },
+      "KepubifyStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/KepubifyCheckStatus"
+          },
+          "source": {
+            "$ref": "#/components/schemas/KepubifySource"
+          },
+          "path": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "$ref": "#/components/schemas/KepubifyOffReason"
+          }
+        },
+        "additionalProperties": false
+      },
       "KeyBind": {
         "required": [
           "key"
@@ -27645,6 +28929,28 @@
               "type": "string"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KoboSyncPointDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "deviceId": {
+            "type": "string",
+            "nullable": true
+          },
+          "removedChapterCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastSync": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false
@@ -27749,10 +29055,6 @@
             "type": "string",
             "format": "date-time"
           },
-          "coverImage": {
-            "type": "string",
-            "nullable": true
-          },
           "folderWatchMode": {
             "$ref": "#/components/schemas/FolderWatchMode"
           },
@@ -27816,6 +29118,9 @@
           },
           "metadataProvider": {
             "$ref": "#/components/schemas/MetadataProvider"
+          },
+          "hasCoverImage": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -28483,20 +29788,23 @@
         "enum": [
           0,
           1,
-          2
+          2,
+          3
         ],
         "type": "integer",
-        "description": "Members:\n- `0` — BookService\n- `1` — ArchiveService\n- `2` — Scanner",
+        "description": "Members:\n- `0` — BookService\n- `1` — ArchiveService\n- `2` — Scanner\n- `3` — Kepubify",
         "format": "int32",
         "x-enum-varnames": [
           "BookService",
           "ArchiveService",
-          "Scanner"
+          "Scanner",
+          "Kepubify"
         ],
         "x-enum-descriptions": [
           "BookService",
           "ArchiveService",
-          "Scanner"
+          "Scanner",
+          "Kepubify"
         ]
       },
       "MediaErrorReason": {
@@ -28512,10 +29820,11 @@
           9,
           10,
           11,
-          12
+          12,
+          13
         ],
         "type": "integer",
-        "description": "Members:\n- `0` — Unknown\n- `1` — Parse Failed (ParseFailed)\n- `2` — No Series Name (NoSeriesName)\n- `3` — Unreadable Archive (UnreadableArchive)\n- `5` — Corrupt Epub (CorruptEpub)\n- `6` — No Pages (NoPages)\n- `7` — Cover Failed (CoverFailed)\n- `8` — Word Count Failed (WordCountFailed)\n- `9` — I/O Error (IoError)\n- `10` — Metadata Unreadable (MetadataUnreadable)\n- `11` — Epub Not Strict (EpubNotStrict)\n- `12` — Ambiguous Series (AmbiguousSeries)",
+        "description": "Members:\n- `0` — Unknown\n- `1` — Parse Failed (ParseFailed)\n- `2` — No Series Name (NoSeriesName)\n- `3` — Unreadable Archive (UnreadableArchive)\n- `5` — Corrupt Epub (CorruptEpub)\n- `6` — No Pages (NoPages)\n- `7` — Cover Failed (CoverFailed)\n- `8` — Word Count Failed (WordCountFailed)\n- `9` — I/O Error (IoError)\n- `10` — Metadata Unreadable (MetadataUnreadable)\n- `11` — Epub Not Strict (EpubNotStrict)\n- `12` — Ambiguous Series (AmbiguousSeries)\n- `13` — Kepub Conversion Failed (KepubConversionFailed)",
         "format": "int32",
         "x-enum-varnames": [
           "Unknown",
@@ -28529,7 +29838,8 @@
           "IoError",
           "MetadataUnreadable",
           "EpubNotStrict",
-          "AmbiguousSeries"
+          "AmbiguousSeries",
+          "KepubConversionFailed"
         ],
         "x-enum-descriptions": [
           "Unknown",
@@ -28543,7 +29853,8 @@
           "I/O Error",
           "Metadata Unreadable",
           "Epub Not Strict",
-          "Ambiguous Series"
+          "Ambiguous Series",
+          "Kepub Conversion Failed"
         ]
       },
       "MemberDto": {
@@ -28621,10 +29932,6 @@
           "createdUtc": {
             "type": "string",
             "format": "date-time"
-          },
-          "coverImage": {
-            "type": "string",
-            "nullable": true
           }
         },
         "additionalProperties": false
@@ -29458,20 +30765,11 @@
             "type": "string",
             "nullable": true
           },
-          "coverImageLocked": {
+          "hasCoverImage": {
             "type": "boolean"
           },
-          "primaryColor": {
-            "type": "string",
-            "nullable": true
-          },
-          "secondaryColor": {
-            "type": "string",
-            "nullable": true
-          },
-          "coverImage": {
-            "type": "string",
-            "nullable": true
+          "coverImageLocked": {
+            "type": "boolean"
           },
           "aliases": {
             "type": "array",
@@ -29843,6 +31141,10 @@
             "type": "string",
             "nullable": true
           },
+          "koboSpan": {
+            "type": "string",
+            "nullable": true
+          },
           "lastModifiedUtc": {
             "type": "string",
             "format": "date-time"
@@ -29966,11 +31268,6 @@
           "averageScore": {
             "type": "integer",
             "format": "int32"
-          },
-          "favoriteCount": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
           },
           "provider": {
             "$ref": "#/components/schemas/ScrobbleProvider"
@@ -30306,18 +31603,6 @@
           "coverImageLocked": {
             "type": "boolean"
           },
-          "coverImage": {
-            "type": "string",
-            "nullable": true
-          },
-          "primaryColor": {
-            "type": "string",
-            "nullable": true
-          },
-          "secondaryColor": {
-            "type": "string",
-            "nullable": true
-          },
           "itemCount": {
             "type": "integer",
             "format": "int32"
@@ -30382,6 +31667,9 @@
             "nullable": true
           },
           "canSync": {
+            "type": "boolean"
+          },
+          "hasCoverImage": {
             "type": "boolean"
           }
         },
@@ -32299,6 +33587,9 @@
             "type": "string",
             "format": "date-time"
           },
+          "hasCoverImage": {
+            "type": "boolean"
+          },
           "dontMatch": {
             "type": "boolean"
           },
@@ -32310,18 +33601,6 @@
           },
           "metadataProviderOverride": {
             "$ref": "#/components/schemas/MetadataProvider"
-          },
-          "coverImage": {
-            "type": "string",
-            "nullable": true
-          },
-          "primaryColor": {
-            "type": "string",
-            "nullable": true
-          },
-          "secondaryColor": {
-            "type": "string",
-            "nullable": true
           },
           "aniListId": {
             "type": "integer",
@@ -32950,6 +34229,10 @@
             "type": "string",
             "nullable": true
           },
+          "taskCompositeCovers": {
+            "type": "string",
+            "nullable": true
+          },
           "loggingLevel": {
             "type": "string",
             "nullable": true
@@ -33025,6 +34308,12 @@
           },
           "oidcConfig": {
             "$ref": "#/components/schemas/OidcConfigDto"
+          },
+          "enableKobo": {
+            "type": "boolean"
+          },
+          "enableKepubify": {
+            "type": "boolean"
           },
           "firstInstallDate": {
             "type": "string",
@@ -33673,17 +34962,8 @@
           "sortOrderLocked": {
             "type": "boolean"
           },
-          "coverImage": {
-            "type": "string",
-            "nullable": true
-          },
-          "primaryColor": {
-            "type": "string",
-            "nullable": true
-          },
-          "secondaryColor": {
-            "type": "string",
-            "nullable": true
+          "hasCoverImage": {
+            "type": "boolean"
           },
           "format": {
             "$ref": "#/components/schemas/MangaFormat"
@@ -34101,17 +35381,8 @@
           "sortOrderLocked": {
             "type": "boolean"
           },
-          "coverImage": {
-            "type": "string",
-            "nullable": true
-          },
-          "primaryColor": {
-            "type": "string",
-            "nullable": true
-          },
-          "secondaryColor": {
-            "type": "string",
-            "nullable": true
+          "hasCoverImage": {
+            "type": "boolean"
           },
           "format": {
             "$ref": "#/components/schemas/MangaFormat"
@@ -34273,6 +35544,24 @@
           "mangaTime": {
             "type": "number",
             "format": "float"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UndoKoboRemoveBookDto": {
+        "type": "object",
+        "properties": {
+          "syncPointId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "undoBookIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -34622,6 +35911,15 @@
           "password": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateKepubifyDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -35656,17 +36954,8 @@
             },
             "nullable": true
           },
-          "coverImage": {
-            "type": "string",
-            "nullable": true
-          },
-          "primaryColor": {
-            "type": "string",
-            "nullable": true
-          },
-          "secondaryColor": {
-            "type": "string",
-            "nullable": true
+          "hasCoverImage": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -35693,6 +36982,7 @@
           "colorScapeEnabled",
           "customKeyBinds",
           "dataSaver",
+          "koboSyncPreferences",
           "locale",
           "noTransitions",
           "onDeckProgressDays",
@@ -35888,6 +37178,9 @@
           },
           "opdsPreferences": {
             "$ref": "#/components/schemas/AppUserOpdsPreferences"
+          },
+          "koboSyncPreferences": {
+            "$ref": "#/components/schemas/AppUserKoboSyncPreferences"
           }
         },
         "additionalProperties": false
@@ -36313,20 +37606,11 @@
             "type": "integer",
             "format": "int64"
           },
-          "coverImage": {
-            "type": "string",
-            "nullable": true
-          },
           "coverImageLocked": {
             "type": "boolean"
           },
-          "primaryColor": {
-            "type": "string",
-            "nullable": true
-          },
-          "secondaryColor": {
-            "type": "string",
-            "nullable": true
+          "hasCoverImage": {
+            "type": "boolean"
           },
           "aniListId": {
             "type": "integer",
@@ -36479,6 +37763,13 @@
     },
     {
       "name": "KavitaPlusAudit"
+    },
+    {
+      "name": "Kobo",
+      "description": "Kobo sync implementation. Not intended for use beyond Kobo devices"
+    },
+    {
+      "name": "KoboAnnotation"
     },
     {
       "name": "Koreader",

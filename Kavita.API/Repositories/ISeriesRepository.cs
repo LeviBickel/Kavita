@@ -14,6 +14,7 @@ using Kavita.Models.DTOs.KavitaPlus.Scrobble;
 using Kavita.Models.DTOs.Scrobbling;
 using Kavita.Models.DTOs.Search;
 using Kavita.Models.DTOs.SeriesDetail;
+using Kavita.Models.DTOs.Theme;
 using Kavita.Models.Entities;
 using Kavita.Models.Entities.Enums;
 using Kavita.Models.Entities.Metadata;
@@ -39,6 +40,7 @@ public enum SeriesIncludes
     ExternalRatings = 1 << 7,
     ExternalRecommendations = 1 << 8,
     ExternalMetadata = 1 << 9,
+    CoverImageFile = 1 << 10,
 
     ExternalData = ExternalMetadata | ExternalReviews | ExternalRatings | ExternalRecommendations,
 }
@@ -90,8 +92,6 @@ public interface ISeriesRepository
     Task<PagedList<SeriesDto>> GetSeriesDtoForCollectionAsync(int collectionId, int userId, UserParams userParams, CancellationToken ct = default);
     Task<IList<MangaFile>> GetFilesForSeriesAsync(int seriesId, CancellationToken ct = default);
     Task<IEnumerable<SeriesDto>> GetSeriesDtoForIdsAsync(IEnumerable<int> seriesIds, int userId, CancellationToken ct = default);
-    Task<IList<string>> GetAllCoverImagesAsync(CancellationToken ct = default);
-    Task<IEnumerable<string>> GetLockedCoverImagesAsync(CancellationToken ct = default);
     Task<PagedList<Series>> GetFullSeriesForLibraryIdAsync(int libraryId, UserParams userParams, CancellationToken ct = default);
     Task<Series?> GetFullSeriesForSeriesIdAsync(int seriesId, CancellationToken ct = default);
     Task<Chunk> GetChunkInfoAsync(int libraryId = 0, CancellationToken ct = default);
@@ -126,7 +126,6 @@ public interface ISeriesRepository
     Task<IList<SeriesNameMatch>> GetSeriesNameMatchesAsync(int libraryId, CancellationToken ct = default);
     Task<AgeRating> GetMaxAgeRatingFromSeriesAsyncAsync(IEnumerable<int> seriesIds, CancellationToken ct = default);
     Task<IList<SeriesMetadataDto>> GetSeriesMetadataForIdsAsync(IEnumerable<int> seriesIds, CancellationToken ct = default);
-    Task<IList<Series>> GetAllWithCoversInDifferentEncodingAsync(EncodeFormat encodeFormat, bool customOnly = true, CancellationToken ct = default);
     Task<SeriesDto?> GetSeriesDtoByNamesAndMetadataIdsAsync(IEnumerable<string> names, LibraryType libraryType, MetadataRequest metadataRequest, CancellationToken ct = default);
     Task<int> GetAverageUserRatingAsync(int seriesId, int userId, CancellationToken ct = default);
     Task RemoveFromOnDeckAsync(int seriesId, int userId, CancellationToken ct = default);
@@ -144,7 +143,6 @@ public interface ISeriesRepository
     /// <param name="seriesId"></param>
     /// <param name="ct"></param>
     Task<MetadataProvider?> GetEffectiveMetadataProviderAsync(int seriesId, CancellationToken ct = default);
-    Task<PublicationStatus?> GetPublicationStatusAsync(int seriesId, CancellationToken ct = default);
     Task<Series?> MatchSeriesAsync(ExternalSeriesDetailDto externalSeries, CancellationToken ct = default);
     Task<List<Series>> GetSeriesForReadStatusTransitionRuleAsync(int userId, ReadStatusTransitionRule rule, bool requireUnReadChapters, CancellationToken ct);
     /// <summary>
@@ -154,4 +152,6 @@ public interface ISeriesRepository
     /// <param name="ct"></param>
     /// <returns></returns>
     Task<int?> GetChapterCountIfAllSpecials(int seriesId, CancellationToken ct = default);
+    Task<int> GetNonSpecialChapterCountAsync(int seriesId, CancellationToken ct = default);
+    Task<ColorScapeDto?> GetColorScapeAsync(int seriesId, CancellationToken ct = default);
 }

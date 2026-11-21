@@ -68,6 +68,7 @@ public class AudioController(
             IsSpecial = dto.IsSpecial,
             Pages = dto.Pages,
             ChapterTitle = chapter.TitleName ?? string.Empty,
+            SeriesPublicationStatus = dto.SeriesPublicationStatus,
             Author = author,
             Narrator = narrator
         };

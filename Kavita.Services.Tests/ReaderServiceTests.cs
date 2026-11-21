@@ -17,7 +17,9 @@ using Kavita.Models.Entities.Enums;
 using Kavita.Models.Entities.User;
 using Kavita.Services.Builders;
 using Kavita.Services.Reading;
+using Kavita.Services.Images;
 using Kavita.Services.Scanner;
+using Kavita.Services.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -32,7 +34,7 @@ public class ReaderServiceTests(ITestOutputHelper testOutputHelper) : AbstractDb
     private ReaderService Setup(IUnitOfWork unitOfWork)
     {
         return new ReaderService(unitOfWork, Substitute.For<ILogger<ReaderService>>(),
-         Substitute.For<IEventHub>(), Substitute.For<IImageService>(),
+         Substitute.For<IEventHub>(), Substitute.For<IImagePipeline>(),
              new DirectoryService(Substitute.For<ILogger<DirectoryService>>(), new MockFileSystem()),
          Substitute.For<IScrobblingService>(), Substitute.For<IReadingSessionService>(),
          Substitute.For<IClientInfoAccessor>(), Substitute.For<IEntityNamingService>(),
@@ -235,7 +237,7 @@ public class ReaderServiceTests(ITestOutputHelper testOutputHelper) : AbstractDb
 
 
 
-        var volumes = await unitOfWork.VolumeRepository.GetVolumes(1);
+        var volumes = await unitOfWork.VolumeRepository.GetVolumesForSeriesAsync(1);
         await readerService.MarkChaptersAsRead(await unitOfWork.UserRepository.GetUserByIdAsync(1), 1, volumes.First().Chapters);
         await context.SaveChangesAsync();
 
@@ -281,7 +283,7 @@ public class ReaderServiceTests(ITestOutputHelper testOutputHelper) : AbstractDb
 
 
 
-        var volumes = (await unitOfWork.VolumeRepository.GetVolumes(1)).ToList();
+        var volumes = (await unitOfWork.VolumeRepository.GetVolumesForSeriesAsync(1)).ToList();
         await readerService.MarkChaptersAsRead(await unitOfWork.UserRepository.GetUserByIdAsync(1), 1, volumes[0].Chapters);
 
         await context.SaveChangesAsync();
@@ -2794,7 +2796,7 @@ public class ReaderServiceTests(ITestOutputHelper testOutputHelper) : AbstractDb
 
 
 
-        var volumes = (await unitOfWork.VolumeRepository.GetVolumes(1)).ToList();
+        var volumes = (await unitOfWork.VolumeRepository.GetVolumesForSeriesAsync(1)).ToList();
         await readerService.MarkChaptersAsRead(await unitOfWork.UserRepository.GetUserByIdAsync(1), 1, volumes[0].Chapters);
 
         await context.SaveChangesAsync();
@@ -2884,6 +2886,114 @@ public class ReaderServiceTests(ITestOutputHelper testOutputHelper) : AbstractDb
         _testOutputHelper.WriteLine("Actual: {0}", string.Join(", ", pairs.Select(kvp => $"{kvp.Key}->{kvp.Value}")));
 
         Assert.Equal(expectedDict, pairs);
+    }
+
+    #endregion
+
+    #region Kobo
+
+    [Fact]
+    public async Task SaveReadingProgress_LastPage_ResetsKoboSpan()
+    {
+        var (unitOfWork, context, _) = await CreateDatabase();
+        var readerService = Setup(unitOfWork);
+
+        var library = new LibraryBuilder("Test Lib", LibraryType.Manga).Build();
+        context.Library.Add(library);
+        await context.SaveChangesAsync();
+
+        var series = new SeriesBuilder("Test")
+            .WithLibraryId(library.Id)
+            .WithVolume(new VolumeBuilder(Parser.LooseLeafVolume)
+                .WithChapter(new ChapterBuilder(Parser.DefaultChapter)
+                    .WithPages(3)
+                    .Build())
+                .Build())
+            .Build();
+
+
+        context.Series.Add(series);
+
+        context.AppUser.Add(new AppUser()
+        {
+            UserName = "majora2007",
+            Libraries = [library]
+        });
+
+        await context.SaveChangesAsync();
+
+        var success = await readerService.SaveReadingProgress(new ProgressDto
+        {
+            VolumeId = 1,
+            ChapterId = 1,
+            PageNum = 1,
+            SeriesId = 1,
+            LibraryId = 1,
+            KoboSpan = "ABC"
+        }, 1, false);
+        Assert.True(success);
+
+        success = await readerService.SaveReadingProgress(new ProgressDto
+        {
+            VolumeId = 1,
+            ChapterId = 1,
+            PageNum = 2,
+            SeriesId = 1,
+            LibraryId = 1,
+        }, 1, false);
+        Assert.True(success);
+
+        var progress = await context.AppUserProgresses.FirstAsync();
+        Assert.True(string.IsNullOrEmpty(progress.KoboSpan));
+    }
+
+    #endregion
+
+    #region GetThumbnail
+
+    [Fact]
+    public async Task GetThumbnail_UsesServerCoverSize()
+    {
+        var root = Path.Join(Path.GetTempPath(), "kavita-thumb-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var (unitOfWork, context, _) = await CreateDatabase();
+            (await context.ServerSetting.SingleAsync(s => s.Key == ServerSettingKey.CoverImageSize)).Value = nameof(CoverImageSize.Medium);
+            (await context.ServerSetting.SingleAsync(s => s.Key == ServerSettingKey.EncodeMediaAs)).Value = nameof(EncodeFormat.WEBP);
+            await context.SaveChangesAsync();
+
+            var ds = new DirectoryService(Substitute.For<ILogger<DirectoryService>>(), new RootedFileSystem(root));
+            var pipeline = new ImagePipeline(Substitute.For<ILogger<ImagePipeline>>());
+            var readerService = new ReaderService(unitOfWork, Substitute.For<ILogger<ReaderService>>(),
+                Substitute.For<IEventHub>(), pipeline, ds,
+                Substitute.For<IScrobblingService>(), Substitute.For<IReadingSessionService>(),
+                Substitute.For<IClientInfoAccessor>(), Substitute.For<IEntityNamingService>(),
+                Substitute.For<ILocalizationService>(), Substitute.For<IBookService>());
+
+            Directory.CreateDirectory(ds.TempDirectory);
+            var page = Path.Join(root, "001.png");
+            using (var black = NetVips.Image.Black(1280, 1820, bands: 3))
+            {
+                black.Pngsave(page);
+            }
+
+            var thumbnail = await readerService.GetThumbnail(new ChapterBuilder("1").Build(), 0, [page]);
+
+            using var written = NetVips.Image.NewFromFile(thumbnail);
+            Assert.Equal(640, written.Width);
+            Assert.Equal(909, written.Height);
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(root, true);
+            }
+            catch (IOException)
+            {
+                // A file still held open must not fail the test
+            }
+        }
     }
 
     #endregion

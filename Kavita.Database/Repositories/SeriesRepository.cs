@@ -41,6 +41,7 @@ using Kavita.Models.Entities.User;
 using Kavita.Models.Extensions;
 using Kavita.Models.Misc;
 using Kavita.Models.Parser;
+using Kavita.Models.DTOs.Theme;
 using Microsoft.EntityFrameworkCore;
 
 
@@ -151,6 +152,13 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
             .Include(s => s.Volumes)!
             .ThenInclude(v => v.Chapters)!
             .ThenInclude(c => c.Files)
+
+            .Include(s => s.CoverImageFile)
+            .Include(s => s.Volumes)
+            .ThenInclude(v => v.CoverImageFile)
+            .Include(s => s.Volumes)
+            .ThenInclude(v => v.Chapters)
+            .ThenInclude(c => c.CoverImageFile)
             .AsSplitQuery()
             .OrderBy(s => s.SortName.ToLower());
 #nullable  enable
@@ -194,6 +202,13 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
             .Include(s => s.Volumes)
             .ThenInclude(v => v.Chapters)
             .ThenInclude(c => c.Files)
+
+            .Include(s => s.CoverImageFile)
+            .Include(s => s.Volumes)
+            .ThenInclude(v => v.CoverImageFile)
+            .Include(s => s.Volumes)
+            .ThenInclude(v => v.Chapters)
+            .ThenInclude(c => c.CoverImageFile)
             .AsSplitQuery()
             .SingleOrDefaultAsync(ct);
 #nullable  enable
@@ -617,31 +632,6 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
             .ToListAsync(ct);
     }
 
-    /// <summary>
-    /// Returns custom images only
-    /// </summary>
-    /// <remarks>If customOnly, this will not include any volumes/chapters</remarks>
-    /// <returns></returns>
-    public async Task<IList<Series>> GetAllWithCoversInDifferentEncodingAsync(EncodeFormat encodeFormat,
-        bool customOnly = true, CancellationToken ct = default)
-    {
-        var extension = encodeFormat.GetExtension();
-        var prefix = "series{0}".Replace("0", string.Empty); // TODO: This actually depends on ImageService#GetSeriesFormat
-        var query = context.Series
-            .Where(c => !string.IsNullOrEmpty(c.CoverImage)
-                        && !c.CoverImage.EndsWith(extension)
-                        && (!customOnly || c.CoverImage.StartsWith(prefix)))
-            .AsSplitQuery();
-
-        if (!customOnly)
-        {
-            query = query.Include(s => s.Volumes)
-                .ThenInclude(v => v.Chapters);
-        }
-
-        return await query.ToListAsync(ct);
-    }
-
     public async Task<PagedList<SeriesDto>> GetSeriesDtoForLibraryIdAsync(int userId, UserParams userParams,
         SeriesFilterV2Dto seriesFilterDto, QueryContext queryContext = QueryContext.None, CancellationToken ct = default)
     {
@@ -700,19 +690,11 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
             .FirstOrDefaultAsync(ct);
     }
 
-    public Task<PublicationStatus?> GetPublicationStatusAsync(int seriesId, CancellationToken ct = default)
-    {
-        return context.Series
-            .Where(s => s.Id == seriesId)
-            .Select(s => (PublicationStatus?) s.Metadata.PublicationStatus)
-            .FirstOrDefaultAsync(ct);
-    }
-
     public async Task<string?> GetSeriesCoverImageAsync(int seriesId, CancellationToken ct = default)
     {
         return await context.Series
             .Where(s => s.Id == seriesId)
-            .Select(s => s.CoverImage)
+            .Select(s => s.CoverImageFile!.FileName)
             .SingleOrDefaultAsync(ct);
     }
 
@@ -1084,22 +1066,6 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
             .AsNoTracking()
             .AsSplitQuery()
             .ToListAsync(ct);
-    }
-
-    public async Task<IList<string>> GetAllCoverImagesAsync(CancellationToken ct = default)
-    {
-        return (await context.Series
-            .Select(s => s.CoverImage)
-            .Where(t => !string.IsNullOrEmpty(t))
-            .ToListAsync(ct))!;
-    }
-
-    public async Task<IEnumerable<string>> GetLockedCoverImagesAsync(CancellationToken ct = default)
-    {
-        return (await context.Series
-            .Where(s => s.CoverImageLocked && !string.IsNullOrEmpty(s.CoverImage))
-            .Select(s => s.CoverImage)
-            .ToListAsync(ct))!;
     }
 
     /// <summary>
@@ -2034,5 +2000,20 @@ public class SeriesRepository(DataContext context, IMapper mapper) : ISeriesRepo
             .FirstOrDefaultAsync(cancellationToken: ct);
 
         return result is { AllSpecial: true } ? result.Count : null;
+    }
+
+    public async Task<int> GetNonSpecialChapterCountAsync(int seriesId, CancellationToken ct = default)
+    {
+        return await context.Chapter
+            .Where(c => c.Volume.SeriesId == seriesId && c.Volume.MaxNumber != ParserConstants.SpecialVolumeNumber)
+            .CountAsync(ct);
+    }
+
+    public async Task<ColorScapeDto?> GetColorScapeAsync(int seriesId, CancellationToken ct = default)
+    {
+        return await context.Series
+            .Where(s => s.Id == seriesId && s.CoverImageFile != null)
+            .Select(s => new ColorScapeDto(s.CoverImageFile!.PrimaryColor, s.CoverImageFile.SecondaryColor))
+            .FirstOrDefaultAsync(ct);
     }
 }

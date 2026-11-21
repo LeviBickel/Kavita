@@ -384,8 +384,9 @@ public class ScannerService(
             MessageFactory.LibraryScanEndedEvent(tally.ToEventBody(library, issues, true), series.Name));
 
         BackgroundJob.Enqueue(() => cacheService.CleanupChapters(existingChapterIdsToClean));
-        BackgroundJob.Enqueue(() => directoryService.ClearDirectory(directoryService.CacheDirectory));
+        BackgroundJob.Enqueue(() => cacheService.CleanupCacheExceptActiveChaptersAsync());
         BackgroundJob.Enqueue<ICollectionFilterSyncService>(s => s.SyncAll(CancellationToken.None));
+        BackgroundJob.Enqueue<ICompositeCoverService>(s => s.CreateMissingCoversAsync(CancellationToken.None));
     }
 
     private static Dictionary<ParsedSeries, IList<ParserInfo>> TrackFoundSeriesAndFiles(IList<ScannedSeriesResult> seenSeries,
@@ -637,7 +638,7 @@ public class ScannerService(
             throw;
         }
 
-        BackgroundJob.Enqueue(() => directoryService.ClearDirectory(directoryService.CacheDirectory));
+        BackgroundJob.Enqueue(() => cacheService.CleanupCacheExceptActiveChaptersAsync());
         BackgroundJob.Enqueue<ICollectionFilterSyncService>(s => s.SyncAll(CancellationToken.None));
     }
 
@@ -718,6 +719,8 @@ public class ScannerService(
         await metadataService.RemoveAbandonedMetadataKeys();
         await eventHub.SendMessageAsync(MessageFactory.NotificationProgress,
             MessageFactory.LibraryScanEndedEvent(tally.ToEventBody(library, issues, endsJob)));
+
+        BackgroundJob.Enqueue<ICompositeCoverService>(s => s.CreateMissingCoversAsync(CancellationToken.None));
     }
 
     /// <summary>

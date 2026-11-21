@@ -1,12 +1,19 @@
 ﻿using System.IO.Abstractions.TestingHelpers;
+using Kavita.API.Repositories;
 using Kavita.API.Services;
+using Kavita.Database.Extensions;
 using Kavita.Database.Tests;
 using Kavita.Models.Builders;
+using Kavita.Models.DTOs.Progress;
 using Kavita.Models.Entities.Enums;
+using Kavita.Models.Entities.Progress;
+using Kavita.Models.Entities.User;
+using Kavita.Models.Images;
 using Kavita.Models.Metadata;
 using Kavita.Models.Parser;
 using Kavita.Services.Builders;
 using Kavita.Services.Reading;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit.Abstractions;
@@ -32,9 +39,9 @@ internal class MockReadingItemServiceForCacheService : IReadingItemService
         return 1;
     }
 
-    public string GetCoverImage(string fileFilePath, string fileName, MangaFormat format, EncodeFormat encodeFormat, CoverImageSize size = CoverImageSize.Default)
+    public OpenedCover? OpenCover(string filePath, MangaFormat format)
     {
-        return string.Empty;
+        return null;
     }
 
     public void Extract(string fileFilePath, string targetDirectory, MangaFormat format, int imageCount = 1)
@@ -70,8 +77,7 @@ public class CacheServiceTests(ITestOutputHelper outputHelper): AbstractDbTest(o
         var cleanupService = new CacheService(_logger, unitOfWork, ds,
             new ReadingItemService(Substitute.For<IArchiveService>(),
                 Substitute.For<IBookService>(),
-                Substitute.For<IImageService>(), ds, Substitute.For<ILogger<ReadingItemService>>(),
-                Substitute.For<IAudiobookService>()),
+                ds, Substitute.For<ILogger<ReadingItemService>>(), Substitute.For<IAudiobookService>()),
             Substitute.For<IBookmarkService>(), Substitute.For<ILocalizationService>());
 
         var s = new SeriesBuilder("Test").Build();
@@ -102,7 +108,7 @@ public class CacheServiceTests(ITestOutputHelper outputHelper): AbstractDbTest(o
     //     archiveService.ExtractArchive($"{DataDirectory}Test v1.zip",
     //         filesystem.Path.Join(CacheDirectory, "1"));
     //     var cleanupService = new CacheService(_logger, _unitOfWork, ds,
-    //         new ReadingItemService(archiveService, Substitute.For<IBookService>(), Substitute.For<IImageService>(), ds));
+    //         new ReadingItemService(archiveService, Substitute.For<IBookService>(), ds));
     //
     //     await ResetDB();
     //     var s = new SeriesBuilder("Test").Build();
@@ -148,11 +154,61 @@ public class CacheServiceTests(ITestOutputHelper outputHelper): AbstractDbTest(o
         var ds = new DirectoryService(Substitute.For<ILogger<DirectoryService>>(), filesystem);
         var cleanupService = new CacheService(_logger, unitOfWork, ds,
             new ReadingItemService(Substitute.For<IArchiveService>(),
-                Substitute.For<IBookService>(), Substitute.For<IImageService>(), ds, Substitute.For<ILogger<ReadingItemService>>(), Substitute.For<IAudiobookService>()),
+                Substitute.For<IBookService>(), ds, Substitute.For<ILogger<ReadingItemService>>(), Substitute.For<IAudiobookService>()),
             Substitute.For<IBookmarkService>(), Substitute.For<ILocalizationService>());
 
         cleanupService.CleanupChapters(new []{1, 3});
         Assert.Empty(ds.GetFiles(CacheDirectory, searchOption:SearchOption.AllDirectories));
+    }
+
+    [Fact]
+    public async Task CleanupCacheExceptActiveChaptersAsync_SkipsChaptersWithActiveSessions()
+    {
+        var (unitOfWork, context, _) = await CreateDatabase();
+
+        var lib = await context.Library.Includes(LibraryIncludes.Series).FirstAsync();
+        lib.Series.Add(new SeriesBuilder("Test")
+            .WithVolume(new VolumeBuilder("1")
+                .WithChapter(new ChapterBuilder("1").WithPages(2).Build())
+                .WithChapter(new ChapterBuilder("2").WithPages(2).Build())
+                .Build())
+            .Build());
+        await context.AppUser.AddAsync(new AppUser() { UserName = "Test" });
+        await context.SaveChangesAsync();
+
+        var chapterIds = await context.Chapter.OrderBy(c => c.Id).Select(c => c.Id).ToListAsync();
+        var liveChapterId = chapterIds[0];
+        var staleChapterId = chapterIds[1];
+
+        await context.AppUserReadingSession.AddAsync(new AppUserReadingSession()
+        {
+            ActivityData =
+            [
+                new AppUserReadingSessionActivityData(new ProgressDto()
+                {
+                    ChapterId = liveChapterId, VolumeId = 1, LibraryId = 1, PageNum = 1, SeriesId = 1
+                }, 1, MangaFormat.Archive)
+            ],
+            AppUserId = 1,
+            StartTime = DateTime.Now,
+            StartTimeUtc = DateTime.UtcNow,
+            IsActive = true,
+        });
+        await context.SaveChangesAsync();
+
+        var filesystem = CreateFileSystem();
+        filesystem.AddFile($"{CacheDirectory}{liveChapterId}/001.jpg", new MockFileData(""));
+        filesystem.AddFile($"{CacheDirectory}{staleChapterId}/001.jpg", new MockFileData(""));
+        var ds = new DirectoryService(Substitute.For<ILogger<DirectoryService>>(), filesystem);
+        var cacheService = new CacheService(_logger, unitOfWork, ds,
+            new ReadingItemService(Substitute.For<IArchiveService>(),
+                Substitute.For<IBookService>(), ds, Substitute.For<ILogger<ReadingItemService>>(), Substitute.For<IAudiobookService>()),
+            Substitute.For<IBookmarkService>(), Substitute.For<ILocalizationService>());
+
+        await cacheService.CleanupCacheExceptActiveChaptersAsync();
+
+        Assert.True(filesystem.FileExists($"{CacheDirectory}{liveChapterId}/001.jpg"));
+        Assert.False(filesystem.Directory.Exists($"{CacheDirectory}{staleChapterId}/"));
     }
 
 
@@ -172,7 +228,7 @@ public class CacheServiceTests(ITestOutputHelper outputHelper): AbstractDbTest(o
         var ds = new DirectoryService(Substitute.For<ILogger<DirectoryService>>(), filesystem);
         var cs = new CacheService(_logger, unitOfWork, ds,
             new ReadingItemService(Substitute.For<IArchiveService>(),
-                Substitute.For<IBookService>(), Substitute.For<IImageService>(), ds, Substitute.For<ILogger<ReadingItemService>>(), Substitute.For<IAudiobookService>()),
+                Substitute.For<IBookService>(), ds, Substitute.For<ILogger<ReadingItemService>>(), Substitute.For<IAudiobookService>()),
             Substitute.For<IBookmarkService>(), Substitute.For<ILocalizationService>());
 
         var c = new ChapterBuilder("1")
@@ -215,7 +271,7 @@ public class CacheServiceTests(ITestOutputHelper outputHelper): AbstractDbTest(o
         var ds = new DirectoryService(Substitute.For<ILogger<DirectoryService>>(), filesystem);
         var cs = new CacheService(_logger, unitOfWork, ds,
             new ReadingItemService(Substitute.For<IArchiveService>(),
-                Substitute.For<IBookService>(), Substitute.For<IImageService>(), ds, Substitute.For<ILogger<ReadingItemService>>(), Substitute.For<IAudiobookService>()),
+                Substitute.For<IBookService>(), ds, Substitute.For<ILogger<ReadingItemService>>(), Substitute.For<IAudiobookService>()),
             Substitute.For<IBookmarkService>(), Substitute.For<ILocalizationService>());
 
         // Flatten to prepare for how GetFullPath expects
@@ -261,7 +317,7 @@ public class CacheServiceTests(ITestOutputHelper outputHelper): AbstractDbTest(o
         var ds = new DirectoryService(Substitute.For<ILogger<DirectoryService>>(), filesystem);
         var cs = new CacheService(_logger, unitOfWork, ds,
             new ReadingItemService(Substitute.For<IArchiveService>(),
-                Substitute.For<IBookService>(), Substitute.For<IImageService>(), ds, Substitute.For<ILogger<ReadingItemService>>(), Substitute.For<IAudiobookService>()),
+                Substitute.For<IBookService>(), ds, Substitute.For<ILogger<ReadingItemService>>(), Substitute.For<IAudiobookService>()),
             Substitute.For<IBookmarkService>(), Substitute.For<ILocalizationService>());
 
         // Flatten to prepare for how GetFullPath expects
@@ -304,7 +360,7 @@ public class CacheServiceTests(ITestOutputHelper outputHelper): AbstractDbTest(o
         var ds = new DirectoryService(Substitute.For<ILogger<DirectoryService>>(), filesystem);
         var cs = new CacheService(_logger, unitOfWork, ds,
             new ReadingItemService(Substitute.For<IArchiveService>(),
-                Substitute.For<IBookService>(), Substitute.For<IImageService>(), ds, Substitute.For<ILogger<ReadingItemService>>(), Substitute.For<IAudiobookService>()),
+                Substitute.For<IBookService>(), ds, Substitute.For<ILogger<ReadingItemService>>(), Substitute.For<IAudiobookService>()),
             Substitute.For<IBookmarkService>(), Substitute.For<ILocalizationService>());
 
         // Flatten to prepare for how GetFullPath expects
@@ -351,7 +407,7 @@ public class CacheServiceTests(ITestOutputHelper outputHelper): AbstractDbTest(o
         var ds = new DirectoryService(Substitute.For<ILogger<DirectoryService>>(), filesystem);
         var cs = new CacheService(_logger, unitOfWork, ds,
             new ReadingItemService(Substitute.For<IArchiveService>(),
-                Substitute.For<IBookService>(), Substitute.For<IImageService>(), ds, Substitute.For<ILogger<ReadingItemService>>(), Substitute.For<IAudiobookService>()),
+                Substitute.For<IBookService>(), ds, Substitute.For<ILogger<ReadingItemService>>(), Substitute.For<IAudiobookService>()),
             Substitute.For<IBookmarkService>(), Substitute.For<ILocalizationService>());
 
         // Flatten to prepare for how GetFullPath expects
